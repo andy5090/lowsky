@@ -40,7 +40,7 @@ def build(root):
         "schema_version": "1.0", "synthetic": True,
         "coordinates": {"axes": "right-handed, Y-up", "unit": "meter"},
         "interpolation": "linear_between_keyframes",
-        "environment": [{"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]}, *layout["facilities"]],
+        "environment": [{"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]}, *layout["facilities"], *layout.get("field_installations", [])],
     })
     descriptions = [
         (

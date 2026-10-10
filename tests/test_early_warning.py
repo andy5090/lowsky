@@ -117,11 +117,36 @@ class EarlyWarningTests(unittest.TestCase):
         self.assertNotIn('private-canary', json.dumps(state))
         self.assertEqual(state['evidence'][0]['device_health']['power_status'], 'unknown')
         layout = json.loads((Path(__file__).resolve().parents[1] / 'data/site_layout.json').read_text())
-        facilities = {f['id']: f for f in layout['facilities']}
+        facilities = {f['id']: f for f in layout['field_installations']}
         for installation in state['installations']:
             facility = facilities[installation['sensor_id']]
             self.assertEqual(installation['position'], facility['position'])
             self.assertEqual(facility['asset_id'], 'phone_sensor_pole')
+
+    def test_fixed_phone_field_deployment_is_outside_site_and_matches_scene(self):
+        root = Path(__file__).resolve().parents[1]
+        layout = json.loads((root / 'data/site_layout.json').read_text())
+        scene = json.loads((root / 'data/scenarios/v1/scene.json').read_text())
+        polygon = layout['perimeter']['polygon']
+
+        def inside(position):
+            x, _, z = position
+            result = False
+            for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+                if (a[1] > z) != (b[1] > z) and x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]:
+                    result = not result
+            return result
+
+        self.assertTrue(all(inside(f['position']) for f in layout['facilities']))
+        zone = self.area(95000, 3)
+        self.assertFalse(inside(zone['center']))
+        self.assertEqual(len(layout['field_installations']), 2)
+        for field in layout['field_installations']:
+            self.assertFalse(inside(field['position']))
+            self.assertTrue(field['ground_to_terrain'])
+            self.assertIn(field, scene['environment'])
+            self.assertNotIn(field, layout['facilities'])
+            self.assertIn(field['position'], [item['position'] for item in zone['installations']])
 
 
 if __name__ == '__main__':

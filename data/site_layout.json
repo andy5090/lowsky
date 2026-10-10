@@ -381,44 +381,6 @@
         "en": "Staff rest building",
         "ko": "직원 휴게동"
       }
-    },
-    {
-      "id": "pole_phone_1",
-      "asset_id": "phone_sensor_pole",
-      "position": [
-        500,
-        0,
-        105
-      ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
-      "group": "phone_pilot",
-      "label": {
-        "en": "Fixed-phone pole 1",
-        "ko": "고정형 휴대폰 폴 1"
-      }
-    },
-    {
-      "id": "pole_phone_2",
-      "asset_id": "phone_sensor_pole",
-      "position": [
-        500,
-        0,
-        155
-      ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
-      "group": "phone_pilot",
-      "label": {
-        "en": "Fixed-phone pole 2",
-        "ko": "고정형 휴대폰 폴 2"
-      }
     }
   ],
   "aircraft_position": [
@@ -759,15 +721,58 @@
     {
       "id": "phone_pilot",
       "label": {
-        "en": "Fixed-phone pilot",
-        "ko": "고정형 휴대폰 실증 구역"
+        "en": "Exterior fixed-phone pilot",
+        "ko": "외곽 고정 폰 시범 구역"
       },
       "position": [
-        510,
+        1000,
         0,
-        205
+        250
       ],
-      "color": "#9bc7c2"
+      "color": "#9bc7c2",
+      "ground_to_terrain": true
+    }
+  ],
+  "field_installations": [
+    {
+      "id": "pole_phone_1",
+      "asset_id": "phone_sensor_pole",
+      "position": [
+        1000,
+        0,
+        100
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "group": "phone_pilot",
+      "label": {
+        "en": "Fixed-phone pole 1",
+        "ko": "고정형 휴대폰 폴 1"
+      },
+      "ground_to_terrain": true
+    },
+    {
+      "id": "pole_phone_2",
+      "asset_id": "phone_sensor_pole",
+      "position": [
+        1000,
+        0,
+        200
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "group": "phone_pilot",
+      "label": {
+        "en": "Fixed-phone pole 2",
+        "ko": "고정형 휴대폰 폴 2"
+      },
+      "ground_to_terrain": true
     }
   ]
 }

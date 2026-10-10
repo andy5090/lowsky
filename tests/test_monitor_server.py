@@ -261,6 +261,8 @@ class HTTPTests(SimulationFixture):
         self.assets = {"/": ("index.html", b"<!doctype html><title>test monitor</title>"),
                        "/app.js": ("app.js", b"export const synthetic = true;"),
                        "/styles.css": ("styles.css", b"body { color: navy; }")}
+        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg'):
+            self.assets['/' + name] = (name, (monitor_server.PROJECT / 'monitor' / name).read_bytes())
         for filename, content in self.assets.values():
             (self.project / "monitor" / filename).write_bytes(content)
         (self.project / "monitor" / "private.txt").write_text("private file", encoding="utf-8")
@@ -341,6 +343,9 @@ class HTTPTests(SimulationFixture):
 
     def test_only_explicit_static_assets_are_served(self):
         expected_types = {"/": "text/html", "/app.js": "text/javascript", "/styles.css": "text/css"}
+        expected_types.update({'/manifest.webmanifest': 'application/manifest+json',
+                               '/notifications.mjs': 'text/javascript', '/sw.js': 'text/javascript',
+                               '/pwa-icon.svg': 'image/svg+xml'})
         for path, (_, expected) in self.assets.items():
             with self.subTest(path=path):
                 status, headers, body = self.request("GET", path + "?v=1")

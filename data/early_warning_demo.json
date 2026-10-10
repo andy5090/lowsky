@@ -49,32 +49,32 @@
     {
       "id": "fixed_phone_pilot",
       "label": {
-        "en": "Fixed-phone pilot",
-        "ko": "고정 폰 시범 구역"
+        "en": "Exterior fixed-phone pilot",
+        "ko": "외곽 고정 폰 시범 구역"
       },
       "deployment_type": "fixed_phone",
       "center": [
-        500,
+        1000,
         0,
-        130
+        150
       ],
       "radius_m": 100,
       "installations": [
         {
           "sensor_id": "pole_phone_1",
           "position": [
-            500,
+            1000,
             0,
-            105
+            100
           ],
           "mount_height_m": 3
         },
         {
           "sensor_id": "pole_phone_2",
           "position": [
-            500,
+            1000,
             0,
-            155
+            200
           ],
           "mount_height_m": 3
         }

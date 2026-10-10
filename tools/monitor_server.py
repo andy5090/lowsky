@@ -213,6 +213,10 @@ class Handler(BaseHTTPRequestHandler):
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
+                      '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),
+                      '/sw.js': ('sw.js', 'text/javascript; charset=utf-8'),
+                      '/manifest.webmanifest': ('manifest.webmanifest', 'application/manifest+json'),
+                      '/pwa-icon.svg': ('pwa-icon.svg', 'image/svg+xml'),
                       '/styles.css': ('styles.css', 'text/css; charset=utf-8')}
             if path not in assets:
                 self.respond(404, {'error': 'Not found'})

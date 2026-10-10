@@ -324,9 +324,9 @@
       "id": "pole_phone_1",
       "asset_id": "phone_sensor_pole",
       "position": [
-        500,
+        1000,
         0,
-        105
+        100
       ],
       "scale": [
         1,
@@ -337,15 +337,16 @@
       "label": {
         "en": "Fixed-phone pole 1",
         "ko": "고정형 휴대폰 폴 1"
-      }
+      },
+      "ground_to_terrain": true
     },
     {
       "id": "pole_phone_2",
       "asset_id": "phone_sensor_pole",
       "position": [
-        500,
+        1000,
         0,
-        155
+        200
       ],
       "scale": [
         1,
@@ -356,7 +357,8 @@
       "label": {
         "en": "Fixed-phone pole 2",
         "ko": "고정형 휴대폰 폴 2"
-      }
+      },
+      "ground_to_terrain": true
     }
   ]
 }

@@ -7,6 +7,8 @@
   <title>LOW SKY · Observation Monitor</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="/logo-metal.png" type="image/png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/logo-metal.png">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
@@ -30,6 +32,11 @@
         <button type="button" class="view-tab" data-view="alerts"><span data-i18n="currentAlerts">Current alerts</span> <span id="alert-count" class="count-badge">--</span></button>
       </nav>
     </div>
+
+    <section class="notification-bar" aria-labelledby="notification-title">
+      <div><h2 id="notification-title" data-i18n="notify.title">Current alert notifications</h2><p data-i18n="notify.scope">While this app is open or minimized. Browser suspension may delay delivery.</p><p id="notification-status" role="status" aria-live="polite"></p></div>
+      <div class="notification-actions"><button type="button" id="notification-toggle" class="button button-secondary" disabled data-i18n="notify.enable">Enable notifications</button><button type="button" id="notification-current" class="button button-secondary" disabled data-i18n="notify.current">Notify current alerts</button><button type="button" id="pwa-install" class="button button-secondary" hidden data-i18n="notify.install">Install app</button></div>
+    </section>
 
     <section class="scenario-bar" aria-label="Scenario settings" data-i18n-aria-label="scenarioSettings">
       <div class="scenario-field"><label for="case-select" data-i18n="scenario">Synthetic scenario</label><select id="case-select" aria-label="Select synthetic scenario" data-i18n-aria-label="chooseScenario"></select></div>

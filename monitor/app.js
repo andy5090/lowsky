@@ -1,6 +1,7 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
+import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let language = 'en';
@@ -15,6 +16,7 @@ let briefings = [], briefingSignature = '';
 let situationSignature = '', situationRun = null, situationOptions = '', reviewPending = false;
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
+let notifier, notificationBusy = false, notificationMessage = '', installPrompt;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
@@ -37,6 +39,7 @@ function connection(ok, message='') {
   $('connection-status').classList.toggle('disconnected', !ok);
   for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
   updateReviewAvailability();
+  renderNotificationSettings();
   if (!ok) { $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
@@ -58,6 +61,7 @@ function render(data) {
   renderPlayback(data);
   renderBriefing();
   renderSituation();
+  notifier?.observe(data);
   const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
   if (signature !== dataSignature) {
     dataSignature = signature;
@@ -401,10 +405,65 @@ $('case-select').onchange=e=>control({action:'case',case_id:e.target.value});
 $('speed-select').onchange=e=>control({action:'speed',speed:Number(e.target.value)});
 $('timeline').onchange=e=>control({action:'seek',at_ms:Number(e.target.value)});
 $('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.value))} / ${fmt(state?.duration_ms || 0)}`;
-for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>{
-  const monitor=tab.dataset.view==='monitor';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
-  for(const b of document.querySelectorAll('[data-view]')){b.classList.toggle('is-active',b===tab);if(b===tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();
+function showView(view) {
+  const monitor=view!=='alerts';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
+  for(const b of document.querySelectorAll('[data-view]')){const active=b.dataset.view===(monitor?'monitor':'alerts');b.classList.toggle('is-active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();
+}
+for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>showView(tab.dataset.view);
+
+function renderNotificationSettings() {
+  if(!notifier)return;
+  const status=notifier.getState();
+  $('notification-toggle').textContent=t(status.optedIn?'notify.disable':'notify.enable');
+  $('notification-toggle').setAttribute('aria-pressed',String(status.enabled));
+  $('notification-toggle').disabled=notificationBusy || (!status.supported && !status.optedIn);
+  $('notification-current').disabled=notificationBusy || !status.optedIn || status.permission!=='granted' || !connected;
+  const key=notificationBusy?'notify.pending':!status.supported?'notify.unsupported':status.permission==='denied'?'notify.denied':status.error?'notify.failed':notificationMessage || (status.enabled?(connected?'notify.on':'notify.disconnected'):'notify.off');
+  $('notification-status').textContent=t(key);
+}
+function notificationText(alerts, snapshot) {
+  const subjects=alerts.slice(0,3).map(alert=>{
+    if(alert.kind==='early_warning')return zoneLabel(snapshot.early_warning?.zones.find(z=>z.id===alert.zone_id));
+    return `${alert.object_id || alert.source_id || ''} · ${t(['contradictory','not_comparable','stale','channel'].includes(alert.kind)?`alert.${alert.kind}`:'alert.unknown')}`;
+  });
+  if(alerts.length>3)subjects.push(t('notify.more',{count:alerts.length-3}));
+  return {title:t('notify.notificationTitle',{count:alerts.length}),body:t('notify.notificationBody',{caseId:snapshot.case_id,time:fmt(snapshot.at_ms),subjects:subjects.join(' · ')})};
+}
+async function notifyCurrentAlerts() {
+  // Read fresh received evidence; never send a disconnected cached screen.
+  const version=++requestVersion;
+  const data=await api('/api/state');
+  if(version!==requestVersion){notificationMessage='notify.failed';return;}
+  render(data);
+  const result=await notifier.notifyCurrent(data);
+  notificationMessage=({sent:'notify.sent',duplicate:'notify.duplicate',empty:'notify.empty',error:'notify.failed'})[result.status] || '';
+}
+$('notification-toggle').onclick=async()=>{
+  if(notifier.getState().optedIn){notifier.setEnabled(false);notificationMessage='';renderNotificationSettings();return;}
+  notificationBusy=true;notificationMessage='';renderNotificationSettings();
+  try {
+    // Keep requestPermission in the user gesture, before any network/worker await.
+    const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+    if(permission==='granted'){
+      notifier.setEnabled(true);
+      notifier.resetBaseline();
+      await notifyCurrentAlerts();
+    }else notificationMessage=permission==='denied'?'notify.denied':'notify.dismissed';
+  }catch{notificationMessage='notify.failed';}
+  finally{notificationBusy=false;renderNotificationSettings();}
 };
+$('notification-current').onclick=async()=>{
+  notificationBusy=true;renderNotificationSettings();
+  try{await notifyCurrentAlerts();}catch{notificationMessage='notify.failed';}
+  finally{notificationBusy=false;renderNotificationSettings();}
+};
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;$('pwa-install').hidden=false;});
+$('pwa-install').onclick=async()=>{
+  const prompt=installPrompt;if(!prompt)return;
+  installPrompt=null;$('pwa-install').hidden=true;
+  try{await prompt.prompt();}catch{ /* Browser menu remains available. */ }
+};
+window.addEventListener('appinstalled',()=>{$('pwa-install').hidden=true;installPrompt=null;});
 function renderBriefing() {
   const caseId=state?.case_id || $('case-select').value;
   const brief=briefings.find(b=>b.case_id===caseId);
@@ -446,8 +505,19 @@ function applyLanguage(next, persist = false) {
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');
+  renderNotificationSettings();
 }
 $('language-select').onchange = event => applyLanguage(event.target.value, true);
+let notificationStorage;
+try{notificationStorage=localStorage;}catch{ /* Session-only opt-in if storage is unavailable. */ }
+const notificationSupported=isSecureContext && 'Notification' in window && 'serviceWorker' in navigator && 'MessageChannel' in window;
+const registrationPromise=isSecureContext && 'serviceWorker' in navigator
+  ? navigator.serviceWorker.register('/sw.js').catch(()=>null) : Promise.resolve(null);
+notifier=createNotificationController({registration:registrationPromise,storage:notificationStorage,supported:notificationSupported,getPermission:()=>notificationSupported?Notification.permission:'default',formatMessage:notificationText,onChange:()=>renderNotificationSettings()});
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='open-alerts')showView('alerts');});
+if(new URLSearchParams(location.search).get('view')==='alerts')showView('alerts');
+window.addEventListener('focus',()=>renderNotificationSettings());
+window.addEventListener('storage',event=>{if(event.key===NOTIFICATION_STORAGE_KEY){notifier.setEnabled(event.newValue==='1');notificationMessage='';renderNotificationSettings();}});
 applyLanguage(language);
 try{
   config=await api('/api/config');

@@ -41,6 +41,7 @@ func verify() -> void:
 	# Beyond the polygon's grading margin and blend, DEM heights are unmodified.
 	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1100, 1900, preview.site_layout), float(preview.terrain_data.heights_m[138][122]) - reference))
 	verify_site_geometry(preview)
+	verify_field_grounding(preview)
 	# Terrain modes must not restart or alter replay.
 	preview.elapsed_ms = 65000
 	preview._process(0)
@@ -52,10 +53,13 @@ func verify() -> void:
 	preview._unhandled_input(event)
 	assert(preview.has_node("PlainsTerrain/Fields"))
 	assert(preview.has_node("PlainsTerrain/Shelterbelts"))
+	verify_field_grounding(preview)
 	preview._unhandled_input(event)
 	assert(preview.has_node("FictionalTerrain"))
+	verify_field_grounding(preview)
 	preview._unhandled_input(event)
 	assert(preview.has_node("GeographicTerrain"))
+	verify_field_grounding(preview)
 	assert(preview.elapsed_ms == 65000)
 	assert(preview.case_id == "case_002")
 	assert(preview.objects[0]["node"].position.is_equal_approx(object_position))
@@ -67,7 +71,7 @@ func verify() -> void:
 	assert(preview.has_node("ArchedHangar"))
 	assert(preview.has_node("OfficeBuilding"))
 	assert(preview.has_node("ServiceBuilding"))
-	assert(preview.has_node("PhoneSensorPole"))
+	assert(preview.has_node("pole_phone_1") and preview.has_node("pole_phone_2"))
 	assert(preview.has_node("DetailedTower"))
 	assert(preview.get_node("SiteInfrastructure/Runway").get_meta("length_m") == 2500)
 	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("vertex_count") == preview.site_layout.perimeter.polygon.size())
@@ -145,13 +149,20 @@ func verify_site_geometry(preview: Node3D) -> void:
 				assert(Geometry2D.is_point_in_polygon(Vector2(x, z), polygon), facility.id + " footprint exceeds boundary")
 		if facility.asset_id == "arched_hangar":
 			assert(combined.size.x < 70 and combined.size.z < 80 and combined.size.y < 20, "Arched hangars must preserve ordinary building scale")
-		if facility.asset_id == "phone_sensor_pole":
-			assert(is_equal_approx(combined.size.y, 3.0) and combined.size.x < 1 and combined.size.z < 1, "Phone mount must remain a 3 m ordinary pole")
 		building.free()
 	assert(layout.display_zones.size() == 5)
 	for zone in layout.display_zones:
 		assert(preview.has_node("SiteInfrastructure/DisplayZones/" + zone.id))
-		assert(Geometry2D.is_point_in_polygon(Vector2(zone.position[0], zone.position[2]), polygon))
+		var inside = Geometry2D.is_point_in_polygon(Vector2(zone.position[0], zone.position[2]), polygon)
+		assert(inside != bool(zone.get("ground_to_terrain", false)))
+	for installation in layout.field_installations:
+		assert(not Geometry2D.is_point_in_polygon(Vector2(installation.position[0], installation.position[2]), polygon), "Field poles must be outside the fence")
+		var node = preview.get_node(installation.id)
+		var bounds = preview.collect_bounds(node, Transform3D.IDENTITY)
+		var combined: AABB = bounds[0]
+		for bound in bounds:
+			combined = combined.merge(bound)
+		assert(is_equal_approx(combined.size.y, 3.0) and combined.size.x < 1 and combined.size.z < 1, "Phone mount must remain a 3 m ordinary pole")
 	# Procedural aliases also work with existing stylized and blockout resources.
 	preview.realistic = false
 	for external in [true, false]:
@@ -187,6 +198,19 @@ func verify_site_geometry(preview: Node3D) -> void:
 	assert(preview.Geographic.grading_distance(600, 1450, layout) > 350)
 	assert(preview.Geographic.grading_distance(-300, 0, layout) < 0)
 	print("PASS: polygon contains runway, aprons and facilities; taxiways connected; grading follows polygon")
+
+func verify_field_grounding(preview: Node3D) -> void:
+	var vertices: PackedVector3Array = preview.terrain.get_child(0).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	for installation in preview.site_layout.field_installations:
+		var node = preview.get_node(installation.id)
+		var found_vertex = false
+		for vertex in vertices:
+			if is_equal_approx(vertex.x, node.position.x) and is_equal_approx(vertex.z, node.position.z):
+				assert(absf(vertex.y - node.position.y) < 0.002, "Exterior poles must follow the rendered terrain after switching modes")
+				found_vertex = true
+				break
+		assert(found_vertex, "Pilot coordinates must remain on the shared terrain grid")
+	print("PASS: exterior fixed-phone poles grounded on " + preview.terrain.name)
 
 func mouse_button(button: int, pressed: bool, position: Vector2, shift: bool = false) -> void:
 	var event = InputEventMouseButton.new()

@@ -23,6 +23,7 @@ var plains_test = true
 var geographic = true
 var terrain_data: Dictionary = {}
 var terrain: Node3D
+var field_installations: Dictionary = {}
 var terrain_button: Button
 var materials: Dictionary = {}
 var display_profiles: Dictionary = {}
@@ -236,9 +237,13 @@ func _ready() -> void:
 		instance.position = vector(placement["position"])
 		instance.scale *= vector(placement.get("scale", [1, 1, 1]))
 		add_child(instance)
+		if placement.get("ground_to_terrain", false):
+			instance.name = placement.id
+			field_installations[placement.id] = {"node": instance, "position": vector(placement.position)}
 		if placement["asset_id"] == "ground_tile":
 			terrain = instance
 	add_child(Site.make(site_layout, materials))
+	ground_field_installations()
 	if realistic:
 		add_realistic_details()
 	build_ui()
@@ -360,6 +365,36 @@ func terrain_caption() -> String:
 		return "Terrain: Korea DEM / modified site  [T]"
 	return "Terrain: Synthetic plains  [T]" if plains_test else "Terrain: Synthetic hills  [T]"
 
+func terrain_surface_height(x: float, z: float) -> float:
+	if not realistic:
+		return 0.0
+	# Sample the rendered triangles, so exterior fixtures follow every terrain mode
+	# without duplicating the DEM interpolation or synthetic-noise formula.
+	var surface: MeshInstance3D = terrain.get_child(0)
+	var arrays = surface.mesh.surface_get_arrays(0)
+	var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	for index in range(0, indices.size(), 3):
+		var a = vertices[indices[index]]
+		var b = vertices[indices[index + 1]]
+		var c = vertices[indices[index + 2]]
+		if x < minf(a.x, minf(b.x, c.x)) or x > maxf(a.x, maxf(b.x, c.x)) or z < minf(a.z, minf(b.z, c.z)) or z > maxf(a.z, maxf(b.z, c.z)):
+			continue
+		var hit = Geometry3D.ray_intersects_triangle(Vector3(x, 10000, z), Vector3.DOWN, a, b, c)
+		if hit != null:
+			return hit.y
+	assert(false, "Field installation is outside the rendered terrain")
+	return 0.0
+
+func ground_field_installations() -> void:
+	for item in field_installations.values():
+		var position: Vector3 = item.position
+		item.node.position = position + Vector3(0, terrain_surface_height(position.x, position.z), 0)
+	for zone in site_layout.get("display_zones", []):
+		if zone.get("ground_to_terrain", false):
+			var position = vector(zone.position)
+			get_node("SiteInfrastructure/DisplayZones/" + zone.id).position.y = position.y + 22 + terrain_surface_height(position.x, position.z)
+
 func toggle_terrain() -> void:
 	if not realistic:
 		return
@@ -374,6 +409,7 @@ func toggle_terrain() -> void:
 	terrain.queue_free()
 	terrain = asset_instance("ground_tile")
 	add_child(terrain)
+	ground_field_installations()
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
