@@ -12,12 +12,12 @@
       "context_feed": "data/situation_review.json",
       "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
       "name": {
-        "en": "0200: Indicators and first reports",
-        "ko": "새벽 2시: 전조와 첫 관측"
+        "en": "Indicators and first reports",
+        "ko": "전조와 첫 관측"
       },
       "summary": {
-        "en": "48 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
-        "ko": "합성 비행체 48대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
+        "en": "Scenario time: 02:00 AM. 48 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
+        "ko": "배경 시각: 오전 02:00. 합성 비행체 48대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
       },
       "objective": {
         "en": "Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.",
@@ -150,12 +150,12 @@
       "context_feed": "data/situation_review.json",
       "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
       "name": {
-        "en": "0200: Conflicting evidence and review",
-        "ko": "새벽 2시: 상충 근거와 검토"
+        "en": "Conflicting evidence and review",
+        "ko": "상충 근거와 검토"
       },
       "summary": {
-        "en": "96 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for 24 tracks from 01:00 to 02:00, followed by reconfirmation.",
-        "ko": "합성 비행체 96대가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 24대의 표식을 다르게 보고하고 이후 재확인합니다."
+        "en": "Scenario time: 02:00 AM. 96 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for 24 tracks between 1 and 2 minutes of elapsed simulation time, followed by reconfirmation.",
+        "ko": "배경 시각: 오전 02:00. 합성 비행체 96대가 혼재된 배경을 구성합니다. 실행 경과 1~2분 동안 채널 B가 24대의 표식을 다르게 보고하고 이후 재확인합니다."
       },
       "objective": {
         "en": "Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.",

@@ -47,14 +47,14 @@ def build(root):
     conflicting_count = len(range(0, second_count, 4))
     descriptions = [
         (
-            localized("0200: Indicators and first reports", "새벽 2시: 전조와 첫 관측"),
-            localized(f"{first_count} synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", f"합성 비행체 {first_count}대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
+            localized("Indicators and first reports", "전조와 첫 관측"),
+            localized(f"Scenario time: 02:00 AM. {first_count} synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", f"배경 시각: 오전 02:00. 합성 비행체 {first_count}대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
             localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
             localized(f"{first_count} small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", f"소형 비행체 {first_count}대와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
         ),
         (
-            localized("0200: Conflicting evidence and review", "새벽 2시: 상충 근거와 검토"),
-            localized(f"{second_count} synthetic aerial objects provide mixed background traffic. Channel B reports different labels for {conflicting_count} tracks from 01:00 to 02:00, followed by reconfirmation.", f"합성 비행체 {second_count}대가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 {conflicting_count}대의 표식을 다르게 보고하고 이후 재확인합니다."),
+            localized("Conflicting evidence and review", "상충 근거와 검토"),
+            localized(f"Scenario time: 02:00 AM. {second_count} synthetic aerial objects provide mixed background traffic. Channel B reports different labels for {conflicting_count} tracks between 1 and 2 minutes of elapsed simulation time, followed by reconfirmation.", f"배경 시각: 오전 02:00. 합성 비행체 {second_count}대가 혼재된 배경을 구성합니다. 실행 경과 1~2분 동안 채널 B가 {conflicting_count}대의 표식을 다르게 보고하고 이후 재확인합니다."),
             localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
             localized(f"{second_count} synthetic objects; {conflicting_count} conflicting tracks, with the remaining tracks as comparison traffic.", f"합성 비행체 {second_count}대. {conflicting_count}대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
         ),
