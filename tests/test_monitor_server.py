@@ -285,6 +285,19 @@ class HTTPTests(SimulationFixture):
         return self.request("POST", "/api/control", json.dumps(command),
                             {"Content-Type": "application/json", "Origin": self.origin, **(headers or {})})
 
+    def test_animation_preview_is_separate_and_tracks_case_selection(self):
+        self.post({"action": "case", "case_id": "case_005"})
+        status, _, raw = self.request("GET", "/api/preview")
+        self.assertEqual(status, 200)
+        preview = json.loads(raw)
+        self.assertTrue(preview["author_preview"])
+        self.assertEqual(preview["case_id"], "case_005")
+        self.assertEqual(len(preview["world"]["objects"]), 3)
+        for endpoint in ("/api/state", "/api/clock"):
+            _, _, raw = self.request("GET", endpoint)
+            self.assertNotIn("keyframes", raw.decode())
+            self.assertNotIn("author_preview", raw.decode())
+
     def test_state_and_control_share_replay_clock(self):
         status, _, raw = self.post({"action": "seek", "at_ms": 60000})
         self.assertEqual(status, 200)
@@ -344,6 +357,18 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(len(payload["cases"]), 12)
         self.assertEqual(set(payload["cases"][0]), {"case_id", "variant"})
         self.assertNotIn("focus_object_id", raw.decode())
+
+    def test_scripted_briefings_are_separate_from_observation_state(self):
+        status, _, raw = self.request("GET", "/api/briefings")
+        self.assertEqual(status, 200)
+        payload = json.loads(raw)
+        self.assertTrue(payload["author_preview"])
+        self.assertEqual(len(payload["cases"]), 12)
+        self.assertEqual(payload["cases"][1]["comparison_object"], "object_11")
+        state = json.loads(self.request("GET", "/api/state")[2])
+        self.assertNotIn("briefings", state)
+        self.assertNotIn("comparison_object", json.dumps(state))
+        self.assertNotIn("brief.event", json.dumps(state))
 
     def test_non_json_malformed_oversized_and_invalid_commands_are_rejected(self):
         self.assertEqual(self.request("POST", "/api/control", "action=play",

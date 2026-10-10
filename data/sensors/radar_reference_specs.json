@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "reviewed_on": "2026-10-10",
+  "purpose": "Public counter-UAS radar reference; civilian-only restriction does not apply. Reference metadata, not a detection model or selected installation.",
+  "hardware_selected": false,
+  "profiles": [
+    {
+      "id": "robin_iris_2026_04",
+      "manufacturer": "Robin Radar Systems",
+      "model": "IRIS",
+      "source": {
+        "url": "https://www.robinradar.com/hubfs/Iris%20Datasheet%20V15.7_Online.pdf",
+        "revision": "RRS.IRIS.A2.2026.04",
+        "pages": [
+          2,
+          3,
+          4
+        ]
+      },
+      "published_specs": {
+        "technology": "FMCW",
+        "band": "X-band",
+        "azimuth_coverage_deg": 360,
+        "elevation_coverage_deg": 60,
+        "instrumented_range_modes_m": [
+          5000,
+          12000
+        ],
+        "rotation_rpm": 30,
+        "update_interval_s": 1,
+        "weight_excluding_tripod_kg": 29,
+        "interfaces": [
+          "SAPIENT",
+          "XML",
+          "ASTERIX",
+          "CoT"
+        ]
+      },
+      "conditions": [
+        "12 km is the optional long-range instrumented mode, not a guaranteed small-drone detection range.",
+        "Rotation and update interval are separate quantities; the document describes back-to-back radar antennas.",
+        "Manufacturer detection and classification claims depend on target and viewing, clutter and weather conditions; they are not interchangeable."
+      ],
+      "simulation_use": "Reference only. Current 12-second sweep and 1000 m display radius are illustrative and are not IRIS emulation."
+    }
+  ],
+  "simulation_contract": {
+    "performance_model_implemented": false,
+    "display_config": "data/radar_display.json",
+    "target_size_to_detection_range_mapping": null
+  }
+}

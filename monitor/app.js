@@ -1,4 +1,5 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
+import {motionFrame} from './motion.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 const $ = id => document.getElementById(id);
@@ -10,8 +11,10 @@ const qualityLabel = quality => t(`quality.${quality}`);
 const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
 const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')}`;
+let briefings = [], briefingSignature = '';
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
+let motionVisible = true, preview = null, previewLoading = false;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
@@ -52,6 +55,8 @@ async function poll() {
 function render(data) {
   state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
+  renderBriefing();
+  loadPreview();
   const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
   if (signature !== dataSignature) {
     dataSignature = signature;
@@ -67,7 +72,7 @@ function renderPlayback(data) {
   $('time-label').textContent = `${fmt(data.at_ms)} / ${fmt(data.duration_ms)}`;
   if(document.activeElement !== $('timeline')) $('timeline').value = data.at_ms;
   $('speed-select').value = data.speed;
-  drawRadar(data.at_ms);
+  drawRadar(data.at_ms); drawMotion(data.at_ms);
 }
 function select(id) { selected = id; renderDetails(); drawMap(); }
 function renderDetails() {
@@ -120,7 +125,7 @@ function renderEarlyWarning() {
 function planScale() {
   if(mode==='region') return pixelsPerMeter(config.regional_map.site_origin.lat,region.zoom);
   const p = config.site.perimeter;
-  return Math.min(map.clientWidth/(p.width_m*1.35), map.clientHeight/(p.length_m*1.25))*plan.zoom;
+  return Math.min(map.clientWidth/(p.width_m*1.35), map.clientHeight/(p.length_m*1.6))*plan.zoom;
 }
 function point(x,z) {
   if(mode==='region') {
@@ -141,7 +146,13 @@ function drawSite() {
     const active=z.positive_sources>0,color=active?'#dfb86a':'#8bc9cf';
     svg+=`<circle cx="${cx}" cy="${cy}" r="${z.radius_m*s}" fill="${color}18" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 5"/>`;
   }
-  svg+=rect(0,0,site.perimeter.width_m,site.perimeter.length_m,mode==='region'?'#b3c38b1f':'#172b2e',mode==='region'?'#c4d39a':'#b3c38b','stroke-width="2.5" stroke-dasharray="6 4"');
+  if(mode==='region'){
+    const margin=site.terrain_grading.margin_m;
+    svg+=rect(0,0,site.perimeter.width_m+margin*2,site.perimeter.length_m+margin*2,'#263c32','#c4d39a','stroke-width="2"');
+    const [zx,zy]=point(-site.perimeter.width_m/2-margin,site.perimeter.length_m/2+margin);
+    svg+=`<text x="${zx+5}" y="${zy+17}" fill="#e2eacb" stroke="#14261c" stroke-width="3" paint-order="stroke" font-size="11">${t('site.modified')}</text>`;
+  }
+  svg+=rect(0,0,site.perimeter.width_m,site.perimeter.length_m,mode==='region'?'#263c32':'#172b2e',mode==='region'?'#c4d39a':'#b3c38b','stroke-width="2.5" stroke-dasharray="6 4"');
   const [sx,sy]=point(-site.perimeter.width_m/2,-site.perimeter.length_m/2);
   svg+=`<text x="${sx+8}" y="${sy+17}" fill="#c4d39a" font-size="11" font-weight="600">${t('sitePlan')}</text>`;
   const r=site.runway,a=site.apron;
@@ -207,7 +218,7 @@ function drawRegion() {
   }
   for(const [key,img] of tileImages) if(!needed.has(key)){img.remove();tileImages.delete(key);}
 }
-function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion(); drawRadar(state?.at_ms || 0);}
+function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion(); drawRadar(state?.at_ms || 0); drawMotion(state?.at_ms || 0);}
 function drawRadar(atMs) {
   if(!config || !state)return;
   const layer=$('radar-overlay');layer.toggleAttribute('hidden',!radarVisible);$('radar-status').hidden=!radarVisible;
@@ -231,9 +242,41 @@ function drawRadar(atMs) {
   if($('radar-status').textContent!==status)$('radar-status').textContent=status;
 }
 $('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
+async function loadPreview() {
+  if(!motionVisible || !state || preview?.case_id===state.case_id || previewLoading)return;
+  previewLoading=true;
+  try {
+    const data=await api('/api/preview');
+    if(data.case_id===state.case_id)preview=data;
+  } catch { preview=null; }
+  finally { previewLoading=false; drawMotion(state?.at_ms || 0); }
+}
+function drawMotion(atMs) {
+  const layer=$('motion-overlay');
+  layer.toggleAttribute('hidden',!motionVisible);
+  $('motion-status').hidden=!motionVisible;
+  if(!config || !state || !motionVisible)return;
+  const ready=preview?.case_id===state.case_id;
+  $('motion-status').textContent=t(ready?'motion.note':'motion.loading');
+  layer.setAttribute('viewBox',`0 0 ${map.clientWidth} ${map.clientHeight}`);
+  layer.innerHTML=ready?motionFrame(preview.world,atMs).map(drone=>{
+    const [x,y]=point(drone.position[0],drone.position[2]);
+    const trail=drone.trail.map(p=>point(p[0],p[2]).join(',')).join(' ');
+    return `<polyline points="${trail}" fill="none" stroke="#edb0fb" stroke-width="2" opacity=".65"/>
+      <g class="sim-drone" data-object="${escape(drone.object_id)}" transform="translate(${x} ${y})"><g transform="rotate(${drone.heading})" fill="#edb0fb" stroke="#2b1537" stroke-width="1.5"><path d="M-6 -6L6 6M6 -6L-6 6" stroke="#edb0fb" stroke-width="2"/><circle cx="-6" cy="-6" r="3"/><circle cx="6" cy="-6" r="3"/><circle cx="-6" cy="6" r="3"/><circle cx="6" cy="6" r="3"/><path d="M0 -5L3 3H-3Z"/></g>${drone.object_id===selected?`<text x="12" y="24" fill="#f1c9fa" font-size="10" stroke="#201729" stroke-width="3" paint-order="stroke">SIM ${escape(drone.object_id)}</text>`:''}</g>`;
+  }).join(''):'';
+}
+$('motion-toggle').onclick=()=>{
+  motionVisible=!motionVisible;
+  $('motion-toggle').classList.toggle('is-active',motionVisible);
+  $('motion-toggle').setAttribute('aria-pressed',motionVisible);
+  loadPreview();drawMotion(state?.at_ms || 0);
+};
 function animateRadar(now) {
   if(state?.playing && radarVisible && connected && !$('monitor-view').hidden)
     drawRadar(replayTime(state,clockReceivedAt,now,connected));
+  if(state?.playing && motionVisible && connected && !$('monitor-view').hidden)
+    drawMotion(replayTime(state,clockReceivedAt,now,connected));
   requestAnimationFrame(animateRadar);
 }
 requestAnimationFrame(animateRadar);
@@ -270,6 +313,22 @@ for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>{
   const monitor=tab.dataset.view==='monitor';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
   for(const b of document.querySelectorAll('[data-view]')){b.classList.toggle('is-active',b===tab);if(b===tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();
 };
+function renderBriefing() {
+  const caseId=state?.case_id || $('case-select').value;
+  const brief=briefings.find(b=>b.case_id===caseId);
+  if(!brief)return;
+  const signature=`${caseId}:${language}`;
+  if(signature===briefingSignature)return;
+  briefingSignature=signature;
+  const values={group:brief.group,object:brief.comparison_object || '',marker:brief.original_marker?t(`marker.${brief.original_marker}`):'',seconds:brief.sample_interval_ms/1000};
+  $('brief-title').textContent=`${brief.case_id} · ${t(`brief.title.${brief.variant}`,values)}`;
+  $('brief-purpose').textContent=t(`brief.purpose.${brief.variant}`,values);
+  $('brief-meta').textContent=t('brief.meta',{duration:fmt(brief.duration_ms),objects:brief.object_ids.length,sources:brief.source_ids.length});
+  $('brief-timeline').innerHTML=brief.timeline.map(step=>`<li><time>${fmt(step.at_ms)}</time><span>${escape(t(step.key,values))}</span></li>`).join('');
+  $('brief-review').textContent=t(`brief.review.${brief.variant}`,values);
+  $('brief-objects').textContent=t('brief.objects',{objects:brief.object_ids.join(', '),sources:brief.source_ids.join(', ')});
+}
+
 function renderCases() {
   if (!config) return;
   const current = state?.case_id || $('case-select').value;
@@ -290,6 +349,7 @@ function applyLanguage(next, persist = false) {
   }
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
+  renderBriefing();
   if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
@@ -302,4 +362,5 @@ try{
   renderCases();
   Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});
   setMode('site');poll();
+  api('/api/briefings').then(data=>{briefings=data.cases;renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
 }catch(error){connection(false,'startServer');$('map-status').textContent=t('requestFailed');}

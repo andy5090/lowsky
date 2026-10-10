@@ -31,6 +31,7 @@ def require(condition, message):
 def build(root):
     """Rebuild only the versioned, generated fixture files; no random state."""
     entries = []
+    briefings = []
     layout = read_json(Path(__file__).resolve().parents[1] / "data/site_layout.json")
     scene = {
         "schema_version": "1.0",
@@ -52,7 +53,7 @@ def build(root):
             "objects": [
                 {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj]},
                  "keyframes": [
-                     {"at_ms": tick, "position": [(-30 + step * 12 + group) * 10, 4 + i * 3, (-18 + i * 18) * 10]}
+                     {"at_ms": tick, "position": [-300 + i * 300 + group * 10, 100 + i * 10, -1700 - i * 120 + step * 475]}
                      for step, tick in enumerate(TIMES)
                  ]}
                 for i, obj in enumerate(objects)
@@ -118,6 +119,25 @@ def build(root):
             entries.append({"case_id": case_id, "group_id": f"scene_{group + 1:02d}",
                             "split": "development" if group < 2 else "holdout",
                             "variant": variant, "focus_object_id": focus})
+            briefings.append({
+                "case_id": case_id, "group": group + 1, "variant": variant,
+                "object_ids": objects, "duration_ms": TIMES[-1], "sample_interval_ms": TIMES[1],
+                "source_ids": list(SOURCES),
+                "comparison_object": focus if variant == "contradictory" else None,
+                "original_marker": markers[focus] if variant == "contradictory" else None,
+                "timeline": [
+                    {"at_ms": 0, "key": "brief.start"},
+                    {"at_ms": TIMES[1], "key": "brief.samples"},
+                    {"at_ms": TIMES[2], "key": f"brief.event.{variant}"},
+                    {"at_ms": TIMES[3], "key": "brief.context"},
+                    {"at_ms": TIMES[4], "key": "brief.end"},
+                ],
+            })
+    write_json(root / "briefings.json", {
+        "schema_version": "1.0", "synthetic": True, "author_preview": True,
+        "purpose": "Operator-requested scripted scenario overview, including future events. Not live evidence or agent input.",
+        "cases": briefings,
+    })
     write_json(root / "manifest.json", {
         "schema_version": "1.0", "synthetic": True,
         "purpose": "3D replay and explanation-quality smoke evaluation",

@@ -1,0 +1,488 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "author_preview": true,
+  "purpose": "Operator-requested scripted scenario overview, including future events. Not live evidence or agent input.",
+  "cases": [
+    {
+      "case_id": "case_001",
+      "group": 1,
+      "variant": "consistent",
+      "object_ids": [
+        "object_11",
+        "object_12",
+        "object_13"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.consistent"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_002",
+      "group": 1,
+      "variant": "contradictory",
+      "object_ids": [
+        "object_11",
+        "object_12",
+        "object_13"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": "object_11",
+      "original_marker": "circle",
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.contradictory"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_003",
+      "group": 1,
+      "variant": "missing",
+      "object_ids": [
+        "object_11",
+        "object_12",
+        "object_13"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.missing"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_004",
+      "group": 2,
+      "variant": "consistent",
+      "object_ids": [
+        "object_21",
+        "object_22",
+        "object_23"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.consistent"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_005",
+      "group": 2,
+      "variant": "contradictory",
+      "object_ids": [
+        "object_21",
+        "object_22",
+        "object_23"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": "object_22",
+      "original_marker": "square",
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.contradictory"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_006",
+      "group": 2,
+      "variant": "missing",
+      "object_ids": [
+        "object_21",
+        "object_22",
+        "object_23"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.missing"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_007",
+      "group": 3,
+      "variant": "consistent",
+      "object_ids": [
+        "object_31",
+        "object_32",
+        "object_33"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.consistent"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_008",
+      "group": 3,
+      "variant": "contradictory",
+      "object_ids": [
+        "object_31",
+        "object_32",
+        "object_33"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": "object_33",
+      "original_marker": "triangle",
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.contradictory"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_009",
+      "group": 3,
+      "variant": "missing",
+      "object_ids": [
+        "object_31",
+        "object_32",
+        "object_33"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.missing"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_010",
+      "group": 4,
+      "variant": "consistent",
+      "object_ids": [
+        "object_41",
+        "object_42",
+        "object_43"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.consistent"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_011",
+      "group": 4,
+      "variant": "contradictory",
+      "object_ids": [
+        "object_41",
+        "object_42",
+        "object_43"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": "object_41",
+      "original_marker": "circle",
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.contradictory"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    },
+    {
+      "case_id": "case_012",
+      "group": 4,
+      "variant": "missing",
+      "object_ids": [
+        "object_41",
+        "object_42",
+        "object_43"
+      ],
+      "duration_ms": 120000,
+      "sample_interval_ms": 30000,
+      "source_ids": [
+        "channel_a",
+        "channel_b"
+      ],
+      "comparison_object": null,
+      "original_marker": null,
+      "timeline": [
+        {
+          "at_ms": 0,
+          "key": "brief.start"
+        },
+        {
+          "at_ms": 30000,
+          "key": "brief.samples"
+        },
+        {
+          "at_ms": 60000,
+          "key": "brief.event.missing"
+        },
+        {
+          "at_ms": 90000,
+          "key": "brief.context"
+        },
+        {
+          "at_ms": 120000,
+          "key": "brief.end"
+        }
+      ]
+    }
+  ]
+}

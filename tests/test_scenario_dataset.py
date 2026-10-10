@@ -20,6 +20,30 @@ class DatasetTests(unittest.TestCase):
             "cases": 12, "scene_groups": 4, "observations": 324, "checkpoints": 144,
         })
 
+    def test_briefings_match_case_objects_timing_and_actual_branch_behavior(self):
+        document = read_json(self.root / "briefings.json")
+        self.assertTrue(document["author_preview"])
+        self.assertEqual(len(document["cases"]), 12)
+        self.assertEqual(len({b["case_id"] for b in document["cases"]}), 12)
+        for brief in document["cases"]:
+            public = self.public(brief["case_id"])
+            self.assertEqual(brief["object_ids"], public["object_ids"])
+            self.assertEqual(brief["duration_ms"], public["duration_ms"])
+            self.assertEqual([s["at_ms"] for s in brief["timeline"]], [0, 30000, 60000, 90000, 120000])
+            self.assertEqual(brief["sample_interval_ms"], 30000)
+            for at_ms in (60000, 90000, 120000):
+                observed = snapshot(public, at_ms)
+                if brief["variant"] == "contradictory":
+                    obj = brief["comparison_object"]
+                    self.assertEqual(information_state(observed, obj), "contradictory")
+                    labels = {r["source_id"]: r["marker_label"] for r in observed["observations"]
+                              if r["object_id"] == obj and r["observed_at_ms"] == at_ms}
+                    self.assertEqual(labels, {"channel_a": brief["original_marker"], "channel_b": "diamond"})
+                else:
+                    for obj in brief["object_ids"]:
+                        self.assertEqual(information_state(observed, obj), brief["variant"])
+            self.assertEqual(public["contexts"][1]["published_at_ms"], 90000)
+
     def test_regeneration_is_byte_identical(self):
         before = {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob("*.json")}
         build(self.root)

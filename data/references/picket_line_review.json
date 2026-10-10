@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "source_document": "LOW_SKY_picket_line.docx",
+  "reviewed_on": "2026-10-10",
+  "status": "Requirements intake; original document kept local",
+  "existing_implementation": {
+    "separate_sources": "Acoustic and citizen-report metadata; A/B are generic observation channels, not modality-specific sensor physics.",
+    "time": "observed_at_ms differs from available_at_ms; delayed records do not replace newer observations.",
+    "health": "Offline, stale, invalid measurement and negative observation remain distinct.",
+    "privacy": "Synthetic metadata only; no actual audio, video or phone identities.",
+    "transport": "Existing HTTP shared replay clock retained; no replacement with the proposed file-per-tick transport."
+  },
+  "civilian_modality_requirements": [
+    {
+      "type": "acoustic",
+      "reference_profile": "civilian_acoustic_reference",
+      "array_geometry": null,
+      "validated_range_m": null
+    },
+    {
+      "type": "rf",
+      "hardware_model": null,
+      "status": "Proposed SDR metadata source; not implemented or selected",
+      "interpretation": "Absence of an RF report is not proof of absent aircraft or a specific communications mode."
+    },
+    {
+      "type": "eo_thermal",
+      "hardware_model": null,
+      "status": "Proposed imagery-derived metadata source; not implemented or selected",
+      "interpretation": "No contact is comparable only when time, field of view and measurement quality support the comparison."
+    }
+  ],
+  "proposed_not_implemented": {
+    "edge_inference": "No on-device classifier implemented.",
+    "store_and_forward": "Delayed receipt simulated; persistent edge buffer and reconnect transport not implemented.",
+    "multimodal_comparison": "Requires explicit association, time and coverage compatibility; current zone-level demo is not validated sensor fusion.",
+    "outage_cause": "Concurrent outages warrant health review; cause remains unknown rather than confirmed jamming.",
+    "freshness_ms": {
+      "stale_after": 60000,
+      "lost_after": 180000,
+      "applied": false,
+      "reason": "Current 120-second demo retains its separate 30000 ms community and 45000 ms observation thresholds."
+    },
+    "expanded_network": "20 sources and longer replay are document proposals, not current implementation."
+  },
+  "unverified_claims": [
+    "Deployment counts, costs and interception statistics in the document require independent source verification.",
+    "Voice-band filtering and metadata-only output do not establish that speech cannot be recovered or that consent is unnecessary.",
+    "Repeated detections do not by themselves justify a calibrated confidence increase from 0.3 to 0.8."
+  ],
+  "radar_spec_scope": "Counter-UAS manufacturer references allowed; separate radar_reference_specs.json catalog."
+}

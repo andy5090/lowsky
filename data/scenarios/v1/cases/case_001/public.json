@@ -21,8 +21,8 @@
       "available_at_ms": 0,
       "position": [
         -300,
-        4,
-        -180
+        100,
+        -1700
       ],
       "marker_label": "circle"
     },
@@ -33,9 +33,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -300,
-        7,
-        0
+        0,
+        110,
+        -1820
       ],
       "marker_label": "square"
     },
@@ -46,9 +46,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -300,
-        10,
-        180
+        300,
+        120,
+        -1940
       ],
       "marker_label": "triangle"
     },
@@ -60,8 +60,8 @@
       "available_at_ms": 0,
       "position": [
         -300,
-        4,
-        -180
+        100,
+        -1700
       ],
       "marker_label": "circle"
     },
@@ -72,9 +72,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -300,
-        7,
-        0
+        0,
+        110,
+        -1820
       ],
       "marker_label": "square"
     },
@@ -85,9 +85,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -300,
-        10,
-        180
+        300,
+        120,
+        -1940
       ],
       "marker_label": "triangle"
     },
@@ -98,9 +98,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        4,
-        -180
+        -300,
+        100,
+        -1225
       ],
       "marker_label": "circle"
     },
@@ -111,9 +111,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        7,
-        0
+        0,
+        110,
+        -1345
       ],
       "marker_label": "square"
     },
@@ -124,9 +124,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        10,
-        180
+        300,
+        120,
+        -1465
       ],
       "marker_label": "triangle"
     },
@@ -137,9 +137,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        4,
-        -180
+        -300,
+        100,
+        -1225
       ],
       "marker_label": "circle"
     },
@@ -150,9 +150,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        7,
-        0
+        0,
+        110,
+        -1345
       ],
       "marker_label": "square"
     },
@@ -163,9 +163,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -180,
-        10,
-        180
+        300,
+        120,
+        -1465
       ],
       "marker_label": "triangle"
     },
@@ -176,9 +176,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        4,
-        -180
+        -300,
+        100,
+        -750
       ],
       "marker_label": "circle"
     },
@@ -189,9 +189,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        7,
-        0
+        0,
+        110,
+        -870
       ],
       "marker_label": "square"
     },
@@ -202,9 +202,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        10,
-        180
+        300,
+        120,
+        -990
       ],
       "marker_label": "triangle"
     },
@@ -215,9 +215,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        4,
-        -180
+        -300,
+        100,
+        -750
       ],
       "marker_label": "circle"
     },
@@ -228,9 +228,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        7,
-        0
+        0,
+        110,
+        -870
       ],
       "marker_label": "square"
     },
@@ -241,9 +241,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -60,
-        10,
-        180
+        300,
+        120,
+        -990
       ],
       "marker_label": "triangle"
     },
@@ -254,9 +254,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        4,
-        -180
+        -300,
+        100,
+        -275
       ],
       "marker_label": "circle"
     },
@@ -267,9 +267,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        7,
-        0
+        0,
+        110,
+        -395
       ],
       "marker_label": "square"
     },
@@ -280,9 +280,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        10,
-        180
+        300,
+        120,
+        -515
       ],
       "marker_label": "triangle"
     },
@@ -293,9 +293,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        4,
-        -180
+        -300,
+        100,
+        -275
       ],
       "marker_label": "circle"
     },
@@ -306,9 +306,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        7,
-        0
+        0,
+        110,
+        -395
       ],
       "marker_label": "square"
     },
@@ -319,9 +319,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        60,
-        10,
-        180
+        300,
+        120,
+        -515
       ],
       "marker_label": "triangle"
     },
@@ -332,9 +332,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        4,
-        -180
+        -300,
+        100,
+        200
       ],
       "marker_label": "circle"
     },
@@ -345,9 +345,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        7,
-        0
+        0,
+        110,
+        80
       ],
       "marker_label": "square"
     },
@@ -358,9 +358,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        10,
-        180
+        300,
+        120,
+        -40
       ],
       "marker_label": "triangle"
     },
@@ -371,9 +371,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        4,
-        -180
+        -300,
+        100,
+        200
       ],
       "marker_label": "circle"
     },
@@ -384,9 +384,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        7,
-        0
+        0,
+        110,
+        80
       ],
       "marker_label": "square"
     },
@@ -397,9 +397,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        180,
-        10,
-        180
+        300,
+        120,
+        -40
       ],
       "marker_label": "triangle"
     }

@@ -90,3 +90,27 @@ button:disabled{cursor:not-allowed}
 .radar-status{position:absolute;bottom:78px;left:16px;right:60px;z-index:3;pointer-events:none;font:10px var(--mono);color:var(--cyan);text-shadow:0 1px 3px #000}
 #radar-toggle{border-left:1px solid var(--line);margin-left:6px}
 @media(max-width:520px){.map-mode-bar{padding-left:8px;padding-right:8px}.map-mode-buttons{flex-wrap:wrap}.map-mode-buttons button{padding:5px}.radar-status{font-size:9px;bottom:85px}}
+
+.scenario-brief{margin-bottom:18px;border-left:3px solid var(--cyan)}
+.brief-summary{display:flex;justify-content:space-between;align-items:start;gap:18px;padding:13px 16px}
+.brief-summary h2{margin:5px 0;font-size:15px;color:var(--cyan)}
+.brief-summary p:not(.eyebrow){font-size:12px;color:var(--ink-soft);max-width:850px}
+#brief-meta{font-family:var(--mono);white-space:nowrap;padding-top:4px}
+#brief-details>summary{padding:9px 16px;border-top:1px solid var(--line);color:var(--cyan);cursor:pointer;font-size:11px}
+.brief-preview-note{padding:9px 16px;font-size:11px;color:var(--amber);background:#211f18}
+.brief-body{display:grid;grid-template-columns:1.25fr 1fr;gap:28px;padding:14px 16px}
+.brief-body h3{margin:0 0 8px;font-size:12px;color:var(--ink)}
+.brief-body p{font-size:12px;color:var(--ink-soft);margin-bottom:16px;line-height:1.7}
+#brief-timeline{list-style:none;padding:0;margin:0}
+#brief-timeline li{display:flex;gap:15px;border-left:1px solid var(--line);padding:0 0 13px 12px;font-size:12px;color:var(--ink-soft)}
+#brief-timeline time{font-family:var(--mono);color:var(--cyan);flex-shrink:0}
+#brief-objects{font:10px/1.7 var(--mono);overflow-wrap:anywhere}
+@media(max-width:800px){.brief-summary{display:block}#brief-meta{display:block;margin-top:8px;white-space:normal}.brief-body{grid-template-columns:1fr;gap:14px}}
+
+#motion-overlay{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+.motion-status{position:absolute;bottom:108px;left:16px;right:60px;z-index:3;pointer-events:none;font:10px var(--mono);color:#edb0fb;text-shadow:0 1px 3px #000}
+@media(max-width:520px){.motion-status{bottom:120px;font-size:9px}}
+
+.map-marker:not(.is-selected):not(:hover):not(:focus-visible) span{display:none}
+
+.motion-status,.radar-status{width:fit-content;max-width:calc(100% - 76px);padding:4px 6px;background:#111c24ed;border:1px solid #354953;line-height:1.4}

@@ -72,3 +72,17 @@ test('server-provided quality, alert, source and synthetic context values have t
   assert.match(translate('en', 'context.context_001'), /does not guarantee observation accuracy/);
   assert.match(translate('en', 'context.context_002'), /published late/);
 });
+
+
+test('every generated case briefing resolves in both languages', () => {
+  const briefings=JSON.parse(readFileSync(new URL('../data/scenarios/v1/briefings.json',import.meta.url),'utf8'));
+  for(const brief of briefings.cases){
+    const keys=[...brief.timeline.map(step=>step.key),...['title','purpose','review'].map(part=>`brief.${part}.${brief.variant}`)];
+    for(const language of ['en','ko'])for(const key of keys){
+      assert.ok(Object.hasOwn(messages[language],key),`${brief.case_id} ${language} ${key}`);
+      assert.doesNotMatch(translate(language,key,{group:brief.group,object:brief.comparison_object,marker:brief.original_marker,seconds:30}),/\{\w+\}/);
+    }
+  }
+  assert.equal(translate('en','workspace'),'Decision making workspace');
+  assert.equal(translate('ko','workspace'),'의사결정 워크스페이스');
+});

@@ -15,7 +15,7 @@
       <img class="brand-mark" src="/logo.svg" width="40" height="40" alt="">
       <span>LOW SKY<small data-i18n="brandSubtitle">OBSERVATION MONITOR</small></span>
     </a>
-    <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">2D monitoring workspace</span></div>
+    <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">Decision making workspace</span></div>
     <div class="system-status"><span class="status-label" data-i18n="dataConnection">Data connection</span><span id="connection-status" class="status-pill" role="status" data-i18n="connecting">Waiting for connection</span></div>
     <div class="language-field"><label class="sr-only" for="language-select" data-i18n="language">Language</label><select id="language-select" aria-label="Language" data-i18n-aria-label="language"><option value="en" lang="en">EN</option><option value="ko" lang="ko">한국어</option></select></div>
   </header>
@@ -37,6 +37,15 @@
       <div class="scenario-help"><span data-i18n="scenarioHelp">Explore positions, observation quality and alerts in the same scenario.</span></div>
     </section>
 
+    <section class="panel scenario-brief" aria-labelledby="brief-heading">
+      <div class="brief-summary"><div><p class="eyebrow" id="brief-heading" data-i18n="brief.heading">SCENARIO BRIEFING</p><h2 id="brief-title"></h2><p id="brief-purpose"></p></div><span id="brief-meta" class="muted"></span></div>
+      <details id="brief-details"><summary data-i18n="brief.expand">Timeline &amp; review points</summary>
+        <p class="brief-preview-note" data-i18n="brief.preview">Scripted overview — includes future events. This is not live observation evidence.</p>
+        <div class="brief-body"><div><h3 data-i18n="brief.timeline">Scenario timeline</h3><ol id="brief-timeline"></ol></div>
+        <div><h3 data-i18n="brief.review">What to check</h3><p id="brief-review"></p><h3 data-i18n="brief.sharedHeading">Shared early-signal feed</h3><p data-i18n="brief.shared">The same independent community feed plays in every case. Its alerts do not confirm or identify these tracked objects.</p><p class="muted" id="brief-objects"></p></div></div>
+      </details>
+    </section>
+
     <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
       <section class="panel early-warning-panel" aria-labelledby="early-title">
         <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Community early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
@@ -47,12 +56,14 @@
         <div class="map-column">
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
-            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button></div><span data-i18n="mapNote">Facilities and tracks over the real map are synthetic.</span></div>
+            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button><button type="button" id="motion-toggle" class="is-active" aria-pressed="true" data-i18n="motion.toggle">Simulation motion</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
             <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
               <div id="map-tiles" aria-hidden="true"></div>
               <svg id="map-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
               <svg id="radar-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
               <div id="map-markers"></div>
+              <svg id="motion-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="motion-status" class="motion-status" role="status"></div>
               <div id="radar-status" class="radar-status" role="status"></div>
               <div class="map-label"><span class="live-dot" aria-hidden="true"></span><span data-i18n="syntheticSite">Synthetic site · Not a real facility location</span></div>
               <div class="map-controls" aria-label="Map controls" data-i18n-aria-label="mapControls">

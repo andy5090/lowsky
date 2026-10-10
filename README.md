@@ -48,7 +48,13 @@ python3 tools/monitor_server.py
 
 드론은 프로펠러 포함 최대 수평 폭 **0.6m**를 잠정 기준으로 표시한다. 설정은 `godot/assets/display_profiles.json`에 있으며, 객체별 `visual.size_profile`로 교체할 수 있다. 공통 로컬 좌표는 1단위=1m이며 활주로·울타리·지도 오버레이가 같은 배치를 사용한다. 건물과 항공기는 시각화용 샘플이다. 역할(폭탄 탑재·디코이 등), 통신 방식과 재밍·광섬유 관련 이벤트는 확장 문서에 정리한 설계 단계다.
 
+케이스 선택 아래 **Scenario briefing / 시나리오 설명**에서 목적과 대상 수를 확인하고, **Timeline & review points / 진행 순서와 확인 포인트**를 펼치면 주요 시점과 검토 기준을 볼 수 있다. 12개 케이스는 4개 대상 묶음 × 일치·충돌·결측 3가지 변형이다. 설명은 [생성된 브리핑 데이터](data/scenarios/v1/briefings.json)와 영어·한국어 문구로 구성되며, 이후 이벤트가 포함된 운영자용 설명이다. 관측 전용 `/api/state`·`/api/clock`과 분리된 `/api/briefings`에서 제공한다. 민간 지역 조기 신호는 모든 케이스에 공통인 별도 피드다.
+
 지도 **Radar overlay / 레이더 표시**는 채널 A/B의 수신 관측을 시각화한다. 재생 시 스캔이 회전하고 새 관측이 도착하는 00:00·00:30·01:00 등의 시점에 표식이 나타난다. 일시정지·시간 이동은 공유 시계를 따르며 중단된 채널은 스캔과 새 표식을 표시하지 않는다. [레이더 표시 설정](data/radar_display.json)의 12초 스캔 주기·1,000m 원·2.5초 표식은 시각화 가정이며 탐지 범위·물리 스캔 모델이 아니다. 표식은 공개 관측의 위치만 사용하며 제작자용 world 데이터나 추정 경로를 사용하지 않는다.
+
+지도 부지는 **Fictional terrain replacement / 가상 조성 구역**으로 표시한다. 내부 OSM 도로·지형은 불투명한 합성 부지로 대체하고 주변 실제 지도는 유지한다. 기존 좌표를 유지해 한국 DEM·3D와 일치시키며, 실제 토지의 공항 적합성이나 도로 이설을 의미하지 않는다. 3D는 동일 울타리 + 50m 여유 구역을 평탄화하고 바깥 350m를 DEM으로 연결한다.
+
+**Simulation motion / 가상 이동 표시**를 켜면 보라색 `SIM` 드론 세 대가 부지 외곽에서 안쪽으로 2분간 이동한다. 지도와 Godot는 같은 world 키프레임·공유 시계를 사용한다. 지도 아이콘은 식별용 고정 크기이며 Godot 모델 폭 0.6m와 구분한다. 관측 표식은 여전히 수신된 30초 간격 위치만 사용한다. 제작자용 `/api/preview`의 연속 이동은 경고·에이전트 입력·레이더 탐지 판정에 사용하지 않는다.
 
 ## 민간 지역 조기 신호 데모
 
@@ -65,6 +71,10 @@ python3 tools/monitor_server.py
 카드의 **Locate area / 구역 보기**로 지도에 초점을 맞추고 **Reports & sensor status / 제보·센서 상태**에서 관측·수신 시각, 품질, 분류기 점수와 근거 ID를 확인한다. 점수는 합성 입력값이며 공격 확률이 아니다. 30초 유효시간, 지도 구역 크기와 모든 이벤트는 데모 가정이다. 경고 확인은 해당 근거에만 적용되며 새 근거 도착 시 다시 경고한다. 확인 시각은 현재 실행의 이벤트 기록에 표시하고 서버 메모리에 최대 1,000건 보관한다. 영구 감사 로그는 아니며 서버 재시작 시 사라진다.
 
 [민수용 참고 스펙](data/sensors/civilian_reference_specs.json)은 Infineon IM69D130 마이크와 Raspberry Pi Zero 2 W 처리 보드의 제조사 공개값을 보관한다. 마이크 SNR 69 dB(A)는 데이터시트 시험조건의 부품 특성이며 탐지 거리가 아니다. PDM 입력 변환·드라이버 등 연결 구성은 미선정·미검증이며 이 두 부품을 바로 연결할 수 있다는 의미가 아니다. 실제 드론 탐지 거리·정확도·오경보율은 미검증(null)으로 둔다. 데이터시트 URL·개정판·페이지·시험조건을 카탈로그에서 확인할 수 있다.
+
+`LOW_SKY_picket_line.docx`의 반영 상태는 [문서 검토 기록](data/references/picket_line_review.json)에 정리했다. 음향·RF·EO/열영상의 입력 역할, 관측/수신 시각, 통신 중단과 원인 불명의 구분을 스펙 요구사항에 추가했다. RF·열영상 하드웨어, 엣지 추론, 실제 저장 후 재전송은 미구현이다. 문서의 20개 센서·장시간 재생·60/180초 기준은 제안으로 남겨 현재 데모 값과 구분한다.
+
+레이더는 민수용 제한을 적용하지 않는다. [대드론 레이더 참고 스펙](data/sensors/radar_reference_specs.json)은 [Robin Radar IRIS 공식 제품 문서](https://www.robinradar.com/hubfs/Iris%20Datasheet%20V15.7_Online.pdf)의 `RRS.IRIS.A2.2026.04` 판을 사용한다. FMCW/X-band, 방위 360°·고각 60°, 계기상 범위 5/12km, 1초 갱신과 인터페이스를 출처와 함께 기록했다. 계기상 범위·탐지 거리·분류 거리는 서로 다르며, 현재 레이더 원의 크기와 스캔 속도는 별도 데모 가정이다. 특정 기종의 실제 탐지 성능을 재현하지 않는다.
 
 우크라이나 [ePPO 개발자 앱 설명](https://play.google.com/store/apps/details?id=ua.quick.brpg.pathfinder)은 시민이 관측한 비행체·소리를 제보하는 방식이다. [미 육군의 음향 센서 사례 소개](https://www.lineofdeparture.army.mil/Journals/Air-Defense-Artillery/ADA-Archive/2024-E-Edition/Mobility-Matters/)에 나오는 Android 기기 포함 설치형 센서와 개인 휴대폰의 자동 감지를 같은 것으로 취급하지 않는다. 이 구현은 두 입력 유형의 합성 관측만 재생한다.
 
@@ -92,6 +102,7 @@ python3 -m compileall -q tools tests
 node --check monitor/app.js
 node tests/monitor_geo.mjs
 node tests/monitor_radar.mjs
+node tests/monitor_motion.mjs
 node tests/test_monitor_i18n.mjs
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_preview.gd
 /Applications/Godot.app/Contents/MacOS/Godot --path godot --script res://tools/verify_preview.gd

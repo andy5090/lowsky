@@ -79,5 +79,20 @@
     "clock": "observed_at_ms and available_at_ms are offsets from shared replay start, preserving observation vs receipt time.",
     "radar_association": "unknown; community reports are not automatically linked to existing tracks.",
     "raw_audio_collected": false
+  },
+  "scope": {
+    "civilian_components": [
+      "acoustic",
+      "rf",
+      "eo_thermal",
+      "citizen_report"
+    ],
+    "radar_catalog": "data/sensors/radar_reference_specs.json",
+    "radar_civilian_only": false
+  },
+  "design_input": {
+    "file": "LOW_SKY_picket_line.docx",
+    "status": "internal proposal; not a validated performance specification",
+    "requirements_review": "data/references/picket_line_review.json"
   }
 }
