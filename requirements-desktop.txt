@@ -1,0 +1,2 @@
+# Build-time freezer; runtime agent dependencies are in requirements-agent.txt.
+pyinstaller==6.20.0

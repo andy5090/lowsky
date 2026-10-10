@@ -22,6 +22,10 @@ Original planning documents remain local and are excluded from the public reposi
 - `godot/third_party/realistic/`: four PBR material sets, HDRI sky, and a Cesium aircraft sample with licenses and hashes.
 - `godot/detailed_environment.gd`, `godot/plains_environment.gd`, and `godot/preview.gd`: procedural buildings, terrain presets, asset previews, and scenario replay.
 
+## Desktop installers
+
+The [desktop packaging guide](desktop/README.md) covers one installer containing the Tauri monitor, local Python/Deep Agents runtime, Godot 3D app, and datasets. Native macOS DMG and Windows NSIS builds are available through the **Desktop installers** workflow. The desktop launcher starts both windows, manages their shared service, and keeps keys and journals in per-user application data.
+
 ## Run
 
 Tested with Godot 4.5. Open `godot/project.godot` in the editor, or on macOS:

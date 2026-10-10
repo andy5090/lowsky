@@ -47,6 +47,10 @@ LOW SKY 아이콘은 브러시드 실버 메탈·건메탈 방패, 공군을 연
 
 API는 `POST /api/control`의 `{"action":"start_test","case_id":"case_003","seed":42}`이며 시드를 생략하면 무작위다. 생성기는 [simulation_test.py](tools/simulation_test.py), 세부 범위는 [영문 README](README.md#seeded-simulation-tests)에 있다. 원본 데이터와 기준 평가 기대값은 변경하지 않는다.
 
+## 데스크톱 설치 패키지
+
+[Tauri 데스크톱 패키징 가이드](desktop/README.md)에 macOS DMG·Windows NSIS 빌드와 설치 방법을 정리했습니다. 하나의 설치 파일에 모니터링 앱·Python/Deep Agents 런타임·Godot 3D 앱·데이터를 포함합니다. 앱 실행 시 두 창과 공통 서버를 함께 관리하며, API 키와 검토 기록은 사용자별 앱 데이터 폴더에 보관합니다. **Desktop installers** 워크플로에서 운영체제별 설치 파일을 빌드할 수 있습니다.
+
 ## 실행
 
 Godot 4.5에서 확인했다. 에디터에서 `godot/project.godot`를 열어 실행하거나 macOS에서는 아래 명령을 사용한다.

@@ -182,6 +182,22 @@ func collect_bounds(node: Node3D, parent_transform: Transform3D) -> Array:
 	return bounds
 
 func _ready() -> void:
+	# Desktop bundles supply the data/ directory outside the read-only Godot pack.
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--data-root="):
+			var directory = argument.trim_prefix("--data-root=")
+			if not directory.is_absolute_path():
+				push_error("--data-root must be an absolute data directory")
+				set_process(false)
+				get_tree().quit(2)
+				return
+			data_root = directory.path_join("scenarios/v1").simplify_path()
+	for required in ["scene.json", "../../site_layout.json", "../../terrain/korea_site.json", "cases/case_001/world.json", "cases/case_001/public.json"]:
+		if not FileAccess.file_exists(data_root.path_join(required)):
+			push_error("Missing simulation data: " + data_root.path_join(required))
+			set_process(false)
+			get_tree().quit(2)
+			return
 	site_layout = read_json(data_root.path_join("../../site_layout.json"))
 	camera_target = vector(site_layout.camera.target)
 	monitor_mode = "--monitor" in OS.get_cmdline_user_args()
@@ -275,7 +291,8 @@ func _ready() -> void:
 			filename = "plains-overview.png" if "--overview" in OS.get_cmdline_user_args() else "plains-preview.png"
 		if realistic and geographic:
 			filename = "korea-overview.png" if "--overview" in OS.get_cmdline_user_args() else "korea-preview.png"
-		var output = ProjectSettings.globalize_path("res://../artifacts/" + filename)
+		var capture_root = "res://../artifacts/" if OS.has_feature("editor") else "user://captures/"
+		var output = ProjectSettings.globalize_path(capture_root + filename)
 		DirAccess.make_dir_recursive_absolute(output.get_base_dir())
 		var error = get_viewport().get_texture().get_image().save_png(output)
 		print("Screenshot saved: %s (%s)" % [output, error])
