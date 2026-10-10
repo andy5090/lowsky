@@ -14,11 +14,13 @@ func verify() -> void:
 	await process_frame
 	await process_frame
 	preview.playing = false
+	preview.elapsed_ms = minf(435000, float(preview.world_data.duration_ms) * 0.65)
+	preview._process(0)
 	var context = preview.terrain.get_node("GeographicContext")
 	assert(context.get_meta("origin") == preview.terrain_data.origin)
 	assert(context.get_meta("tree_count") > 40000 and context.get_meta("tree_count") <= Context.TREE_LIMIT)
-	assert(context.get_meta("road_count") > 2500)
-	assert(context.get_meta("building_count") > 200)
+	assert(context.get_meta("road_count") > 1000)
+	assert(context.get_meta("building_count") > 100)
 	var surface: MeshInstance3D = preview.terrain.get_child(0)
 	assert(surface.material_override is ShaderMaterial)
 	var satellite: Texture2D = surface.material_override.get_shader_parameter("satellite")
@@ -27,6 +29,14 @@ func verify() -> void:
 	var cover = (load("res://assets/terrain/korea_landcover.png") as Texture2D).get_image()
 	var trees = 0
 	for chunk in context.get_node("Forest").get_children():
+		if chunk.get_meta("is_far_proxy", false):
+			var near = chunk.get_parent().get_node(str(chunk.name).trim_prefix("Far_"))
+			assert(near.visibility_parent == NodePath("../" + str(chunk.name)))
+			assert(chunk.multimesh.instance_count == near.multimesh.instance_count)
+			for index in range(0, chunk.multimesh.instance_count, 37):
+				assert(chunk.multimesh.get_instance_transform(index) == near.multimesh.get_instance_transform(index))
+				assert(chunk.multimesh.get_instance_color(index) == near.multimesh.get_instance_color(index))
+			continue
 		trees += chunk.multimesh.instance_count
 		for index in range(0, chunk.multimesh.instance_count, 19):
 			var position: Vector3 = chunk.position + chunk.multimesh.get_instance_transform(index).origin
@@ -40,12 +50,12 @@ func verify() -> void:
 	# Shared sampler must agree with independent ray/triangle intersection at non-grid points.
 	for point in [Vector2(1349, 1327), Vector2(-4207, -3861), Vector2(2775, -3257)]:
 		assert(absf(Geographic.surface_height(vertices, 201, 50, point.x, point.y) - preview.terrain_surface_height(point.x, point.y)) < 0.002)
-	verify_exclusions()
-	await verify_buttons(preview)
+	assert(verify_exclusions(), "Context exclusion checks failed")
+	assert(await verify_buttons(preview), "UI interaction checks failed")
 	print("PASS: mapped context (%s trees, %s roads, %s buildings), triangle grounding, forest pixels, site/road exclusions and button states" % [trees, context.get_meta("road_count"), context.get_meta("building_count")])
 	quit()
 
-func verify_exclusions() -> void:
+func verify_exclusions() -> bool:
 	var layout = {"perimeter": {"polygon": [[-25,-25], [25,-25], [25,25], [-25,25]]}, "terrain_grading": {"margin_m": 5}}
 	var data = {"extent_m": 280, "roads": [
 		{"points": [[-130,70], [130,70]], "width_m": 8},
@@ -71,8 +81,9 @@ func verify_exclusions() -> void:
 	context = Context.make({"extent_m": 280}, cover, height_at, layout)
 	assert(context.get_meta("tree_count") == 0, "Cropland must not become forest")
 	context.free()
+	return true
 
-func verify_buttons(preview: Node) -> void:
+func verify_buttons(preview: Node) -> bool:
 	var button: Button = preview.follow_button
 	var column = button.get_parent()
 	var panel: PanelContainer = preview.ui_panel
@@ -120,19 +131,26 @@ func verify_buttons(preview: Node) -> void:
 	await click(preview.ui_toggle)
 	assert(not preview.ui_body.visible and preview.ui_toggle.text == "+")
 	assert(panel.size.y < 100 and panel.size.x < 260, "Collapsed panel must release the 3D viewport")
-	assert(preview.camera.transform == camera_before and preview.elapsed_ms == time_before)
+	assert(preview.camera.transform.is_equal_approx(camera_before) and preview.elapsed_ms == time_before)
 	assert(preview.selected_drone_index == selected_before and preview.follow_drone)
 	await RenderingServer.frame_post_draw
 	assert(root.get_texture().get_image().save_png(ProjectSettings.globalize_path("res://../artifacts/korea-panel-collapsed.png")) == OK)
 	await click(preview.ui_toggle)
 	assert(preview.ui_body.visible and preview.ui_toggle.text == "−")
 	assert(panel.size.y > 700 and panel.get_global_rect().end.y < 840)
-	assert(preview.camera.transform == camera_before and preview.elapsed_ms == time_before)
+	assert(preview.camera.transform.is_equal_approx(camera_before) and preview.elapsed_ms == time_before)
 	# Repeating collapse/expand must neither grow the panel nor lose controls.
 	await click(preview.ui_toggle)
 	await click(preview.ui_toggle)
 	assert(preview.ui_body.visible and preview.follow_button == button)
+	root.size = Vector2i(1280, 720)
+	for frame in range(4):
+		await process_frame
+	assert(panel.get_global_rect().end.y <= 650, "Short windows must keep controls above attribution")
+	assert(preview.ui_scroll.get_v_scroll_bar().visible, "Long controls must remain accessible by scrolling")
+	root.size = Vector2i(1440, 900)
 	print("PASS: collapse/expand clicks preserve camera, follow target, replay time and control instances")
+	return true
 
 func click(button: Button) -> void:
 	Input.warp_mouse(button.get_global_rect().get_center())

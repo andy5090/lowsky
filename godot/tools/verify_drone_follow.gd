@@ -65,11 +65,15 @@ func verify() -> void:
 	# The camera's close view must not change the physical model scale.
 	preview.objects[1].node.get_node("Visual").rotation = Vector3.ZERO
 	preview.pose_drone(preview.objects[1].node, Vector3.FORWARD, 0)
+	# Measure at the origin: 18 km schematic coordinates lose sub-millimeter precision.
+	var saved_position: Vector3 = preview.objects[1].node.position
+	preview.objects[1].node.position = Vector3.ZERO
 	var bounds: Array = preview.collect_bounds(preview.objects[1].node, Transform3D.IDENTITY)
 	var combined: AABB = bounds[0]
 	for bound in bounds:
 		combined = combined.merge(bound)
 	assert(absf(maxf(combined.size.x, combined.size.z) - 0.6) < 0.001)
+	preview.objects[1].node.position = saved_position
 	var small_distance: float = preview.camera.position.distance_to(preview.camera_target)
 	preview.select_drone(2)
 	assert(preview.objects[3].node.get_meta("airframe_id") == "geran_2")

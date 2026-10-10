@@ -18,6 +18,7 @@ var status_label: Label
 var time_label: Label
 var ui_panel: PanelContainer
 var ui_body: VBoxContainer
+var ui_scroll: ScrollContainer
 var ui_title: Label
 var ui_toggle: Button
 var elapsed_ms = 0.0
@@ -36,6 +37,14 @@ var materials: Dictionary = {}
 var display_profiles: Dictionary = {}
 var site_layout: Dictionary = {}
 var camera_target = Vector3.ZERO
+var desktop_mode = false
+var desktop_revision = -1
+var desktop_state: Dictionary = {}
+var desktop_poll_request: HTTPRequest
+var desktop_command_request: HTTPRequest
+var desktop_status: Label
+var desktop_monitor_button: Button
+var desktop_fullscreen_button: Button
 var monitor_mode = false
 var monitor_base_url = "http://127.0.0.1:8765"
 var monitor_connected = false
@@ -47,6 +56,8 @@ var monitor_playing = false
 var monitor_test_run: Dictionary = {}
 var monitor_exercise: Dictionary = {}
 var exercise_marker: Label3D
+var simulation_missions: Array = []
+var mission_nodes: Dictionary = {}
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
@@ -247,6 +258,7 @@ func _ready() -> void:
 			return
 	site_layout = read_json(data_root.path_join("../../site_layout.json"))
 	camera_target = vector(site_layout.camera.target)
+	desktop_mode = "--desktop" in OS.get_cmdline_user_args()
 	monitor_mode = "--monitor" in OS.get_cmdline_user_args()
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--monitor-port="):
@@ -297,12 +309,12 @@ func _ready() -> void:
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		camera.fov = 48
 		camera.position = vector(site_layout.camera.close)
-		camera.far = 18000
+		camera.far = 60000
 	else:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera.size = 5200
 		camera.position = vector(site_layout.camera.overview)
-		camera.far = 18000
+		camera.far = 60000
 	add_child(camera)
 	camera.look_at(camera_target)
 	for placement in read_json(data_root.path_join("scene.json"))["environment"]:
@@ -324,9 +336,11 @@ func _ready() -> void:
 	if monitor_mode:
 		show_overview()
 		start_monitor()
+	if desktop_mode:
+		start_desktop_controls()
 	if "--capture" in OS.get_cmdline_user_args():
 		playing = false
-		elapsed_ms = 65000
+		elapsed_ms = minf(435000, float(world_data.duration_ms) * 0.65)
 		var captured_airframe = ""
 		for argument in OS.get_cmdline_user_args():
 			if argument.begins_with("--capture-airframe="):
@@ -370,7 +384,6 @@ func add_realistic_details() -> void:
 	add_child(aircraft)
 	var credit = Label.new()
 	credit.text = "FICTIONAL SITE · POLY HAVEN · CESIUM · DRONE: ED MACKEY / AGI, CC BY 4.0 · DEM: MAPZEN / USGS\n© OpenStreetMap contributors · © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
-	credit.position = Vector2(26, 850)
 	credit.add_theme_font_size_override("font_size", 12)
 	credit.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	credit.add_theme_constant_override("shadow_offset_x", 1)
@@ -378,6 +391,11 @@ func add_realistic_details() -> void:
 	var layer = CanvasLayer.new()
 	layer.add_child(credit)
 	add_child(layer)
+	credit.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	credit.offset_left = 26
+	credit.offset_top = -50
+	credit.offset_right = 1300
+	credit.offset_bottom = -12
 
 func build_ui() -> void:
 	var layer = CanvasLayer.new()
@@ -416,10 +434,19 @@ func build_ui() -> void:
 	ui_toggle.custom_minimum_size = Vector2(40, 38)
 	ui_toggle.pressed.connect(toggle_ui_panel)
 	header.add_child(ui_toggle)
+	ui_scroll = ScrollContainer.new()
+	ui_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	ui_scroll.follow_focus = true
+	contents.add_child(ui_scroll)
 	var column = VBoxContainer.new()
 	ui_body = column
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 12)
-	contents.add_child(column)
+	ui_scroll.add_child(column)
+	column.minimum_size_changed.connect(resize_ui_panel)
+	get_viewport().size_changed.connect(resize_ui_panel)
+	if desktop_mode:
+		build_desktop_controls(column)
 	var subtitle = Label.new()
 	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\n3D simulation · fictional facility" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
 	subtitle.modulate = Color("91b6b8")
@@ -477,20 +504,39 @@ func build_ui() -> void:
 	if monitor_mode:
 		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nAirframe models · Camera selection is SIM context" % monitor_base_url
 	hint.modulate = Color("91b6b8")
+	if realistic:
+		hint.text += "\nIllustrative altitude / 표시용 고도\nBeyond local DEM: schematic space"
 	column.add_child(hint)
+	resize_ui_panel.call_deferred()
+
+func resize_ui_panel() -> void:
+	if not is_instance_valid(ui_scroll):
+		return
+	var available = get_viewport().get_visible_rect().size.y - ui_panel.position.y - 72 - 86
+	ui_scroll.custom_minimum_size.y = minf(ui_body.get_combined_minimum_size().y, maxf(120, available)) if ui_body.visible else 0.0
+	ui_panel.reset_size.call_deferred()
 
 func toggle_ui_panel() -> void:
 	ui_body.visible = not ui_body.visible
+	ui_scroll.visible = ui_body.visible
 	ui_title.text = "LOW SKY / 3D SIMULATION" if ui_body.visible else "LOW SKY"
 	ui_toggle.text = "−" if ui_body.visible else "+"
 	ui_toggle.tooltip_text = "Collapse controls / 패널 접기" if ui_body.visible else "Expand controls / 패널 펼치기"
 	# PanelContainer otherwise retains its previous rect after minimum size shrinks.
-	ui_panel.reset_size.call_deferred()
+	resize_ui_panel()
 
 func terrain_caption() -> String:
 	if geographic:
-		return "Terrain: Korea DEM / modified site  [T]"
+		return "Terrain: Northern Gyeonggi DEM / fictional site  [T]"
 	return "Terrain: Synthetic plains  [T]" if plains_test else "Terrain: Synthetic hills  [T]"
+
+func display_position(authored: Vector3) -> Vector3:
+	# Uniform illustrative lift, not terrain-following or flight planning. Keep
+	# authored XYZ, received evidence, and timing untouched. Labels inherit the
+	# marker node transform once; facilities and parked aircraft never call this.
+	if realistic and geographic:
+		return authored + Vector3(0, float(terrain_data.get("display_airspace_offset_m", 0)), 0)
+	return authored
 
 func terrain_surface_height(x: float, z: float) -> float:
 	if not realistic:
@@ -540,6 +586,10 @@ func toggle_terrain() -> void:
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
+	clear_mission_vignettes()
+	simulation_missions.clear()
+	monitor_exercise.clear()
+	update_exercise_marker()
 	stop_follow()
 	selected_drone_index = 0
 	detected_ids.clear()
@@ -551,7 +601,7 @@ func load_case(id: String) -> void:
 	public_data = read_json(data_root.path_join("cases/%s/public.json" % id))
 	for item in world_data["objects"]:
 		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""), item["visual"].get("airframe_id", ""))
-		instance.position = vector(item["keyframes"][0]["position"])
+		instance.position = display_position(vector(item["keyframes"][0]["position"]))
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
@@ -630,8 +680,9 @@ func _process(delta: float) -> void:
 			index += 1
 		var interval = float(frames[index + 1].at_ms) - float(frames[index].at_ms)
 		var ratio = clampf((object_time - float(frames[index].at_ms)) / interval, 0, 1)
-		item["node"].position = vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio)
+		item["node"].position = display_position(vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio))
 		pose_drone(item.node, vector(frames[index + 1].position) - vector(frames[index].position), object_time)
+	update_mission_vignettes()
 	if follow_drone:
 		update_follow_camera()
 	if time_label:
@@ -716,7 +767,7 @@ func pan_camera(relative: Vector2) -> void:
 	var movement = (-right * relative.x + back * relative.y / maxf(offset.normalized().y, 0.15)) * scale
 	var target = camera_target + movement
 	target.x = clampf(target.x, -6000, 6000)
-	target.z = clampf(target.z, -6000, 6000)
+	target.z = clampf(target.z, -25000, 6000)
 	camera.position += target - camera_target
 	camera_target = target
 
@@ -734,6 +785,10 @@ func _notification(what: int) -> void:
 		drag_button = MOUSE_BUTTON_NONE
 
 func _input(event: InputEvent) -> void:
+	if desktop_mode and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_F6, KEY_F11]:
+		desktop_command("show_monitor" if event.keycode == KEY_F6 else "toggle_3d_fullscreen")
+		get_viewport().set_input_as_handled()
+		return
 	# A drag starts only outside the UI, but continues/releases across UI bounds.
 	if drag_button == MOUSE_BUTTON_NONE:
 		return
@@ -818,7 +873,7 @@ func start_monitor() -> void:
 
 func poll_monitor() -> void:
 	if monitor_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		monitor_request.request(monitor_base_url + "/api/state")
+		monitor_request.request(monitor_base_url + "/api/state?show_positions=1")
 
 func receive_monitor_clock(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
@@ -852,6 +907,8 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 	monitor_clock = float(state.at_ms)
 	monitor_test_run = state.get("test_run", {})
 	monitor_exercise = state.get("exercise", {})
+	# Physical author view only; labels still use received tracks above.
+	simulation_missions = state.get("simulation_missions", monitor_exercise.get("missions", []))
 	update_exercise_marker()
 	monitor_speed = float(state.speed)
 	monitor_playing = bool(state.playing)
@@ -889,3 +946,196 @@ func update_exercise_marker() -> void:
 			exercise_marker.modulate = Color(1.0, 0.7, 0.3) if asset.status != "available" else Color(0.5, 1.0, 0.7)
 			exercise_marker.visible = true
 			return
+
+
+func clear_mission_vignettes() -> void:
+	for node in mission_nodes.values():
+		node.queue_free()
+	mission_nodes.clear()
+
+func make_mission_vignette() -> Node3D:
+	var node = Node3D.new()
+	var payload = MeshInstance3D.new()
+	payload.name = "Payload"
+	var cube = BoxMesh.new()
+	cube.size = Vector3.ONE * 3.0
+	payload.mesh = cube
+	payload.material_override = solid_material(Color("ffc778"), 0.1)
+	node.add_child(payload)
+	var pulse = MeshInstance3D.new()
+	pulse.name = "Outcome"
+	var ring = TorusMesh.new()
+	ring.inner_radius = 18.0
+	ring.outer_radius = 21.0
+	pulse.mesh = ring
+	pulse.material_override = solid_material(Color("ffc778"))
+	node.add_child(pulse)
+	var label = Label3D.new()
+	label.name = "Label"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 42
+	label.pixel_size = 0.12
+	node.add_child(label)
+	add_child(node)
+	return node
+
+func update_mission_vignettes() -> void:
+	# Fixed scene illustration only: no physics, targeting or effectiveness model.
+	var present: Dictionary = {}
+	for mission in simulation_missions:
+		var id = str(mission.id)
+		present[id] = true
+		if not mission_nodes.has(id):
+			mission_nodes[id] = make_mission_vignette()
+		var node: Node3D = mission_nodes[id]
+		var anchor = Vector3.ZERO
+		var found = false
+		for asset in monitor_exercise.get("assets", []):
+			if asset.id == mission.asset_id:
+				anchor = vector(asset.position) + Vector3(0, 35, 0)
+				found = true
+		var phase = str(mission.phase)
+		node.set_meta("phase", phase)
+		node.visible = found and phase != "approach"
+		var payload: MeshInstance3D = node.get_node("Payload")
+		var pulse: MeshInstance3D = node.get_node("Outcome")
+		var label: Label3D = node.get_node("Label")
+		payload.visible = false
+		pulse.visible = false
+		label.visible = (detected_ids.has(str(mission.object_id)) and (not monitor_mode or monitor_connected)) or show_drone_positions
+		label.position = anchor + Vector3(0, 35, 0)
+		label.text = "SCRIPTED / %s / %s" % [str(mission.kind).to_upper(), phase.to_upper()]
+		if not node.visible:
+			continue
+		var progress = clampf((elapsed_ms - float(mission.phase_start_ms)) / maxf(1, float(mission.phase_end_ms) - float(mission.phase_start_ms)), 0, 1)
+		var top = display_position(anchor + Vector3(0, 100, 0))
+		var is_drop = mission.kind == "drop_vignette"
+		var actor = objects.filter(func(item): return item.object_id == mission.object_id)
+		if phase == "finale":
+			if not actor.is_empty():
+				actor[0].node.position = top + Vector3(progress * 160, progress * 35, 0) if is_drop else top.lerp(anchor, progress)
+			payload.visible = is_drop
+			payload.position = top.lerp(anchor, progress)
+		elif phase == "complete":
+			if not actor.is_empty():
+				actor[0].node.position = top + Vector3(160 + minf(maxf(elapsed_ms - float(mission.phase_start_ms), 0) / 1000, 30) * 8, 35, 0) if is_drop else anchor
+		var terminal = phase in ["complete", "partial", "prevented"]
+		pulse.visible = terminal
+		pulse.position = anchor
+		var color = Color("79e8b0") if phase == "prevented" else (Color("ffc778") if phase == "partial" else Color("f09372"))
+		pulse.material_override.albedo_color = color
+		label.modulate = color
+		# A small shared-clock pulse is an outcome marker, not a blast radius.
+		pulse.scale = Vector3.ONE * (1.0 + 0.12 * sin(elapsed_ms / 240.0))
+	for id in mission_nodes.keys():
+		if not present.has(id):
+			mission_nodes[id].queue_free()
+			mission_nodes.erase(id)
+
+
+func build_desktop_controls(column: VBoxContainer) -> void:
+	var row = HBoxContainer.new()
+	column.add_child(row)
+	desktop_monitor_button = Button.new()
+	desktop_monitor_button.text = "Monitoring / 모니터링"
+	desktop_monitor_button.tooltip_text = "Return to monitoring [F6]"
+	desktop_monitor_button.add_theme_font_size_override("font_size", 13)
+	desktop_monitor_button.disabled = true
+	desktop_monitor_button.pressed.connect(func(): desktop_command("show_monitor"))
+	row.add_child(desktop_monitor_button)
+	desktop_fullscreen_button = Button.new()
+	desktop_fullscreen_button.text = "Fullscreen / 전체 화면"
+	desktop_fullscreen_button.tooltip_text = "Toggle full screen [F11]"
+	desktop_fullscreen_button.add_theme_font_size_override("font_size", 13)
+	desktop_fullscreen_button.disabled = true
+	desktop_fullscreen_button.pressed.connect(func(): desktop_command("toggle_3d_fullscreen"))
+	row.add_child(desktop_fullscreen_button)
+	desktop_status = Label.new()
+	desktop_status.add_theme_font_size_override("font_size", 12)
+	desktop_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desktop_status.custom_minimum_size.x = 300
+	desktop_status.text = "Connecting window controls… / 창 제어 연결 중"
+	column.add_child(desktop_status)
+
+func start_desktop_controls() -> void:
+	desktop_poll_request = HTTPRequest.new()
+	desktop_poll_request.timeout = 1.0
+	desktop_poll_request.request_completed.connect(receive_desktop_state)
+	add_child(desktop_poll_request)
+	desktop_command_request = HTTPRequest.new()
+	desktop_command_request.timeout = 2.0
+	desktop_command_request.request_completed.connect(receive_desktop_state)
+	add_child(desktop_command_request)
+	var timer = Timer.new()
+	timer.wait_time = 0.4
+	timer.timeout.connect(poll_desktop_state)
+	add_child(timer)
+	timer.start()
+	poll_desktop_state()
+
+func poll_desktop_state() -> void:
+	if desktop_mode and desktop_poll_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
+		if desktop_poll_request.request(monitor_base_url + "/api/desktop") != OK:
+			set_desktop_error("Window controls unavailable / 창 제어 연결 실패")
+
+func desktop_command(action: String) -> void:
+	if not desktop_mode or not is_instance_valid(desktop_command_request):
+		return
+	if not desktop_state.get("available", false) or desktop_state.get("pending", false) or desktop_command_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		return
+	var error = desktop_command_request.request(monitor_base_url + "/api/desktop", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"action":action}))
+	if error != OK:
+		set_desktop_error("Window command failed / 창 제어 요청 실패")
+
+func set_desktop_error(message: String) -> void:
+	if is_instance_valid(desktop_status):
+		desktop_status.text = message.left(180)
+		desktop_status.modulate = Color("ffc778")
+
+func receive_desktop_state(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS:
+		set_desktop_error("Window controls disconnected; retrying / 창 제어 재연결 중")
+		return
+	var state = JSON.parse_string(body.get_string_from_utf8())
+	if response_code not in [200, 202]:
+		set_desktop_error("Window command rejected (%s) / 창 제어 요청 거절" % response_code)
+		return
+	if not state is Dictionary or not state.has_all(["available", "view", "fullscreen", "three_d_open", "pending", "error", "revision"]):
+		set_desktop_error("Invalid window state / 창 제어 응답 오류")
+		return
+	apply_desktop_state(state)
+
+func apply_desktop_state(state: Dictionary) -> Dictionary:
+	# This transport never reads or writes the simulation clock. Return the intended
+	# native actions so headless verification does not need OS focus or fullscreen.
+	if not desktop_mode or int(state.revision) < desktop_revision:
+		return {}
+	desktop_state = state.duplicate(true)
+	if is_instance_valid(desktop_status):
+		desktop_monitor_button.disabled = not state.available or state.pending
+		desktop_fullscreen_button.disabled = not state.available or state.pending
+		desktop_status.modulate = Color("91b6b8")
+		if not state.available:
+			desktop_status.text = "Window controls unavailable / 창 제어 사용 불가"
+		elif state.error != null and not str(state.error).is_empty():
+			set_desktop_error("Window control: " + str(state.error))
+		elif state.pending:
+			desktop_status.text = "Switching window… / 창 전환 중"
+		else:
+			desktop_status.text = "F6 · Monitoring / 모니터링    F11 · Fullscreen / 전체 화면"
+	if int(state.revision) == desktop_revision:
+		return {}
+	desktop_revision = int(state.revision)
+	if not state.available or state.pending or (state.error != null and not str(state.error).is_empty()):
+		return {}
+	var focus_3d = state.view == "3d"
+	# Even a background mode change can steal native focus or switch macOS Spaces.
+	# Keep the desired fullscreen value in desktop_state until 3D is requested.
+	var actions = {"fullscreen": bool(state.fullscreen) if focus_3d else null, "focus": focus_3d}
+	if actions.focus and DisplayServer.get_name() != "headless":
+		var native_fullscreen = get_window().mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN]
+		if actions.fullscreen != native_fullscreen:
+			get_window().mode = Window.MODE_FULLSCREEN if actions.fullscreen else Window.MODE_WINDOWED
+		get_window().grab_focus()
+		DisplayServer.window_move_to_foreground(get_window().get_window_id())
+	return actions

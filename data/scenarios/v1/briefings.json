@@ -16,8 +16,8 @@
         "ko": "전조와 첫 관측"
       },
       "summary": {
-        "en": "Scenario time: 02:00 AM. 48 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
-        "ko": "배경 시각: 오전 02:00. 합성 비행체 48대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
+        "en": "02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. 48 synthetic objects; review indirect indications before direct reports at 04:30.",
+        "ko": "오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 48대. 04:30 직접 관측 전까지 간접 조짐을 검토합니다."
       },
       "objective": {
         "en": "Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.",
@@ -82,8 +82,55 @@
         "object_57",
         "object_58"
       ],
-      "duration_ms": 180000,
-      "sample_interval_ms": 10000,
+      "duration_ms": 780000,
+      "training_timing": {
+        "paced": true,
+        "early_review_ms": 120000,
+        "received_review_ms": 90000
+      },
+      "training_schedule": {
+        "author_preview": true,
+        "first_direct_observation_ms": 270000,
+        "phases": [
+          {
+            "id": "indirect_review",
+            "label": {
+              "en": "Indirect indications and deliberation",
+              "ko": "간접 징후와 숙고"
+            },
+            "start_ms": 0,
+            "end_ms": 270000
+          },
+          {
+            "id": "initial_receipts",
+            "label": {
+              "en": "Initial direct receipts",
+              "ko": "직접 관측 최초 수신"
+            },
+            "start_ms": 270000,
+            "end_ms": 420000
+          },
+          {
+            "id": "compare_evidence",
+            "label": {
+              "en": "Compare received evidence",
+              "ko": "수신 근거 비교"
+            },
+            "start_ms": 420000,
+            "end_ms": 630000
+          },
+          {
+            "id": "reconsider_review",
+            "label": {
+              "en": "Reconsider and record review",
+              "ko": "재검토와 판단 기록"
+            },
+            "start_ms": 630000,
+            "end_ms": 780000
+          }
+        ]
+      },
+      "sample_interval_ms": 30000,
       "source_ids": [
         "channel_a",
         "channel_b"
@@ -94,53 +141,85 @@
         {
           "at_ms": 0,
           "text": {
-            "en": "Replay begins with no received tracks.",
-            "ko": "수신된 대상 없이 재생을 시작합니다."
+            "en": "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
+            "ko": "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다."
           }
         },
         {
-          "at_ms": 10000,
+          "at_ms": 30000,
+          "text": {
+            "en": "One indirect area indication arrives; no direct track or object identity is established.",
+            "ko": "구역 단위 간접 징후가 하나 수신됩니다. 직접 항적이나 대상 정체는 확정되지 않습니다."
+          }
+        },
+        {
+          "at_ms": 150000,
+          "text": {
+            "en": "After two minutes of a stable single-source question, an independent delayed report becomes available; it may agree or conflict.",
+            "ko": "동일한 단일 출처 징후를 2분 동안 검토한 뒤 독립 지연 보고가 수신됩니다. 일치하거나 상충할 수 있습니다."
+          }
+        },
+        {
+          "at_ms": 200000,
+          "text": {
+            "en": "An independent area report is stale. Missing fresh evidence does not establish absence.",
+            "ko": "별도 구역 보고가 오래되었습니다. 새 근거가 없다는 사실로 부재를 확정하지 않습니다."
+          }
+        },
+        {
+          "at_ms": 225000,
+          "text": {
+            "en": "A negative measurement and independent fixed-phone indications require reconsideration; they do not identify a hidden object.",
+            "ko": "음성 측정과 독립 고정 폰 징후를 토대로 재검토합니다. 보이지 않는 대상의 정체나 위치는 식별하지 못합니다."
+          }
+        },
+        {
+          "at_ms": 270000,
           "text": {
             "en": "First receipt; further candidates appear in staggered batches.",
             "ko": "첫 탐지 수신 후 대상이 순차 등장합니다."
           }
         },
         {
-          "at_ms": 40000,
+          "at_ms": 360000,
           "text": {
-            "en": "Some channel B reports arrive 15 seconds late; compare observation and receipt time.",
-            "ko": "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
+            "en": "Some channel B reports arrive 45 seconds late; compare observation and receipt time.",
+            "ko": "일부 채널 B 보고가 45초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
           }
         },
         {
-          "at_ms": 60000,
+          "at_ms": 420000,
           "text": {
             "en": "All 48 candidates have a first report; corroboration may still be pending.",
             "ko": "48대의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."
           }
         },
         {
-          "at_ms": 90000,
+          "at_ms": 510000,
           "text": {
             "en": "A previously unpublished review notice becomes available.",
             "ko": "공개되지 않았던 검토 공지가 수신됩니다."
           }
         },
         {
-          "at_ms": 130000,
+          "at_ms": 630000,
           "text": {
             "en": "Both channels provide agreeing reports; review outstanding alerts.",
             "ko": "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다."
           }
         },
         {
-          "at_ms": 180000,
+          "at_ms": 780000,
           "text": {
             "en": "Replay ends; assess evidence references, uncertainty and source recovery.",
             "ko": "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다."
           }
         }
-      ]
+      ],
+      "origin_context": {
+        "en": "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
+        "ko": "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다."
+      }
     },
     {
       "case_id": "case_002",
@@ -154,8 +233,8 @@
         "ko": "상충 근거와 검토"
       },
       "summary": {
-        "en": "Scenario time: 02:00 AM. 96 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for 24 tracks between 1 and 2 minutes of elapsed simulation time, followed by reconfirmation.",
-        "ko": "배경 시각: 오전 02:00. 합성 비행체 96대가 혼재된 배경을 구성합니다. 실행 경과 1~2분 동안 채널 B가 24대의 표식을 다르게 보고하고 이후 재확인합니다."
+        "en": "02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. 96 synthetic objects; indirect indications followed by conflicting reports and review.",
+        "ko": "오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 96대. 간접 조짐 이후 상충 보고와 재검토가 이어집니다."
       },
       "objective": {
         "en": "Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.",
@@ -268,8 +347,55 @@
         "object_105",
         "object_106"
       ],
-      "duration_ms": 180000,
-      "sample_interval_ms": 10000,
+      "duration_ms": 780000,
+      "training_timing": {
+        "paced": true,
+        "early_review_ms": 120000,
+        "received_review_ms": 90000
+      },
+      "training_schedule": {
+        "author_preview": true,
+        "first_direct_observation_ms": 270000,
+        "phases": [
+          {
+            "id": "indirect_review",
+            "label": {
+              "en": "Indirect indications and deliberation",
+              "ko": "간접 징후와 숙고"
+            },
+            "start_ms": 0,
+            "end_ms": 270000
+          },
+          {
+            "id": "initial_receipts",
+            "label": {
+              "en": "Initial direct receipts",
+              "ko": "직접 관측 최초 수신"
+            },
+            "start_ms": 270000,
+            "end_ms": 420000
+          },
+          {
+            "id": "compare_evidence",
+            "label": {
+              "en": "Compare received evidence",
+              "ko": "수신 근거 비교"
+            },
+            "start_ms": 420000,
+            "end_ms": 630000
+          },
+          {
+            "id": "reconsider_review",
+            "label": {
+              "en": "Reconsider and record review",
+              "ko": "재검토와 판단 기록"
+            },
+            "start_ms": 630000,
+            "end_ms": 780000
+          }
+        ]
+      },
+      "sample_interval_ms": 30000,
       "source_ids": [
         "channel_a",
         "channel_b"
@@ -280,53 +406,85 @@
         {
           "at_ms": 0,
           "text": {
-            "en": "Replay begins with no received tracks.",
-            "ko": "수신된 대상 없이 재생을 시작합니다."
+            "en": "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
+            "ko": "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다."
           }
         },
         {
-          "at_ms": 10000,
+          "at_ms": 30000,
+          "text": {
+            "en": "One indirect area indication arrives; no direct track or object identity is established.",
+            "ko": "구역 단위 간접 징후가 하나 수신됩니다. 직접 항적이나 대상 정체는 확정되지 않습니다."
+          }
+        },
+        {
+          "at_ms": 150000,
+          "text": {
+            "en": "After two minutes of a stable single-source question, an independent delayed report becomes available; it may agree or conflict.",
+            "ko": "동일한 단일 출처 징후를 2분 동안 검토한 뒤 독립 지연 보고가 수신됩니다. 일치하거나 상충할 수 있습니다."
+          }
+        },
+        {
+          "at_ms": 200000,
+          "text": {
+            "en": "An independent area report is stale. Missing fresh evidence does not establish absence.",
+            "ko": "별도 구역 보고가 오래되었습니다. 새 근거가 없다는 사실로 부재를 확정하지 않습니다."
+          }
+        },
+        {
+          "at_ms": 225000,
+          "text": {
+            "en": "A negative measurement and independent fixed-phone indications require reconsideration; they do not identify a hidden object.",
+            "ko": "음성 측정과 독립 고정 폰 징후를 토대로 재검토합니다. 보이지 않는 대상의 정체나 위치는 식별하지 못합니다."
+          }
+        },
+        {
+          "at_ms": 270000,
           "text": {
             "en": "First receipt; further candidates appear in staggered batches.",
             "ko": "첫 탐지 수신 후 대상이 순차 등장합니다."
           }
         },
         {
-          "at_ms": 40000,
+          "at_ms": 360000,
           "text": {
-            "en": "Some channel B reports arrive 15 seconds late; compare observation and receipt time.",
-            "ko": "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
+            "en": "Some channel B reports arrive 45 seconds late; compare observation and receipt time.",
+            "ko": "일부 채널 B 보고가 45초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
           }
         },
         {
-          "at_ms": 60000,
+          "at_ms": 420000,
           "text": {
             "en": "Channel B begins conflicting labels on 24 tracks.",
             "ko": "채널 B에서 24대의 표식 상충이 시작됩니다."
           }
         },
         {
-          "at_ms": 90000,
+          "at_ms": 510000,
           "text": {
             "en": "A previously unpublished review notice becomes available.",
             "ko": "공개되지 않았던 검토 공지가 수신됩니다."
           }
         },
         {
-          "at_ms": 130000,
+          "at_ms": 630000,
           "text": {
             "en": "Both channels provide agreeing reports; review outstanding alerts.",
             "ko": "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다."
           }
         },
         {
-          "at_ms": 180000,
+          "at_ms": 780000,
           "text": {
             "en": "Replay ends; assess evidence references, uncertainty and source recovery.",
             "ko": "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다."
           }
         }
-      ]
+      ],
+      "origin_context": {
+        "en": "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
+        "ko": "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다."
+      }
     },
     {
       "case_id": "case_003",
@@ -599,6 +757,26 @@
         "object_250"
       ],
       "duration_ms": 180000,
+      "training_timing": {
+        "paced": false,
+        "early_review_ms": 30000,
+        "received_review_ms": 30000
+      },
+      "training_schedule": {
+        "author_preview": true,
+        "first_direct_observation_ms": 10000,
+        "phases": [
+          {
+            "id": "compact_load",
+            "label": {
+              "en": "Compact load test",
+              "ko": "압축 부하 시험"
+            },
+            "start_ms": 0,
+            "end_ms": 180000
+          }
+        ]
+      },
       "sample_interval_ms": 10000,
       "source_ids": [
         "channel_a",

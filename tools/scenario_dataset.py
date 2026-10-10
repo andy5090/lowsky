@@ -14,6 +14,26 @@ VARIANTS = ("consistent", "contradictory", "missing")
 WORKLOAD_COUNTS = (48, 96, 240)
 TTL_MS = 45_000
 DISPLAY_PROFILES = Path(__file__).resolve().parents[1] / "godot/assets/display_profiles.json"
+PACED_OFFSET_MS = 240_000
+PACED_SCALE = 3
+PACED_DURATION_MS = PACED_OFFSET_MS + PACED_SCALE * TIMES[-1]
+
+
+def authored_time(variant, at_ms):
+    return at_ms if variant == "missing" else PACED_OFFSET_MS + PACED_SCALE * at_ms
+
+
+def distant_display_z(at_ms):
+    """Schematic northern approach only; never a georeferenced crossing route."""
+    if at_ms <= 270_000:
+        return -18_000 + (at_ms / 270_000) * 15_800
+    return -2200 + ((at_ms - 270_000) / (PACED_DURATION_MS - 270_000)) * 4100
+
+
+def training_timing(variant):
+    paced = variant != "missing"
+    return {"paced": paced, "early_review_ms": 120_000 if paced else 30_000,
+            "received_review_ms": 90_000 if paced else 30_000}
 
 
 def write_json(path, value):
@@ -50,13 +70,13 @@ def build(root):
     descriptions = [
         (
             localized("Indicators and first reports", "전조와 첫 관측"),
-            localized(f"Scenario time: 02:00 AM. {first_count} synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", f"배경 시각: 오전 02:00. 합성 비행체 {first_count}대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
+            localized(f"02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. {first_count} synthetic objects; review indirect indications before direct reports at 04:30.", f"오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 {first_count}대. 04:30 직접 관측 전까지 간접 조짐을 검토합니다."),
             localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
             localized(f"{first_count} small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", f"소형 비행체 {first_count}대와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
         ),
         (
             localized("Conflicting evidence and review", "상충 근거와 검토"),
-            localized(f"Scenario time: 02:00 AM. {second_count} synthetic aerial objects provide mixed background traffic. Channel B reports different labels for {conflicting_count} tracks between 1 and 2 minutes of elapsed simulation time, followed by reconfirmation.", f"배경 시각: 오전 02:00. 합성 비행체 {second_count}대가 혼재된 배경을 구성합니다. 실행 경과 1~2분 동안 채널 B가 {conflicting_count}대의 표식을 다르게 보고하고 이후 재확인합니다."),
+            localized(f"02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. {second_count} synthetic objects; indirect indications followed by conflicting reports and review.", f"오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 {second_count}대. 간접 조짐 이후 상충 보고와 재검토가 이어집니다."),
             localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
             localized(f"{second_count} synthetic objects; {conflicting_count} conflicting tracks, with the remaining tracks as comparison traffic.", f"합성 비행체 {second_count}대. {conflicting_count}대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
         ),
@@ -145,6 +165,47 @@ def build(root):
                     }[state],
                     "forbidden_claims": ["hostile_intent", "unobserved_confirmation", "future_evidence"],
                 })
+        public["training_timing"] = training_timing(variant)
+        if variant != "missing":
+            duration = PACED_DURATION_MS
+            world["duration_ms"] = public["duration_ms"] = duration
+            public["freshness_ms"] = TTL_MS * PACED_SCALE
+            # Motion uses the same authored replay clock, continuously across the
+            # indirect-only period; evidence never exposes these hidden positions.
+            for i, obj in enumerate(world["objects"]):
+                obj["keyframes"] = [{"at_ms": tick, "position": [
+                    -750 + (i % columns) * column_spacing + (tick / duration) * (80 if i % 2 else -80),
+                    80 + (i % 5) * 12,
+                    distant_display_z(tick) - (i // columns) * row_spacing,
+                ]} for tick in range(0, duration + 1, 10_000)]
+            frames = {obj["object_id"]: {frame["at_ms"]: frame["position"] for frame in obj["keyframes"]}
+                      for obj in world["objects"]}
+            for row in observations:
+                for key in ("observed_at_ms", "available_at_ms"):
+                    row[key] = authored_time(variant, row[key])
+                row["position"] = frames[row["object_id"]][row["observed_at_ms"]]
+            public["source_health"] = [
+                {"id": f"health_{step * len(SOURCES) + index + 1:03d}", "source_id": source,
+                 "observed_at_ms": tick, "available_at_ms": tick, "status": "online"}
+                for step, tick in enumerate(range(0, duration + 1, 10_000))
+                for index, source in enumerate(SOURCES)]
+            for row in contexts:
+                for key in ("published_at_ms", "valid_from_ms", "valid_until_ms"):
+                    if row[key] > 0:
+                        row[key] = authored_time(variant, row[key])
+            for row in checkpoints:
+                row["at_ms"] = authored_time(variant, row["at_ms"])
+        duration = public["duration_ms"]
+        public["training_schedule"] = {
+            "author_preview": True,
+            "first_direct_observation_ms": authored_time(variant, 10_000),
+            "phases": ([
+                {"id": "indirect_review", "label": localized("Indirect indications and deliberation", "간접 징후와 숙고"), "start_ms": 0, "end_ms": 270_000},
+                {"id": "initial_receipts", "label": localized("Initial direct receipts", "직접 관측 최초 수신"), "start_ms": 270_000, "end_ms": 420_000},
+                {"id": "compare_evidence", "label": localized("Compare received evidence", "수신 근거 비교"), "start_ms": 420_000, "end_ms": 630_000},
+                {"id": "reconsider_review", "label": localized("Reconsider and record review", "재검토와 판단 기록"), "start_ms": 630_000, "end_ms": duration},
+            ] if variant != "missing" else [
+                {"id": "compact_load", "label": localized("Compact load test", "압축 부하 시험"), "start_ms": 0, "end_ms": duration}])}
         write_json(root / "cases" / case_id / "world.json", world)
         write_json(root / "cases" / case_id / "public.json", public)
         write_json(root / "evaluation" / f"{case_id}.json", {"checkpoints": checkpoints})
@@ -163,8 +224,9 @@ def build(root):
             "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
             "name": name, "summary": summary, "objective": objective, "composition": composition,
             "count_basis": localized("Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.", "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."),
-            "object_count": count, "object_ids": objects, "duration_ms": TIMES[-1],
-            "sample_interval_ms": 10_000, "source_ids": list(SOURCES),
+            "object_count": count, "object_ids": objects, "duration_ms": duration,
+            "training_timing": public["training_timing"], "training_schedule": public["training_schedule"],
+            "sample_interval_ms": 10_000 if variant == "missing" else 30_000, "source_ids": list(SOURCES),
             "comparison_object": objects[0] if variant == "contradictory" else None,
             "original_marker": markers[objects[0]] if variant == "contradictory" else None,
             "timeline": [
@@ -177,6 +239,26 @@ def build(root):
                 {"at_ms": TIMES[-1], "text": localized("Replay ends; assess evidence references, uncertainty and source recovery.", "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다.")},
             ],
         })
+        if variant != "missing":
+            for step in briefings[-1]["timeline"]:
+                if step["at_ms"] > 0:
+                    step["at_ms"] = authored_time(variant, step["at_ms"])
+            briefings[-1]["timeline"][2]["text"] = localized(
+                "Some channel B reports arrive 45 seconds late; compare observation and receipt time.",
+                "일부 채널 B 보고가 45초 늦게 도착합니다. 관측·수신 시각을 비교합니다.")
+            briefings[-1]["origin_context"] = localized(
+                "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
+                "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다.")
+            briefings[-1]["timeline"][0]["text"] = localized(
+                "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
+                "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다.")
+            briefings[-1]["timeline"][1:1] = [
+                {"at_ms": 30_000, "text": localized("One indirect area indication arrives; no direct track or object identity is established.", "구역 단위 간접 징후가 하나 수신됩니다. 직접 항적이나 대상 정체는 확정되지 않습니다.")},
+                {"at_ms": 150_000, "text": localized("After two minutes of a stable single-source question, an independent delayed report becomes available; it may agree or conflict.", "동일한 단일 출처 징후를 2분 동안 검토한 뒤 독립 지연 보고가 수신됩니다. 일치하거나 상충할 수 있습니다.")},
+
+                {"at_ms": 200_000, "text": localized("An independent area report is stale. Missing fresh evidence does not establish absence.", "별도 구역 보고가 오래되었습니다. 새 근거가 없다는 사실로 부재를 확정하지 않습니다.")},
+                {"at_ms": 225_000, "text": localized("A negative measurement and independent fixed-phone indications require reconsideration; they do not identify a hidden object.", "음성 측정과 독립 고정 폰 징후를 토대로 재검토합니다. 보이지 않는 대상의 정체나 위치는 식별하지 못합니다.")},
+            ]
     # Remove only retired generated files from the original twelve-case fixture set.
     for number in range(4, 13):
         retired = root / "cases" / f"case_{number:03d}"
@@ -268,9 +350,10 @@ def validate(root):
         rubric = read_json(root / "evaluation" / f"{case_id}.json")
         require(public["schema_version"] == world["schema_version"] == "1.0", "Invalid schema version")
         require(public["synthetic"] is True and world["synthetic"] is True, "Missing synthetic label")
-        require(public["duration_ms"] == world["duration_ms"] == TIMES[-1], "Invalid duration")
+        duration = authored_time(entry["variant"], TIMES[-1])
+        require(public["duration_ms"] == world["duration_ms"] == duration, "Invalid duration")
         require(public["source_ids"] == list(SOURCES), "Unexpected source IDs")
-        require(public["freshness_ms"] == TTL_MS, "Unexpected freshness setting")
+        require(public["freshness_ms"] == TTL_MS * (1 if entry["variant"] == "missing" else PACED_SCALE), "Unexpected freshness setting")
         require(len(set(public["object_ids"])) == WORKLOAD_COUNTS[VARIANTS.index(entry["variant"])], "Unexpected workload count")
         require(entry["split"] in ("development", "holdout"), "Unknown split")
         require({obj["object_id"] for obj in world["objects"]} == set(public["object_ids"]), "Object mismatch")
@@ -283,7 +366,7 @@ def validate(root):
                 require(row["source_id"] in SOURCES, "Unknown source")
                 observed, available = row["observed_at_ms"], row["available_at_ms"]
                 require(type(observed) is int and type(available) is int
-                        and 0 <= observed <= available <= TIMES[-1], "Invalid observation time")
+                        and 0 <= observed <= available <= duration, "Invalid observation time")
             if "object_id" in row:
                 require(row["object_id"] in public["object_ids"], "Unknown observed object")
                 require(row["marker_label"] in ("circle", "square", "triangle", "diamond"), "Invalid marker")
@@ -291,20 +374,21 @@ def validate(root):
                 require(row["status"] in ("online", "offline"), "Invalid channel status")
             if "published_at_ms" in row:
                 require(set(row["object_ids"]) <= set(public["object_ids"]), "Unknown context object")
-                require(0 <= row["published_at_ms"] <= TIMES[-1]
-                        and 0 <= row["valid_from_ms"] <= row["valid_until_ms"] <= TIMES[-1], "Invalid context time")
+                require(0 <= row["published_at_ms"] <= duration
+                        and 0 <= row["valid_from_ms"] <= row["valid_until_ms"] <= duration, "Invalid context time")
         positions = [row["position"] for row in public["observations"]]
         for obj in world["objects"]:
             require(obj["visual"]["asset_id"] == "aerial_marker", "Missing object asset mapping")
-            require([row["at_ms"] for row in obj["keyframes"]] == list(TIMES), "Invalid keyframe times")
+            require([row["at_ms"] for row in obj["keyframes"]] == list(range(0, duration + 1, 10_000)), "Invalid keyframe times")
             positions.extend(row["position"] for row in obj["keyframes"])
         for position in positions:
             require(len(position) == 3 and all(type(v) in (int, float) and math.isfinite(v) for v in position), "Invalid 3D position")
         require(len(rubric["checkpoints"]) == len(public["object_ids"]) * 5, "Unexpected checkpoint count")
-        expected_pairs = {(tick, obj) for tick in (70_000, 90_000, 120_000, 150_000, 180_000) for obj in public["object_ids"]}
+        checkpoint_times = [authored_time(entry["variant"], tick) for tick in (70_000, 90_000, 120_000, 150_000, 180_000)]
+        expected_pairs = {(tick, obj) for tick in checkpoint_times for obj in public["object_ids"]}
         require({(row["at_ms"], row["object_id"]) for row in rubric["checkpoints"]} == expected_pairs,
                 "Checkpoint coverage mismatch")
-        checkpoint_payloads = {tick: snapshot(public, tick) for tick in (70_000, 90_000, 120_000, 150_000, 180_000)}
+        checkpoint_payloads = {tick: snapshot(public, tick) for tick in checkpoint_times}
         for checkpoint in rubric["checkpoints"]:
             payload = checkpoint_payloads[checkpoint["at_ms"]]
             actual = information_state(payload, checkpoint["object_id"])

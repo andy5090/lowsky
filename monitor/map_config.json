@@ -1,13 +1,18 @@
 {
-  "center_lat": 36.23,
-  "center_lon": 127.08,
+  "center_lat": 37.9,
+  "center_lon": 127.2,
   "zoom": 13,
   "tile_url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  "attribution": "\u00a9 OpenStreetMap contributors",
+  "attribution": "© OpenStreetMap contributors",
   "attribution_url": "https://www.openstreetmap.org/copyright",
-  "purpose": "Fictional redeveloped airfield on a lower-relief Korean map background. Shared origin with DEM; internal local roads are synthetically replaced, not a surveyed or approved airport site.",
+  "purpose": "Arbitrary Northern Gyeonggi visual reference for a fictional redeveloped airfield, not an existing base or a site suitability assessment. Only the local 10 km DEM is geographic; distant departure context is schematic.",
   "site_origin": {
-    "lat": 36.23,
-    "lon": 127.08
+    "lat": 37.9,
+    "lon": 127.2
+  },
+  "terrain_extent_m": 10000,
+  "distant_departure": {
+    "mode": "schematic",
+    "georeferenced": false
   }
 }

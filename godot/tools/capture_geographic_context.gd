@@ -10,15 +10,17 @@ func capture() -> void:
 	root.add_child(preview)
 	await process_frame
 	preview.playing = false
-	preview.elapsed_ms = 65000
+	preview.elapsed_ms = minf(435000, float(preview.world_data.duration_ms) * 0.65)
 	var context = preview.terrain.get_node("GeographicContext")
 	print("Surroundings: %s trees, %s road ways, %s buildings" % [context.get_meta("tree_count"), context.get_meta("road_count"), context.get_meta("building_count")])
 	preview.toggle_ui_panel()
 	var views = [
-		{"name": "korea-forest", "eye": Vector3(3600, 235, -2150), "target": Vector3(4100, 130, -2800)},
-		{"name": "korea-town", "eye": Vector3(1650, 175, 4100), "target": Vector3(1000, 30, 4400)},
+		{"name": "korea-forest", "eye": Vector3(-2200, 220, -1000), "target": Vector3(-3100, 30, -2100)},
+		{"name": "korea-town", "eye": Vector3(-1550, 170, 1700), "target": Vector3(-800, 20, 700)},
 	]
 	for view in views:
+		view.eye.y += preview.terrain_surface_height(view.eye.x, view.eye.z)
+		view.target.y += preview.terrain_surface_height(view.target.x, view.target.z)
 		preview.camera.position = view.eye
 		preview.camera_target = view.target
 		preview.camera.look_at(view.target)

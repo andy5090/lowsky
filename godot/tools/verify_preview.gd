@@ -18,7 +18,7 @@ func verify() -> void:
 		preview._process(0)
 		assert(preview.objects.size() == preview.world_data.objects.size())
 		for item in preview.objects:
-			assert(item["node"].position.is_equal_approx(preview.vector(item["keyframes"][-1]["position"])))
+			assert(item["node"].position.is_equal_approx(preview.display_position(preview.vector(item["keyframes"][-1]["position"]))))
 		assert(preview.objects.size() > 0)
 	var event = InputEventKey.new()
 	event.pressed = true
@@ -47,8 +47,12 @@ func verify() -> void:
 	preview._process(0)
 	var object_position = preview.objects[0]["node"].position
 	var frames: Array = preview.objects[0].keyframes
-	var expected_midpoint = preview.vector(frames[6].position).lerp(preview.vector(frames[7].position), 0.5)
-	assert(object_position.is_equal_approx(expected_midpoint), "65s position must use 10-second keyframe intervals")
+	var index = 0
+	while index < frames.size() - 2 and preview.elapsed_ms >= float(frames[index + 1].at_ms):
+		index += 1
+	var ratio = (preview.elapsed_ms - float(frames[index].at_ms)) / (float(frames[index + 1].at_ms) - float(frames[index].at_ms))
+	var expected_midpoint = preview.display_position(preview.vector(frames[index].position).lerp(preview.vector(frames[index + 1].position), ratio))
+	assert(object_position.is_equal_approx(expected_midpoint), "Position uses authored keyframe intervals plus display-only altitude")
 	event.keycode = KEY_T
 	preview._unhandled_input(event)
 	assert(preview.has_node("PlainsTerrain/Fields"))
@@ -122,6 +126,7 @@ func verify() -> void:
 			node.free()
 			imported_models += 1
 	assert(imported_models == 4)
+	verify_mission_vignettes(preview)
 	print("PASS: all manifest cases, playback and camera input, DEM and terrain switching preserve replay, irregular airfield, connected taxiways, detailed buildings and external models")
 	preview.queue_free()
 	await process_frame
@@ -295,3 +300,65 @@ func verify_camera_drag(preview: Node3D) -> bool:
 	assert(preview.camera_target.is_equal_approx(preview.vector(preview.site_layout.camera.target)))
 	print("PASS: mouse pan/orbit through viewport, drag release, focus loss, pitch limits and home")
 	return true
+
+
+func verify_mission_vignettes(preview: Node3D) -> void:
+	preview.load_case("case_001")
+	preview.playing = false
+	preview.set_drone_positions(false)
+	preview.detected_ids.clear()
+	var actor = preview.objects[10]
+	var mission = {"id":"fixture-impact", "object_id":actor.object_id, "asset_id":"fixture", "kind":"impact_vignette", "phase":"approach", "phase_start_ms":1000, "phase_end_ms":2000}
+	preview.monitor_exercise = {"assets":[{"id":"fixture", "position":[0,0,0]}]}
+	preview.simulation_missions = [mission]
+	preview.elapsed_ms = 1500
+	preview.update_mission_vignettes()
+	var marker = preview.mission_nodes[mission.id]
+	assert(not marker.visible and actor.node.visible)
+	mission.phase = "finale"
+	preview.update_mission_vignettes()
+	var halfway: Vector3 = actor.node.position
+	assert(marker.visible and not marker.get_node("Label").visible)
+	assert(not marker.get_node("Payload").visible and not marker.get_node("Outcome").visible)
+	preview.update_mission_vignettes()
+	assert(actor.node.position.is_equal_approx(halfway), "Paused time must freeze illustrative descent")
+	preview.elapsed_ms = 1750
+	preview.update_mission_vignettes()
+	assert(actor.node.position.y < halfway.y, "Fixed impact vignette descends")
+	preview.elapsed_ms = 1500
+	preview.update_mission_vignettes()
+	assert(actor.node.position.is_equal_approx(halfway), "Seek restores the same authored phase")
+	preview.detected_ids[actor.object_id] = true
+	preview.update_mission_vignettes()
+	assert(marker.get_node("Label").visible)
+	preview.detected_ids.clear()
+	preview.set_drone_positions(true)
+	preview.update_mission_vignettes()
+	assert(marker.get_node("Label").visible)
+	preview.set_drone_positions(false)
+	mission.kind = "drop_vignette"
+	preview.update_mission_vignettes()
+	var payload = marker.get_node("Payload")
+	var payload_before: Vector3 = payload.position
+	var retreat_before: Vector3 = actor.node.position
+	assert(payload.visible)
+	preview.elapsed_ms = 1750
+	preview.update_mission_vignettes()
+	assert(payload.position.y < payload_before.y and actor.node.position.x > retreat_before.x)
+	for phase in ["complete", "partial", "prevented"]:
+		mission.phase = phase
+		preview.update_mission_vignettes()
+		assert(marker.get_meta("phase") == phase)
+		assert(marker.get_node("Outcome").visible and not payload.visible)
+		assert(not marker.get_node("Label").visible, "Outcome does not grant detection")
+	preview.simulation_missions.clear()
+	preview.update_mission_vignettes()
+	assert(preview.mission_nodes.is_empty(), "Reset removes all mission effect nodes")
+	preview.load_case("case_001")
+	assert(preview.simulation_missions.is_empty() and preview.mission_nodes.is_empty())
+	var raw = Vector3(1,80,2)
+	preview.geographic = false
+	assert(preview.display_position(raw) == raw)
+	preview.geographic = true
+	assert(preview.display_position(raw).y == raw.y + preview.terrain_data.display_airspace_offset_m)
+	print("PASS: fixed impact/drop/retreat phases, outcome presets, detection-gated labels, pause/seek/reset and display-only altitude")

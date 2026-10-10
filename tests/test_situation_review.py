@@ -12,6 +12,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 class SituationReviewTests(unittest.TestCase):
     def setUp(self):
         self.sim = Simulation(clock=lambda: 0)
+        self.sim.control(dict(action="case", case_id="case_003"))
 
     def advance(self, at_ms):
         self.sim.anchor_ms = at_ms
@@ -37,9 +38,9 @@ class SituationReviewTests(unittest.TestCase):
         first['available_at_ms'] = 20000
         first['private_field'] = 'private-canary'
         for time, known in [(19999, ['object_11']), (20000, [])]:
-            result = snapshot(feed, 'case_001', time, known, [])
+            result = snapshot(feed, 'case_003', time, known, [])
             self.assertNotIn('context_first', [e['id'] for e in result['events']])
-        result = snapshot(feed, 'case_001', 20000, ['object_11'], [])
+        result = snapshot(feed, 'case_003', 20000, ['object_11'], [])
         self.assertIn('context_first', [e['id'] for e in result['events']])
         self.assertNotIn('private-canary', json.dumps(result))
         self.assertNotIn('context_close', json.dumps(result))
@@ -48,8 +49,9 @@ class SituationReviewTests(unittest.TestCase):
         for case, expected, absent in [('case_002', 'context_ambiguity', 'context_outage'),
                                       ('case_003', 'context_outage', 'context_ambiguity')]:
             self.sim.control(dict(action='case', case_id=case))
-            self.assertNotIn(expected, [e['id'] for e in self.advance(59999)['situation']['events']])
-            ids = [e['id'] for e in self.advance(60000)['situation']['events']]
+            at_ms = 420000 if case == 'case_002' else 60000
+            self.assertNotIn(expected, [e['id'] for e in self.advance(at_ms - 1)['situation']['events']])
+            ids = [e['id'] for e in self.advance(at_ms)['situation']['events']]
             self.assertIn(expected, ids)
             self.assertNotIn(absent, ids)
 
@@ -68,6 +70,7 @@ class SituationReviewTests(unittest.TestCase):
         self.assertEqual(later['summary']['decisions']['needs_review'], 1)
         self.assertIsNone(later['summary']['accuracy'])
         clean = Simulation(clock=lambda: 0)
+        clean.control(dict(action="case", case_id="case_003"))
         clean.anchor_ms = 150000
         self.assertEqual(next(e for e in clean.state()['situation']['events']
                               if e['id'] == 'context_revisit')['related_reviews'], [])
@@ -96,6 +99,15 @@ class SituationReviewTests(unittest.TestCase):
         self.advance(150000)
         self.assertEqual(self.sim.state()['situation']['summary']['recorded_reviews'], 0)
 
+    def test_paced_context_matches_receipt_and_final_review_time(self):
+        for case in ('case_001', 'case_002'):
+            self.sim.control(dict(action='case', case_id=case))
+            self.assertNotIn('context_first', [row['id'] for row in self.advance(269999)['situation']['events']])
+            first = self.advance(270000)['situation']['events']
+            self.assertEqual(next(row for row in first if row['id'] == 'context_first')['observed_at_ms'], 270000)
+            self.assertNotIn('context_close', [row['id'] for row in self.advance(779999)['situation']['events']])
+            self.assertIn('context_close', [row['id'] for row in self.advance(780000)['situation']['events']])
+
     def test_all_context_sources_resolve_and_three_cases_remain(self):
         catalog = json.loads((PROJECT/'data/references/ukraine_observation_lessons.json').read_text())
         ids = {s['id'] for s in catalog['sources']}
@@ -104,7 +116,8 @@ class SituationReviewTests(unittest.TestCase):
         self.assertEqual(sum(b['scenario_type'] == 'load_test' for b in briefs), 1)
         for row in self.sim.situation_feed['events']:
             self.assertTrue(set(row['source_ids']) <= ids)
-            self.assertLessEqual(row['available_at_ms'], 180000)
+            for case in row['case_ids']:
+                self.assertLessEqual(row['available_at_ms'], self.sim.public[case]['duration_ms'])
             for key in ['title','summary','uncertainty','story_time']:
                 self.assertEqual(set(row[key]), {'en','ko'})
 

@@ -21,6 +21,7 @@ class TestOperatorTests(unittest.TestCase):
             return dict(option_id='continue_monitoring', reason='Continue the synthetic workflow test.')
         self.sim = Simulation(clock=lambda: self.now, decision_evaluator=assessment, operator_runner=runner,
                               operator_configuration=lambda: dict(available=True, model='test', provider='codex_cli'))
+        self.sim.control(dict(action='case', case_id='case_003'))
         self.operator = self.sim.test_operator
         self.addCleanup(self.operator.cancel)
 

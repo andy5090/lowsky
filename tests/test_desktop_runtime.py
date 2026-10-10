@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from tools import desktop_runtime
 from tools.env_config import AGENT_SETTINGS
+from tools.monitor_server import make_server
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -53,7 +54,9 @@ class DesktopRuntimeTests(unittest.TestCase):
             self.fail('Desktop backend readiness timed out')
         self.assertTrue(line, 'Desktop backend exited before readiness')
         ready = json.loads(line)
-        self.assertEqual(set(ready), {'event', 'port'})
+        self.assertEqual(set(ready), {'event', 'port', 'desktop_token'})
+        self.assertGreaterEqual(len(ready['desktop_token']), 32)
+        self.desktop_token = ready['desktop_token']
         self.assertEqual(ready['event'], 'ready')
         self.assertIs(type(ready['port']), int)
         self.assertGreater(ready['port'], 0)
@@ -73,11 +76,12 @@ class DesktopRuntimeTests(unittest.TestCase):
             if stream and not stream.closed:
                 stream.close()
 
-    def request(self, port, method, path, command=None):
+    def request(self, port, method, path, command=None, extra_headers=None):
         connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
         try:
             body = json.dumps(command) if command is not None else None
             headers = {'Content-Type': 'application/json'} if body else {}
+            headers.update(extra_headers or {})
             connection.request(method, path, body=body, headers=headers)
             response = connection.getresponse()
             raw = response.read()
@@ -118,6 +122,58 @@ class DesktopRuntimeTests(unittest.TestCase):
         self.assertEqual(self.request(port, 'GET', '/health')[0], 200)
         self.stop_and_check(process, port, terminate=True)
 
+    def test_native_command_pipe_and_authenticated_ack(self):
+        process, port = self.start()
+        status, state = self.request(port, 'GET', '/api/desktop')
+        self.assertEqual(status, 200)
+        self.assertEqual((state['available'], state['view'], state['three_d_open']), (True, '3d', True))
+        self.assertNotIn(self.desktop_token, json.dumps(state))
+        status, pending = self.request(port, 'POST', '/api/desktop', {'action': 'show_monitor'})
+        self.assertEqual(status, 202)
+        self.assertTrue(pending['pending'])
+        self.assertEqual(pending['view'], '3d')
+        command = json.loads(process.stdout.readline())
+        self.assertEqual(command['event'], 'desktop_command')
+        self.assertEqual(command['state']['view'], 'monitor')
+        self.assertNotIn(self.desktop_token, json.dumps(command))
+        self.assertEqual(self.request(port, 'POST', '/api/desktop', {'action': 'close_3d'})[0], 409)
+        ack = {'id': command['id'], 'ok': True}
+        self.assertEqual(self.request(port, 'POST', '/api/desktop/runtime', ack)[0], 403)
+        self.assertEqual(self.request(port, 'POST', '/api/desktop/runtime', ack,
+                                     {'X-Low-Sky-Desktop-Token': 'wrong'})[0], 403)
+        headers = {'X-Low-Sky-Desktop-Token': self.desktop_token}
+        self.assertEqual(self.request(port, 'POST', '/api/desktop/runtime', ack,
+                                     {**headers, 'Origin': 'https://untrusted.test'})[0], 403)
+        status, done = self.request(port, 'POST', '/api/desktop/runtime', ack, headers)
+        self.assertEqual(status, 200)
+        self.assertEqual((done['view'], done['pending'], done['revision']), ('monitor', False, 1))
+        self.assertEqual(self.request(port, 'POST', '/api/desktop/runtime', ack, headers)[0], 409)
+        status, closed = self.request(port, 'POST', '/api/desktop/runtime', {'event': 'godot_closed'}, headers)
+        self.assertEqual(status, 200)
+        self.assertFalse(closed['three_d_open'])
+        self.assertEqual(closed['revision'], 2)
+        self.assertNotIn(self.desktop_token, json.dumps(self.request(port, 'GET', '/api/state')[1]))
+        self.stop_and_check(process, port)
+
+    def test_standalone_server_has_no_native_controls_or_credential(self):
+        server = make_server(0)
+        worker = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True)
+        worker.start()
+        try:
+            port = server.server_port
+            status, state = self.request(port, 'GET', '/api/desktop')
+            self.assertEqual(status, 200)
+            self.assertEqual(state, dict(available=False, view='monitor', fullscreen=False,
+                                         three_d_open=False, pending=False, error=None, revision=0))
+            self.assertIsNone(server.desktop.runtime_token)
+            self.assertEqual(self.request(port, 'POST', '/api/desktop', {'action': 'open_3d'})[0], 409)
+            self.assertEqual(self.request(port, 'POST', '/api/desktop', {'action': 'exec'})[0], 400)
+            self.assertEqual(self.request(port, 'POST', '/api/desktop/runtime', {'event': 'godot_closed'})[0], 403)
+        finally:
+            server.shutdown()
+            worker.join(timeout=2)
+            server.server_close()
+
     def test_user_settings_override_absent_environment_without_secret_output(self):
         marker = 'test-only-not-a-real-key'
         (self.data_dir / '.env').write_text(
@@ -154,6 +210,7 @@ class DesktopRuntimeTests(unittest.TestCase):
         process, port = self.start(package_root=bundle)
         self.assertEqual(self.request(port, 'GET', '/api/assessment')[1]['mode'], 'rules')
         self.assertEqual(self.request(port, 'GET', '/')[1], (bundle / 'monitor' / 'index.html').read_bytes())
+        self.request(port, 'POST', '/api/control', {'action': 'case', 'case_id': 'case_003'})
         state = self.request(port, 'POST', '/api/control', {'action': 'seek', 'at_ms': 10000})[1]
         track = state['tracks'][0]
         status, _ = self.request(port, 'POST', '/api/control', dict(

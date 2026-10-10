@@ -1,33 +1,21 @@
 {
   "synthetic": true,
-  "method": "Compare native DEM elevations at100m samples inside the1200x2900m bounding box; no grading applied. North-south local frame.",
-  "selected_reason": "Substantially lower terrain relief than previous mountainous background; OSM visual review of surrounding agricultural plain.",
-  "candidates": [
-    {
-      "id": "previous",
-      "origin": {
-        "lat": 36.5,
-        "lon": 127.8
-      },
-      "min_elevation_m": 206.68,
-      "max_elevation_m": 574.05,
-      "relief_m": 367.37
-    },
-    {
-      "id": "selected",
-      "origin": {
-        "lat": 36.23,
-        "lon": 127.08
-      },
-      "min_elevation_m": 2.05,
-      "max_elevation_m": 32.94,
-      "relief_m": 30.89
-    }
-  ],
-  "map_review_url": "https://www.openstreetmap.org/#map=14/36.2300/127.0800",
+  "origin": {
+    "lat": 37.9,
+    "lon": 127.2
+  },
+  "method": "Arbitrary user-requested visual relocation to Northern Gyeonggi. No search, ranking, route study, or suitability analysis was performed.",
+  "selected_reason": "Fictional scenario background only; coordinate supplied as a visual reference.",
+  "map_review_url": "https://www.openstreetmap.org/#map=13/37.9000/127.2000",
+  "terrain_extent_m": 10000,
+  "distant_departure": {
+    "georeferenced": false,
+    "representation": "Abstract schematic space beyond the local DEM; not North Korean terrain or a real cross-border route."
+  },
   "limitations": [
-    "Not cadastral, flood, obstacle, wind, land-use or airport feasibility assessment.",
-    "Internal local roads and fields are replaced by the marked fictional redevelopment polygon. Surrounding map and DEM remain real; exact terrain correspondence is limited by DEM resolution.",
-    "Irregular boundary is fictional and not a surveyed parcel boundary."
+    "Not an existing air base, surveyed parcel, approved development, or feasible airport site.",
+    "No cadastral, flood, obstacle, wind, land-use, construction, or military siting assessment.",
+    "The marked fictional redevelopment polygon replaces internal map features and is leveled for display; surrounding elevation is sampled public DEM.",
+    "A uniform display-only altitude lift keeps moving aerial markers visible above the relief; it changes no observation, authored trajectory, speed, or agent evidence."
   ]
 }

@@ -1,6 +1,6 @@
 # LOW SKY desktop distribution
 
-A single native installer contains the Tauri monitoring app, the Python/Deep Agents service, the exported Godot 3D application, and runtime datasets. End users do not need Node.js, Rust, Python, or the Godot editor. Launching LOW SKY opens the monitoring and 3D windows against one private loopback simulation clock. Closing the desktop application stops its child processes. Closing just 3D leaves monitoring running; reopen it from **LOW SKY → Open 3D simulation**.
+A single native installer contains the Tauri monitoring app, the Python/Deep Agents service, the exported Godot 3D application, and runtime datasets. End users do not need Node.js, Rust, Python, or the Godot editor. Launching LOW SKY opens the monitoring and 3D windows against one private loopback simulation clock. Closing the desktop application stops its child processes. Closing just 3D leaves monitoring running; reopen or activate it with **Open 3D** in the monitor toolbar or **LOW SKY → Open 3D simulation**. **Close 3D** closes only the 3D process. **F6** switches from monitoring to 3D, and from 3D back to monitoring; **F11** toggles fullscreen for the current workspace. The 3D toolbar also has **Monitoring** and **Fullscreen** buttons. Both views share the fullscreen setting and simulation clock. Switching windows does not pause time; reopening 3D reconnects to the current run. These controls appear only in the desktop app; standalone browser monitoring keeps its normal browser controls. macOS may animate between fullscreen Spaces.
 
 The two windows are intentionally separate native surfaces. Godot is not embedded into the system webview: native-window embedding is platform-specific, while exporting 3D to WebAssembly would change the render/runtime environment. Both surfaces are installed and managed as one application.
 
@@ -21,7 +21,7 @@ The folder contains `.env`, `backend.log`, `godot.log`, and three audit journals
 
 The repository `.env`, source documents, `.local/`, and existing review journals are never included. Journals are written outside the install folder and survive application upgrades. The optional Codex virtual operator still requires a separately installed and authenticated Codex CLI; it is not part of this installer. Browser PWA installation and browser notifications depend on browser APIs and may be unavailable in the system webview; simulation and in-app alert UI remain available.
 
-The backend chooses an unused `127.0.0.1` port and reports it directly to the launcher. It never attaches to an unrelated server already using port 8765. The remote monitoring page gets no Tauri IPC capabilities. It cannot execute desktop commands or arbitrary files. The packaged service exits on launcher stdin EOF, including launcher failure; normal desktop exit also closes 3D.
+The backend chooses an unused `127.0.0.1` port and reports it directly to the launcher. It never attaches to an unrelated server already using port 8765. The remote monitoring page gets no Tauri IPC capabilities. It can request only the fixed window actions through the local service. The launcher acknowledges them with a per-process private token; no arbitrary commands or files can be executed. The packaged service exits on launcher stdin EOF, including launcher failure; normal desktop exit also closes 3D.
 
 ## Build on the target operating system
 
@@ -49,8 +49,9 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 The smoke check runs outside the repository with a temporary user folder, tests case/clock changes and served assets, launches exported 3D headlessly, and verifies backend shutdown. `--check-sdk` also exercises Deep Agents, its evidence tools, and structured output against a dummy OpenAI endpoint on loopback; it makes no external provider calls and needs no API key. `--skip-godot` isolates backend checks. After changing Python/frontend files, rebuild the backend; after changing Godot files, re-export 3D. `--skip-backend` and `--skip-godot` are local incremental-build options, not release defaults.
 
-## CI and release
+## Local distribution
 
-Run the **Desktop installers** GitHub Actions workflow, or push a `desktop-v*` tag. macOS and Windows native jobs each build and smoke-test their payload and upload installer artifacts for 14 days. Creating a tag publishes build artifacts only; there is no automatic public release or auto-update feed. Never add provider keys to a build workflow.
+Installer builds run locally on the target operating system. This public repository has no GitHub Actions packaging workflow, tag-triggered builds, artifact uploads, automatic releases or update feed. Build on a Mac for macOS and a Windows PC for Windows; this Python/Godot/Tauri bundle does not support cross-building the Windows installer on macOS. Keep installers in the ignored `dist/` directory and distribute them explicitly when needed.
+
 
 Packaging follows the official [Tauri resource bundling](https://v2.tauri.app/develop/resources/), [Windows installer](https://v2.tauri.app/distribute/windows-installer/), and [Godot 4.5 export](https://docs.godotengine.org/en/4.5/tutorials/export/exporting_projects.html) documentation.

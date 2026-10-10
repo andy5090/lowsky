@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0",
   "origin": {
-    "lat": 36.23,
-    "lon": 127.08
+    "lat": 37.9,
+    "lon": 127.2
   },
   "extent_m": 10000,
   "local_axes": "X east, Z south; spherical approximation R=6378137 m",
   "bbox_south_west_north_east": [
-    36.18508423579402,
-    127.02431821646545,
-    36.27491576420597,
-    127.13568178353455
+    37.855084235794024,
+    127.14307860839016,
+    37.94491576420597,
+    127.25692139160985
   ],
   "imagery": [
     {
       "path": "godot/assets/terrain/korea_satellite.png",
-      "sha256": "38c9febb1ee576ad53c8f8b6e84f593c0ff710a64777b9f8f2e18c23aced44a0",
-      "url": "https://titiler.terrascope.be/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=esa-worldcover-s2rgbnir-10m-2021-v2_tcc&STYLES=&CRS=EPSG%3A4326&BBOX=36.18508423579402%2C127.02431821646545%2C36.27491576420597%2C127.13568178353455&WIDTH=2048&HEIGHT=2048&FORMAT=image%2Fpng&TIME=2021-01-01",
+      "sha256": "a67156013e5a8ce0a38922b604e2788855949dc94b98089dd392c3c9043c46f8",
+      "url": "https://titiler.terrascope.be/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=esa-worldcover-s2rgbnir-10m-2021-v2_tcc&STYLES=&CRS=EPSG%3A4326&BBOX=37.855084235794024%2C127.14307860839016%2C37.94491576420597%2C127.25692139160985&WIDTH=2048&HEIGHT=2048&FORMAT=image%2Fpng&TIME=2021-01-01",
       "layer": "esa-worldcover-s2rgbnir-10m-2021-v2_tcc",
       "time": "2021-01-01",
       "width": 2048,
@@ -29,8 +29,8 @@
     },
     {
       "path": "godot/assets/terrain/korea_landcover.png",
-      "sha256": "f0bf5a05e8c7290a7d2ba0a48b4228315ea49d5170d1f9a89f80e44a923a6ee1",
-      "url": "https://titiler.terrascope.be/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=esa-worldcover-map-10m-2021-v2_map&STYLES=&CRS=EPSG%3A4326&BBOX=36.18508423579402%2C127.02431821646545%2C36.27491576420597%2C127.13568178353455&WIDTH=1024&HEIGHT=1024&FORMAT=image%2Fpng&TIME=2021-01-01",
+      "sha256": "77754709cc4ff05959f133b1d472a2d16540b819729fe877d5c03241c592425d",
+      "url": "https://titiler.terrascope.be/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=esa-worldcover-map-10m-2021-v2_map&STYLES=&CRS=EPSG%3A4326&BBOX=37.855084235794024%2C127.14307860839016%2C37.94491576420597%2C127.25692139160985&WIDTH=1024&HEIGHT=1024&FORMAT=image%2Fpng&TIME=2021-01-01",
       "layer": "esa-worldcover-map-10m-2021-v2_map",
       "time": "2021-01-01",
       "width": 1024,
@@ -44,10 +44,10 @@
   ],
   "osm": {
     "path": "data/terrain/sources/osm_context.json.gz",
-    "sha256": "38c5aab26386fa1707fa9af6ea42d6004dcbc1a45a0a0f6aa37400a7ea4d7de6",
-    "endpoint": "https://overpass.kumi.systems/api/interpreter",
-    "query": "[out:json][timeout:90];(way[\"highway\"](36.184,127.023,36.276,127.137);way[\"building\"](36.184,127.023,36.276,127.137);way[\"waterway\"](36.184,127.023,36.276,127.137););out geom;",
-    "timestamp_osm_base": "2026-05-31T22:37:44Z",
+    "sha256": "8b9580793af2034006eed97a8a08b778fd9fc740fc7a3dc837f3cb5268e7f071",
+    "endpoint": "https://overpass-api.de/api/interpreter",
+    "query": "[out:json][timeout:90];(way[\"highway\"](37.854084,127.142079,37.945916,127.257921);way[\"building\"](37.854084,127.142079,37.945916,127.257921);way[\"waterway\"](37.854084,127.142079,37.945916,127.257921););out geom;",
+    "timestamp_osm_base": "2026-10-10T16:47:21Z",
     "license": "ODbL-1.0",
     "license_url": "https://opendatacommons.org/licenses/odbl/1-0/",
     "attribution": "© OpenStreetMap contributors",

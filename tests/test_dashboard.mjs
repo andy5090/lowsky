@@ -41,3 +41,60 @@ test('every dashboard label and action explanation is supplied in both languages
  }
  assert.equal(messages.en['dashboard.status.corroborated'],'Follow-up received');
 });
+
+test('indirect indications support review before any received track without leaking future/truth data',async()=>{
+ const {earlyIndicationSummary}=await import('../monitor/dashboard.mjs');
+ const positive={id:'a',available_at_ms:1000,assessment:'current',object_present:true};
+ const snapshot={at_ms:2000,tracks:[],simulation_positions:[{id:'secret'}],early_warning:{zones:[
+  {id:'area-a',center:[3,4,5],evidence:[positive,{id:'later',available_at_ms:3000,assessment:'current',object_present:true}]},
+  {id:'future-zone',evidence:[{...positive,available_at_ms:9000}]}
+ ]}};
+ const result=earlyIndicationSummary(snapshot);
+ assert.equal(result.stage,'early_indication');assert.equal(result.track_count,0);assert.equal(result.zone_count,1);assert.equal(result.positive,1);
+ assert.deepEqual(result.zones[0].evidence_ids,['a']);assert.equal(result.zones[0].center,undefined);assert.ok(!JSON.stringify(result).includes('secret'));
+ assert.equal(earlyIndicationSummary({...snapshot,tracks:[{object_id:'received'}]}).stage,'received_observation');
+});
+test('indirect summary distinguishes conflicting, old, and unusable reports rather than confirming identity',async()=>{
+ const {earlyIndicationSummary}=await import('../monitor/dashboard.mjs');
+ const evidence=[
+  {id:'p',available_at_ms:1000,assessment:'current',object_present:true},
+  {id:'n',available_at_ms:1000,assessment:'current',object_present:false},
+  {id:'old',available_at_ms:1000,assessment:'stale',object_present:true},
+  {id:'bad',available_at_ms:1000,assessment:'unavailable',object_present:true},
+ ];
+ const state={at_ms:2000,tracks:[],early_warning:{zones:[{id:'area-a',evidence}]}};
+ const result=earlyIndicationSummary(state);
+ assert.equal(result.conflict_count,1);assert.equal(result.stale_count,1);assert.equal(result.unavailable_count,1);assert.equal(result.positive,1);
+ assert.equal(earlyIndicationSummary({...state,early_warning:{zones:[{id:'area-a',evidence:evidence.slice(2)}]}}).stage,'awaiting_evidence');
+ assert.equal(earlyIndicationSummary(null).stage,'awaiting_evidence');
+});
+test('early-stage option wording stays distinct while using the existing decision contract',async()=>{
+ const {decisionCopyKey}=await import('../monitor/dashboard.mjs');
+ for(const option of ['continue_monitoring','hold_review','defer'])for(const part of ['option','effect']) {
+  const key=decisionCopyKey({stage:'early_indication'},part,option);
+  assert.ok(messages.en[key]);assert.ok(messages.ko[key]);assert.ok(key.includes('.early.'));
+  assert.equal(decisionCopyKey({stage:'received_observation'},part,option),`decision.${part}.${option}`);
+ }
+});
+
+test('indication overview fits the site and a remote received-positive area without future or hidden positions',async()=>{
+ const {indicationOverview}=await import('../monitor/dashboard.mjs');
+ const perimeter={width_m:3000,length_m:4000,polygon:[[-1500,-2000],[1500,-2000],[1500,2000],[-1500,2000]]};
+ const viewport={width:600,height:450};
+ const report={id:'r',available_at_ms:1000,assessment:'current',object_present:true};
+ const snapshot={at_ms:2000,tracks:[],simulation_positions:[{position:[999999,0,999999]}],early_warning:{zones:[
+  {id:'remote_reference',center:[0,0,-16000],radius_m:1800,evidence:[report]},
+  {id:'future-area',center:[100000,0,-900000],radius_m:9000,evidence:[{...report,available_at_ms:3000}]},
+  {id:'old-area',center:[-900000,0,0],radius_m:8000,evidence:[{...report,assessment:'stale'}]},
+ ]}};
+ const fit=indicationOverview(snapshot,perimeter,viewport);
+ assert.ok(fit.zoom<.5);assert.ok(fit.z<0);assert.equal(fit.x,0);
+ const scale=Math.min(viewport.width/(perimeter.width_m*1.35),viewport.height/(perimeter.length_m*1.6))*fit.zoom;
+ for(const [x,z] of [...perimeter.polygon,[-1800,-17800],[1800,-14200]]){
+  assert.ok(Math.abs((x-fit.x)*scale)<=viewport.width*.4+1e-9);
+  assert.ok(Math.abs((z-fit.z)*scale)<=viewport.height*.4+1e-9);
+ }
+ assert.deepEqual(indicationOverview({...snapshot,simulation_positions:[]},perimeter,viewport),fit);
+ assert.equal(indicationOverview({...snapshot,at_ms:0},perimeter,viewport),null);
+ assert.equal(indicationOverview(snapshot,perimeter,{width:0,height:0}),null);
+});

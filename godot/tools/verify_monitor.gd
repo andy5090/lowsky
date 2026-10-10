@@ -31,7 +31,7 @@ func verify() -> void:
 	for item in preview.objects:
 		assert(not item.label.visible)
 		assert(item.node.visible, "Physical drone models remain visible without detection labels")
-	await control({"action": "seek", "at_ms": 10000})
+	await control({"action": "seek", "at_ms": 270000})
 	await create_timer(0.4).timeout
 	var received_count: int = preview.detected_ids.size()
 	assert(received_count > 0 and received_count < preview.objects.size())
@@ -45,7 +45,7 @@ func verify() -> void:
 	await control({"action": "seek", "at_ms": 0})
 	await create_timer(0.4).timeout
 	assert(preview.drone_overlay.markers().is_empty(), "Rewind clears all detection labels")
-	await control({"action": "seek", "at_ms": 65000})
+	await control({"action": "seek", "at_ms": 435000})
 	await create_timer(0.4).timeout
 	assert(preview.camera.position == preview.vector(preview.site_layout.camera.overview))
 	assert(preview.drone_overlay.mouse_filter == Control.MOUSE_FILTER_IGNORE)
@@ -56,7 +56,7 @@ func verify() -> void:
 	await control({"action": "speed", "speed": 2})
 	await control({"action": "play"})
 	await create_timer(0.8).timeout
-	assert(preview.elapsed_ms > 65000 and preview.monitor_playing)
+	assert(preview.elapsed_ms > 435000 and preview.monitor_playing)
 	assert(preview.objects[0].node.position != before_position)
 	assert(preview.camera_target.is_equal_approx(preview.objects[0].node.position))
 	assert(preview.camera.position.distance_to(preview.camera_target) < 10)

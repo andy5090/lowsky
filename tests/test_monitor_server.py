@@ -36,6 +36,13 @@ class SimulationFixture(unittest.TestCase):
 
 
 class SimulationTests(SimulationFixture):
+    def setUp(self):
+        super().setUp()
+        # Use the compact case for low-level receipt/clock contracts. Paced cases
+        # have separate early-indication integration coverage below.
+        self.select("case_003")
+        self.sim.revision = 0
+
     def test_clock_play_pause_and_speed_preserve_elapsed_time(self):
         self.clock.advance(7)
         self.assertEqual(self.sim.clock_state()["at_ms"], 0)
@@ -53,6 +60,17 @@ class SimulationTests(SimulationFixture):
         self.sim.control({"action": "play"})
         self.clock.advance(1)
         self.assertEqual(self.sim.clock_state()["at_ms"], 15000)
+
+    def test_half_speed_preserves_continuous_time_without_pausing(self):
+        self.sim.control({"action": "play"})
+        self.clock.advance(4)
+        changed = self.sim.control({"action": "speed", "speed": 0.5})
+        self.assertEqual(changed["at_ms"], 4000)
+        self.assertTrue(changed["playing"])
+        self.clock.advance(20)
+        state = self.sim.state()
+        self.assertEqual(state["at_ms"], 14000)
+        self.assertTrue(state["playing"])
 
     def test_end_clamps_and_play_starts_a_new_run(self):
         self.sim.control({"action": "seek", "at_ms": 179000})
@@ -218,19 +236,22 @@ class SimulationTests(SimulationFixture):
         self.assertFalse(any('object_id' in alert for alert in state['alerts']))
 
     def test_truth_requires_explicit_opt_in_and_never_becomes_evidence(self):
+        self.select("case_001")
         normal = self.sim.state()
         truth = self.sim.state(show_positions=True)
         self.assertEqual(normal['tracks'], [])
         self.assertNotIn('simulation_positions', normal)
         self.assertEqual(len(truth['simulation_positions']), 48)
         positions = truth.pop('simulation_positions')
+        self.assertNotIn('simulation_missions', normal)
+        truth.pop('simulation_missions')
         self.assertEqual(truth, normal)
         self.assertEqual(set(positions[0]), {'object_id', 'position'})
         self.sim.control({'action': 'seek', 'at_ms': 5000})
         later = self.sim.state(show_positions=True)
         self.assertNotEqual(later['simulation_positions'][0]['position'], positions[0]['position'])
         self.assertEqual(later['tracks'], [])
-        self.assertAlmostEqual(later['simulation_positions'][0]['position'][2], -1900 + 3800 / 36)
+        self.assertAlmostEqual(later['simulation_positions'][0]['position'][2], -18000 + 15800 * 5000 / 270000)
         self.sim.control({'action': 'case', 'case_id': 'case_003'})
         self.assertEqual(len(self.sim.state(show_positions=True)['simulation_positions']), 240)
         self.assertNotIn('simulation_positions', self.sim.state())
@@ -247,7 +268,7 @@ class SimulationTests(SimulationFixture):
         self.assertFalse(alert["acknowledged"])
 
     def test_ack_requires_current_alert_and_matching_run(self):
-        state = self.select("case_002", 60000)
+        state = self.select("case_002", 420000)
         alert_id = "object_11:contradictory"
         self.assertIn(alert_id, {a["id"] for a in state["alerts"]})
         for invalid in ({"run_id": "old", "alert_id": alert_id},
@@ -262,7 +283,7 @@ class SimulationTests(SimulationFixture):
         for command in ({"action": "seek", "at_ms": 60000},
                         {"action": "reset"}, {"action": "case", "case_id": "case_003"}):
             with self.subTest(command=command):
-                state = self.select("case_002", 60000)
+                state = self.select("case_002", 420000)
                 self.sim.control({"action": "ack", "run_id": state["run_id"],
                                   "alert_id": "object_11:contradictory"})
                 after = self.sim.control(command)
@@ -276,6 +297,50 @@ class SimulationTests(SimulationFixture):
                 with self.assertRaisesRegex(ValueError, "Stale run"):
                     self.sim.control({"action": "ack", "run_id": state["run_id"],
                                       "alert_id": "object_11:contradictory"})
+
+
+class PacedIndicationTests(SimulationFixture):
+    def test_indirect_reports_precede_direct_observations_and_do_not_reveal_positions(self):
+        before = self.select('case_001', 29999)
+        self.assertEqual(before['tracks'], [])
+        self.assertFalse(any(zone['positive_sources'] for zone in before['early_warning']['zones']))
+        early = self.sim.control(dict(action='seek', at_ms=30000))
+        self.assertEqual(early['tracks'], [])
+        self.assertTrue(any(zone['positive_sources'] for zone in early['early_warning']['zones']))
+        self.assertNotIn('simulation_positions', early)
+        self.assertEqual(early['training_timing']['early_review_ms'], 120000)
+        self.assertEqual(early['duration_ms'], 780000)
+        for zone in early['early_warning']['zones']:
+            for row in zone['evidence']:
+                self.assertLessEqual(row['available_at_ms'], early['at_ms'])
+                self.assertNotIn('object_id', row)
+                self.assertNotIn('position', row)
+        self.assertEqual(self.sim.control(dict(action='seek', at_ms=269999))['tracks'], [])
+        direct = self.sim.control(dict(action='seek', at_ms=270000))
+        self.assertGreater(len(direct['tracks']), 0)
+        self.assertTrue(all(row['available_at_ms'] <= direct['at_ms']
+                            for track in direct['tracks'] for row in track['records']))
+        # Every supporting feed accepts the longer clock, including the final frame.
+        end = self.sim.control(dict(action='seek', at_ms=780000))
+        self.assertEqual(end['at_ms'], 780000)
+        self.assertFalse(end['playing'])
+
+    def test_seeded_runs_select_case_specific_early_feed_before_varying_receipts(self):
+        self.sim.control(dict(action='start_test', case_id='case_001', seed=42))
+        self.sim.control(dict(action='pause'))
+        first = self.sim.control(dict(action='seek', at_ms=100000))
+        self.assertEqual(first['tracks'], [])
+        self.assertTrue(any(zone['positive_sources'] for zone in first['early_warning']['zones']))
+        self.assertNotIn('case_overrides', self.sim.test_early)
+        self.sim.control(dict(action='start_test', case_id='case_001', seed=42))
+        self.sim.control(dict(action='pause'))
+        repeated = self.sim.control(dict(action='seek', at_ms=100000))
+        self.assertEqual(first['early_warning'], repeated['early_warning'])
+        self.assertEqual(first['test_run'], repeated['test_run'])
+        compact = self.select('case_003', 100000)
+        self.assertEqual(compact['duration_ms'], 180000)
+        self.assertFalse(compact['training_timing'].get('paced', False))
+        self.assertEqual(self.sim._early_input()['observations'], self.sim.early_feed['observations'])
 
 
 class AssessmentTests(SimulationFixture):
@@ -304,7 +369,7 @@ class AssessmentTests(SimulationFixture):
                     run_id='model-cannot-override-run', at_ms=-1)
 
     def test_background_assessment_keeps_clock_responsive_and_freezes_received_state(self):
-        self.select('case_001', 60000)
+        self.select('case_003', 60000)
         self.sim.assessment_evaluator = self.slow_evaluator
         started = self.start('ko')
         self.assertTrue(started['running'])
@@ -316,7 +381,7 @@ class AssessmentTests(SimulationFixture):
         self.assertEqual(self.captured['at_ms'], 60000)
         before = self.captured['tracks'][0]['records'][0]['position'][:]
         row_id = self.captured['tracks'][0]['records'][0]['id']
-        next(row for row in self.sim.public['case_001']['observations']
+        next(row for row in self.sim.public['case_003']['observations']
              if row['id'] == row_id)['position'][0] = 999999
         self.assertEqual(self.captured['tracks'][0]['records'][0]['position'], before)
         self.finish()
@@ -394,7 +459,7 @@ class HTTPTests(SimulationFixture):
         self.assets = {"/": ("index.html", b"<!doctype html><title>test monitor</title>"),
                        "/app.js": ("app.js", b"export const synthetic = true;"),
                        "/styles.css": ("styles.css", b"body { color: navy; }")}
-        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg', 'test_runs.mjs'):
+        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg', 'test_runs.mjs', 'desktop.mjs', 'custom_selects.mjs'):
             self.assets['/' + name] = (name, (monitor_server.PROJECT / 'monitor' / name).read_bytes())
         for filename, content in self.assets.values():
             (self.project / "monitor" / filename).write_bytes(content)
@@ -571,7 +636,7 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(json.loads(raw)['latest']['mode'], 'rules')
 
     def test_audit_export_retains_received_review_snapshot(self):
-        state = self.select('case_001', 60000)
+        state = self.select('case_003', 60000)
         track = state['tracks'][0]
         command = dict(action='review_track', run_id=state['run_id'], object_id=track['object_id'],
                        evidence_version=track['evidence_version'], reviewer='Test operator',
@@ -586,7 +651,7 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(self.post({**command, 'run_id': 'old'})[0], 400)
 
     def test_audit_storage_failure_does_not_report_success(self):
-        state = self.select('case_001', 60000)
+        state = self.select('case_003', 60000)
         track = state['tracks'][0]
         with patch.object(self.sim.audit, 'append', side_effect=OSError('storage error')):
             status, _, raw = self.post(dict(action='review_track', run_id=state['run_id'],
@@ -636,7 +701,8 @@ class HTTPTests(SimulationFixture):
         expected_types = {"/": "text/html", "/app.js": "text/javascript", "/styles.css": "text/css"}
         expected_types.update({'/manifest.webmanifest': 'application/manifest+json',
                                '/notifications.mjs': 'text/javascript', '/sw.js': 'text/javascript', '/test_runs.mjs': 'text/javascript',
-                               '/pwa-icon.svg': 'image/svg+xml'})
+                               '/pwa-icon.svg': 'image/svg+xml', '/desktop.mjs': 'text/javascript',
+                               '/custom_selects.mjs': 'text/javascript'})
         for path, (_, expected) in self.assets.items():
             with self.subTest(path=path):
                 status, headers, body = self.request("GET", path + "?v=1")

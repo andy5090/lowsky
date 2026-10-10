@@ -7,8 +7,8 @@
     "distribution": "local_only"
   },
   "time_compression_note": {
-    "en": "Document-inspired context compressed into a 3-minute observation exercise. Story labels are not operational time or historical events.",
-    "ko": "문서에서 착안한 맥락을 3분 관측 실습으로 압축했습니다. 단계 표시는 실제 작전 시각이나 역사적 사건이 아닙니다."
+    "en": "Cases 001/002 use a 13-minute authored training timeline with a 4½-minute indirect-only review period. Case 003 remains a compact 3-minute load test. Times are fictional training assumptions, not operational or historical timings.",
+    "ko": "시나리오 001/002는 첫 4분 30초를 간접 징후 검토에 배정한 13분 학습 시간축입니다. 시나리오 003은 3분 부하 시험을 유지합니다. 시각은 가상 학습 가정이며 실제 작전·역사 시각이 아닙니다."
   },
   "events": [
     {
@@ -16,8 +16,8 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "context",
       "title": {
@@ -50,8 +50,8 @@
       "observed_at_ms": 5000,
       "available_at_ms": 5000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "health",
       "title": {
@@ -86,8 +86,42 @@
       "observed_at_ms": 10000,
       "available_at_ms": 10000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "observation",
+      "title": {
+        "en": "First report received",
+        "ko": "최초 보고 수신"
+      },
+      "summary": {
+        "en": "A received observation is now available. Keep object identity and intent unresolved.",
+        "ko": "수신된 관측 근거를 확인할 수 있습니다. 대상의 정체와 의도는 미확정으로 유지합니다."
+      },
+      "uncertainty": {
+        "en": "A single report is not independent corroboration.",
+        "ko": "단일 보고는 독립적인 교차 확인이 아닙니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [
+        "object_11"
+      ],
+      "related_event_id": null,
+      "source_ids": [],
+      "evidence_ids": [
+        "context_first"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_first",
+      "observed_at_ms": 270000,
+      "available_at_ms": 270000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "observation",
       "title": {
@@ -104,8 +138,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [
         "object_11"
@@ -122,8 +155,42 @@
       "observed_at_ms": 40000,
       "available_at_ms": 40000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "quality",
+      "title": {
+        "en": "Observation time differs from arrival time",
+        "ko": "관측 시각과 수신 시각의 차이"
+      },
+      "summary": {
+        "en": "Some reports are delayed in this synthetic feed. Compare timestamps before interpreting a disagreement.",
+        "ko": "합성 피드에서 일부 보고가 지연됩니다. 불일치를 해석하기 전에 시각을 비교합니다."
+      },
+      "uncertainty": {
+        "en": "A late report does not describe the latest position.",
+        "ko": "늦게 도착한 보고가 최신 위치를 의미하지는 않습니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [
+        "object_11"
+      ],
+      "related_event_id": null,
+      "source_ids": [],
+      "evidence_ids": [
+        "context_delay"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_delay",
+      "observed_at_ms": 360000,
+      "available_at_ms": 360000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "quality",
       "title": {
@@ -140,8 +207,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [
         "object_11"
@@ -155,11 +221,11 @@
     },
     {
       "id": "context_ambiguity",
-      "observed_at_ms": 60000,
-      "available_at_ms": 60000,
+      "observed_at_ms": 420000,
+      "available_at_ms": 420000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "quality",
       "title": {
@@ -194,8 +260,8 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "health",
       "title": {
@@ -228,8 +294,44 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "uncertainty",
+      "title": {
+        "en": "Communication type remains unknown",
+        "ko": "통신 방식 미상 유지"
+      },
+      "summary": {
+        "en": "The available records do not establish a communication link type. Record the missing evidence explicitly.",
+        "ko": "현재 기록으로 통신 연결 방식을 확인할 수 없습니다. 부족한 근거를 명시적으로 남깁니다."
+      },
+      "uncertainty": {
+        "en": "No RF evidence is not proof of fiber-optic control, autonomous operation, or no object.",
+        "ko": "RF 근거가 없다는 사실은 광섬유 제어·자율 운용·대상 부재의 증거가 아닙니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [
+        "object_11"
+      ],
+      "related_event_id": null,
+      "source_ids": [
+        "csis_links_2025"
+      ],
+      "evidence_ids": [
+        "context_unknown_link"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_unknown_link",
+      "observed_at_ms": 510000,
+      "available_at_ms": 510000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "uncertainty",
       "title": {
@@ -246,8 +348,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [
         "object_11"
@@ -266,8 +367,40 @@
       "observed_at_ms": 110000,
       "available_at_ms": 110000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "context",
+      "title": {
+        "en": "Shared airspace notice",
+        "ko": "공역 이용 공지"
+      },
+      "summary": {
+        "en": "A fictional civil flight activity notice is available for coordination review only.",
+        "ko": "가상 민간 비행 활동 공지가 협의 검토용으로 제공됩니다."
+      },
+      "uncertainty": {
+        "en": "The notice does not identify a track or change its observation quality. It is not an automated operational instruction.",
+        "ko": "공지로 항적을 식별하거나 관측 품질을 변경하지 않습니다. 자동 운용 지시가 아닙니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [],
+      "related_event_id": null,
+      "source_ids": [],
+      "evidence_ids": [
+        "context_airspace"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_airspace",
+      "observed_at_ms": 570000,
+      "available_at_ms": 570000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "context",
       "title": {
@@ -284,8 +417,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [],
       "related_event_id": null,
@@ -300,8 +432,8 @@
       "observed_at_ms": 130000,
       "available_at_ms": 130000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "quality",
       "title": {
@@ -317,8 +449,41 @@
         "ko": "복구가 저하 상태에서 수신한 과거 기록까지 소급 확인하지는 않습니다."
       },
       "case_ids": [
-        "case_002",
         "case_003"
+      ],
+      "object_ids": [
+        "object_11"
+      ],
+      "related_event_id": null,
+      "source_ids": [],
+      "evidence_ids": [
+        "context_recovery"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_recovery",
+      "observed_at_ms": 630000,
+      "available_at_ms": 630000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "quality",
+      "title": {
+        "en": "Fresh reports available again",
+        "ko": "새 보고 다시 수신"
+      },
+      "summary": {
+        "en": "The current channels provide matching observations again. Earlier disagreements and missing reports remain in history.",
+        "ko": "현재 채널들의 관측이 다시 일치합니다. 이전의 불일치와 보고 누락은 이력에 남습니다."
+      },
+      "uncertainty": {
+        "en": "Recovery does not retrospectively confirm records received during degraded conditions.",
+        "ko": "복구가 저하 상태에서 수신한 과거 기록까지 소급 확인하지는 않습니다."
+      },
+      "case_ids": [
+        "case_002"
       ],
       "object_ids": [
         "object_11"
@@ -335,8 +500,42 @@
       "observed_at_ms": 150000,
       "available_at_ms": 150000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "review",
+      "title": {
+        "en": "Revisit the earlier observation",
+        "ko": "이전 관측 다시 검토"
+      },
+      "summary": {
+        "en": "This review prompt links to the first received report and any notes actually entered in this run.",
+        "ko": "이번 실행에서 처음 수신한 보고와 실제 작성한 검토 기록을 다시 연결합니다."
+      },
+      "uncertainty": {
+        "en": "The link is a scripted review thread, not automated recognition of the same vehicle or a threat escalation.",
+        "ko": "연결은 대본 기반 검토 묶음이며 동일 차량 자동 인식이나 위협 등급 격상이 아닙니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [
+        "object_11"
+      ],
+      "related_event_id": "context_first",
+      "source_ids": [],
+      "evidence_ids": [
+        "context_revisit"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_revisit",
+      "observed_at_ms": 690000,
+      "available_at_ms": 690000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "review",
       "title": {
@@ -353,8 +552,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [
         "object_11"
@@ -371,8 +569,40 @@
       "observed_at_ms": 180000,
       "available_at_ms": 180000,
       "story_time": {
-        "en": "Compressed review timeline",
-        "ko": "압축 검토 시간축"
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
+      },
+      "kind": "review",
+      "title": {
+        "en": "End-of-run review",
+        "ko": "실행 종료 검토"
+      },
+      "summary": {
+        "en": "Summarize received context and human review decisions from this run.",
+        "ko": "이번 실행에 수신된 맥락과 사람이 입력한 검토 결정을 집계합니다."
+      },
+      "uncertainty": {
+        "en": "Classification accuracy and outcome effectiveness are not measured. An empty log stays empty.",
+        "ko": "분류 정확도와 대응 효과는 측정하지 않습니다. 입력하지 않은 검토 기록은 생성하지 않습니다."
+      },
+      "case_ids": [
+        "case_003"
+      ],
+      "object_ids": [],
+      "related_event_id": null,
+      "source_ids": [],
+      "evidence_ids": [
+        "context_close"
+      ],
+      "synthetic": true
+    },
+    {
+      "id": "context_close",
+      "observed_at_ms": 780000,
+      "available_at_ms": 780000,
+      "story_time": {
+        "en": "Synthetic review timeline",
+        "ko": "가상 검토 시간축"
       },
       "kind": "review",
       "title": {
@@ -389,8 +619,7 @@
       },
       "case_ids": [
         "case_001",
-        "case_002",
-        "case_003"
+        "case_002"
       ],
       "object_ids": [],
       "related_event_id": null,

@@ -20,6 +20,7 @@
     <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">Decision making workspace</span></div>
     <div class="system-status"><span class="status-label" data-i18n="dataConnection">Data connection</span><span id="connection-status" class="status-pill" role="status" data-i18n="connecting">Waiting for connection</span></div>
     <div class="language-field"><label class="sr-only" for="language-select" data-i18n="language">Language</label><select id="language-select" aria-label="Language" data-i18n-aria-label="language"><option value="en" lang="en">EN</option><option value="ko" lang="ko">한국어</option></select></div>
+    <div id="desktop-controls" class="desktop-controls" hidden role="group" aria-label="Desktop views" data-i18n-aria-label="desktop.views"><button id="desktop-open-3d" class="button button-secondary" type="button" data-i18n="desktop.open3d" title="F6">3D view</button><button id="desktop-close-3d" class="button button-secondary" type="button" data-i18n="desktop.close3d">Close 3D</button><button id="desktop-fullscreen" class="button button-secondary" type="button" data-i18n="desktop.enterFullscreen" title="F11">Fullscreen</button><span id="desktop-status" role="status" aria-live="polite"></span></div>
   </header>
 
   <div class="demo-banner"><span class="demo-badge" data-i18n="simulation">SIMULATION</span><span data-i18n="syntheticBanner">Synthetic scenario · Not real facility or flight information</span><span class="banner-note" data-i18n="bannerNote">Explore changes in observations and data quality.</span></div>
@@ -27,6 +28,7 @@
   <main id="main" class="workspace">
     <div class="workspace-heading">
       <div><p class="eyebrow" data-i18n="workspaceEyebrow">LOW SKY / WORKSPACE</p><h1 data-i18n="monitorTitle">Observation monitor</h1></div>
+
 
     </div>
 
@@ -55,7 +57,7 @@
         <div class="playback-actions">
           <button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button>
           <button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button>
-          <div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+          <div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
         </div>
       </div>
       <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="180000" step="1000" value="0">
@@ -75,6 +77,8 @@
 
     </div>
 
+    <aside id="priority-toast" class="priority-toast" hidden role="status" aria-live="polite"><span id="priority-toast-text"></span><button id="priority-toast-review" class="button button-secondary" type="button" data-i18n="priority.review">Review updates</button><button id="priority-toast-dismiss" class="button button-secondary" type="button" aria-label="Dismiss notification" data-i18n-aria-label="priority.dismiss">×</button></aside>
+    <dialog id="priority-dialog" class="review-dialog priority-dialog" aria-labelledby="priority-title"><div class="decision-form"><h3 id="priority-title" data-i18n="priority.title">Review needs your attention</h3><p id="priority-message"></p><p id="priority-context" class="muted"></p><div class="decision-form-actions"><button id="priority-review" class="button button-primary" type="button" data-i18n="priority.choices">Review current choices</button><button id="priority-ack" class="button button-secondary" type="button" data-i18n="priority.ack">Acknowledge notice</button></div><small data-i18n="priority.ackNote">Acknowledging this notice does not make a decision.</small></div></dialog>
     <aside id="decision-attention" class="decision-attention" hidden><span id="decision-attention-text"></span><a href="#decision-title" class="button button-primary" data-i18n="decision.viewChoices">View choices</a></aside>
 
 <div id="workbench" class="workbench" data-panel="decision"><div class="workbench-toolbar">      <nav class="view-tabs" aria-label="Monitor views" data-i18n-aria-label="viewLabel">
@@ -93,7 +97,7 @@
 
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
-            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button><button type="button" id="positions-toggle" aria-pressed="false" data-i18n="positions.toggle">Show drone positions</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
+            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="map-indication-overview" data-i18n="indication.overview">Indication overview</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button><button type="button" id="positions-toggle" aria-pressed="false" data-i18n="positions.toggle">Show drone positions</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
             <div id="positions-status" class="positions-status" hidden data-i18n="positions.warning">SIM ground truth · Includes undetected drones · Not sensor evidence</div>
             <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
               <div id="map-tiles" aria-hidden="true"></div>
@@ -119,7 +123,34 @@
     </section><section id="alerts-view" aria-labelledby="alerts-title" hidden>
       <div class="panel alerts-panel"><div class="panel-heading"><div><span class="section-number">01</span><h2 id="alerts-title" data-i18n="qualityAlerts">Current observation quality alerts</h2></div><span class="eyebrow" data-i18n="alertsEyebrow">CURRENT ALERTS</span></div><div class="alerts-intro"><p data-i18n="alertsIntro">Review observation quality at the current replay time.</p><span data-i18n="alertsNote">Shown for the selected scenario and replay time.</span></div><ul id="alert-list" data-empty="Waiting for data." class="alert-list" aria-label="Current observation quality alerts" data-i18n-aria-label="qualityAlerts"></ul></div>
     </section><div id="alerts-events-host"></div></div>
-<div class="inspector-pane"><div id="pane-decision" class="workspace-pane" tabindex="0" role="region" aria-label="decision" data-i18n-aria-label="layout.decision"><section class="panel dashboard-panel" aria-labelledby="dashboard-title">
+<div class="inspector-pane"><div id="pane-decision" class="workspace-pane" tabindex="0" role="region" aria-label="decision" data-i18n-aria-label="layout.decision"><section class="panel decision-panel" aria-labelledby="decision-title">
+      <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
+      <div class="decision-request"><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button></div>
+      <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
+      <p id="decision-expired" class="decision-status" role="status" hidden></p>
+      <p id="decision-timing" class="muted"></p><p id="decision-new-evidence" class="muted" hidden></p>
+        <div id="decision-event" class="decision-event"></div>
+      <dialog id="decision-dialog" class="review-dialog" aria-labelledby="decision-confirm-summary"><form id="decision-form" class="decision-form" hidden>
+        <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
+        <p id="decision-confirm-summary"></p><p id="decision-modal-context" class="muted"></p><div id="decision-modal-brief"></div><p id="decision-draft-status" role="status" aria-live="polite"></p>
+        <details id="decision-extra"><summary data-i18n="decision.extra">Add a comment (optional)</summary>
+          <label for="decision-reason" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="decision-reason" rows="3" maxlength="1000"></textarea>
+          <label for="decision-reviewer" data-i18n="decision.alias">Reviewer alias (optional)</label><input id="decision-reviewer" maxlength="80" autocomplete="off">
+        </details>
+        <p class="muted" data-i18n="decision.local">This records a local simulation decision. The reviewer alias is self-entered.</p>
+        <div class="decision-form-actions"><button id="decision-confirm" type="submit" class="button button-primary" data-i18n="decision.confirm">Confirm and apply</button><button id="decision-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
+      </form></dialog>
+      <details class="decision-settings"><summary data-i18n="decision.settings">Assessment settings & export</summary>      <div class="agent-controls"><label><input id="decision-enabled" type="checkbox" checked> <span data-i18n="decision.guided">Pause and assess important events</span></label><a href="/api/decisions/audit" download="lowsky-decisions.json" class="button button-secondary" data-i18n="decision.export">Export decision journal</a></div>
+      <div class="decision-language-controls"><label><input id="decision-bilingual" type="checkbox"><span data-i18n="decision.bilingual">Show choices in English and Korean</span></label><p id="decision-bilingual-note" class="muted" hidden data-i18n="decision.originalReport">Choice labels and effects are bilingual. Agent reasoning remains in its original assessment language.</p></div>
+</details>
+      <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
+    </section><section class="panel indication-panel" aria-labelledby="indication-title">
+      <div class="panel-heading"><div><span class="section-number">SIGNAL REVIEW</span><h2 id="indication-title" data-i18n="indication.title">Review before direct detection</h2></div><span id="indication-stage" class="status-pill"></span></div>
+      <div class="indication-body"><p id="indication-summary"></p><p id="indication-uncertainty" class="muted" data-i18n="indication.uncertainty">Area signals do not locate a tracked object or establish its type or intent.</p>
+      <div id="indication-zones" class="indication-zones"></div>
+      <details><summary data-i18n="indication.alternativesTitle">What else could explain this?</summary><p class="muted" data-i18n="indication.alternatives">Ordinary aircraft, vehicles or other environmental sound, sensor faults, and delayed reports remain possible explanations. Check source reliability, timing, and an independent report.</p></details>
+      <div class="indication-controls"><button id="indication-assess" class="button button-primary" type="button" data-i18n="indication.assess">Review received indications</button><button id="indication-overview" class="button button-secondary" type="button" data-i18n="indication.overview">Indication overview</button><button id="indication-signals" class="button button-secondary" type="button" data-i18n="indication.signals">Inspect area signals</button></div></div>
+    </section><section class="panel dashboard-panel" aria-labelledby="dashboard-title">
       <div class="panel-heading"><div><span class="section-number">REVIEW</span><h2 id="dashboard-title" data-i18n="dashboard.title">Decision dashboard</h2></div><span id="dashboard-status" class="status-pill"></span></div>
       <div class="dashboard-toolbar"><label for="dashboard-object" data-i18n="dashboard.object">Received object</label><select id="dashboard-object"></select><span id="dashboard-priority" class="dashboard-priority" hidden data-i18n="dashboard.priority">Review priority raised</span><a href="/api/dashboard/audit" download="lowsky-review-decisions.json" data-i18n="dashboard.export">Export review journal</a></div>
       <p id="dashboard-empty" class="agent-scope" data-i18n="dashboard.empty">A judgment card appears after an observation is received.</p>
@@ -142,27 +173,6 @@
       </div>
       <p id="dashboard-notice" class="dashboard-notice" role="status" aria-live="polite"></p>
       <details class="decision-history"><summary data-i18n="dashboard.history">Recent review actions</summary><ol id="dashboard-history"></ol></details>
-    </section><section class="panel decision-panel" aria-labelledby="decision-title">
-      <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
-      <div class="agent-controls"><label><input id="decision-enabled" type="checkbox" checked> <span data-i18n="decision.guided">Pause and assess important events</span></label><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button><a href="/api/decisions/audit" download="lowsky-decisions.json" class="button button-secondary" data-i18n="decision.export">Export decision journal</a></div>
-      <p class="agent-scope" data-i18n="decision.scope">Simulation time continues during assessment and decisions. Choices close when the situation changes or their response window expires.</p>
-
-      <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
-      <div class="decision-language-controls"><label><input id="decision-bilingual" type="checkbox"><span data-i18n="decision.bilingual">Show choices in English and Korean</span></label><p id="decision-bilingual-note" class="muted" hidden data-i18n="decision.originalReport">Choice labels and effects are bilingual. Agent reasoning remains in its original assessment language.</p></div>
-      <p id="decision-expired" class="decision-status" role="status" hidden></p>
-      <p id="decision-timing" class="muted"></p>
-        <div id="decision-event" class="decision-event"></div>
-      <dialog id="decision-dialog" class="review-dialog" aria-labelledby="decision-confirm-summary"><form id="decision-form" class="decision-form" hidden>
-        <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
-        <p id="decision-confirm-summary"></p><p id="decision-modal-context" class="muted"></p><p id="decision-draft-status" role="status" aria-live="polite"></p>
-        <details id="decision-extra"><summary data-i18n="decision.extra">Add a comment (optional)</summary>
-          <label for="decision-reason" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="decision-reason" rows="3" maxlength="1000"></textarea>
-          <label for="decision-reviewer" data-i18n="decision.alias">Reviewer alias (optional)</label><input id="decision-reviewer" maxlength="80" autocomplete="off">
-        </details>
-        <p class="muted" data-i18n="decision.local">This records a local simulation decision. The reviewer alias is self-entered.</p>
-        <div class="decision-form-actions"><button id="decision-confirm" type="submit" class="button button-primary" data-i18n="decision.confirm">Confirm and apply</button><button id="decision-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
-      </form></dialog>
-      <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
     </section><section class="panel agent-panel" aria-labelledby="agent-title">
       <div class="panel-heading"><div><span class="section-number">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
       <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>
@@ -227,9 +237,10 @@
       <summary data-i18n="exercise.title">Scripted training branch</summary>
       <div class="rehearsal-body">
         <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
+        <section class="exercise-mission-section" aria-labelledby="exercise-mission-title"><h3 id="exercise-mission-title" data-i18n="exercise.missions">Observed scene progression</h3><p class="muted" data-i18n="exercise.missionScope">Authored fictional events for received actors. These are not conclusions about identity or measured defense effectiveness.</p><div id="exercise-missions" class="exercise-missions"></div></section>
         <ul id="exercise-assets" class="exercise-assets"></ul>
         <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
-        <div id="exercise-options" class="decision-options"></div>
+        <p id="exercise-fixed-asset" class="muted" hidden data-i18n="exercise.fixedAsset">This authored scene uses its predefined facility.</p><div id="exercise-options" class="decision-options"></div>
         <p id="exercise-status" role="status" aria-live="polite"></p>
         <dialog id="exercise-dialog" class="review-dialog" aria-labelledby="exercise-confirm-title"><div class="decision-form"><h3 id="exercise-confirm-title" data-i18n="exercise.confirm">Confirm training branch</h3><p id="exercise-modal-summary"></p><p id="exercise-modal-effect"></p><p id="exercise-modal-context" class="muted"></p><p data-i18n="exercise.scope">Predefined training outcome. Time continues.</p><div class="decision-form-actions"><button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button><button id="exercise-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div></div></dialog>
       </div>

@@ -2,10 +2,12 @@ extends RefCounted
 ## Public-map surroundings. X east, Z south; all placement is in local meters.
 ## Tree locations are illustrative samples inside mapped tree-cover pixels.
 
-const TREE_LIMIT = 60000
+const TREE_LIMIT = 300000
 const TREE_SPACING = 14.0
 const BIN_SIZE = 100.0
 const CHUNK_SIZE = 500.0
+const FOREST_LOD_DISTANCE = 1250.0
+const FOREST_LOD_MARGIN = 70.0
 
 static func make(context: Dictionary, landcover: Image, height_at: Callable, layout: Dictionary) -> Node3D:
 	var root = Node3D.new()
@@ -301,8 +303,10 @@ static func _forest(parent: Node3D, cover: Image, height_at: Callable, extent: f
 		var origin = Vector3(key.x * CHUNK_SIZE, 0, key.y * CHUNK_SIZE)
 		chunks[key].append(Transform3D(basis, _ground(point, height_at) - origin))
 	var meshes: Array[ArrayMesh] = []
+	var proxies: Array[ArrayMesh] = []
 	for species in range(4):
 		meshes.append(_tree_mesh(species))
+		proxies.append(_tree_proxy(species))
 	var material = _material(Color.WHITE, true)
 	for key in chunks:
 		var transforms: Array = chunks[key]
@@ -311,19 +315,82 @@ static func _forest(parent: Node3D, cover: Image, height_at: Callable, extent: f
 		multimesh.use_colors = true
 		multimesh.mesh = meshes[key.z]
 		multimesh.instance_count = transforms.size()
+		# Populate both LODs directly: the headless renderer has no readable buffer.
+		var far_multimesh = MultiMesh.new()
+		far_multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		far_multimesh.use_colors = true
+		far_multimesh.mesh = proxies[key.z]
+		far_multimesh.instance_count = transforms.size()
+		var bounds = AABB(transforms[0].origin, Vector3.ZERO)
 		for index in range(transforms.size()):
+			bounds = bounds.merge(AABB(transforms[index].origin - Vector3(9, 0, 9), Vector3(18, 23, 18)))
 			multimesh.set_instance_transform(index, transforms[index])
+			far_multimesh.set_instance_transform(index, transforms[index])
 			var shade = rng.randf_range(0.8, 1.12)
-			multimesh.set_instance_color(index, Color(shade * rng.randf_range(0.92, 1.05), shade, shade * rng.randf_range(0.9, 1.06)))
+			var color = Color(shade * rng.randf_range(0.92, 1.05), shade, shade * rng.randf_range(0.9, 1.06))
+			multimesh.set_instance_color(index, color)
+			far_multimesh.set_instance_color(index, color)
 		var node = MultiMeshInstance3D.new()
 		node.name = "Trees_%s_%s_%s" % [key.x, key.y, key.z]
 		node.position = Vector3(key.x * CHUNK_SIZE, 0, key.y * CHUNK_SIZE)
 		node.multimesh = multimesh
 		node.material_override = material
+		node.custom_aabb = bounds
+		node.set_meta("forest_lod", "near")
+		node.set_meta("is_far_proxy", false)
 		parent.add_child(node)
+		# The far instance owns the visibility threshold. Its dependent near
+		# instance becomes visible when the proxy hides, with shared hysteresis.
+		# Identical bounds prevent camera distance differences between both LODs.
+		var far = MultiMeshInstance3D.new()
+		far.name = "Far_" + str(node.name)
+		far.position = node.position
+		far.multimesh = far_multimesh
+		far.material_override = material
+		far.custom_aabb = bounds
+		far.visibility_range_begin = FOREST_LOD_DISTANCE
+		far.visibility_range_begin_margin = FOREST_LOD_MARGIN
+		far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		far.set_meta("forest_lod", "far")
+		far.set_meta("is_far_proxy", true)
+		parent.add_child(far)
+		node.visibility_parent = NodePath("../" + str(far.name))
+	parent.set_meta("lod_distance_m", FOREST_LOD_DISTANCE)
+	parent.set_meta("lod_hysteresis_m", FOREST_LOD_MARGIN)
 	parent.set_meta("eligible_samples", candidates)
 	parent.set_meta("chunk_size_m", CHUNK_SIZE)
 	return trees.size()
+
+static func _tree_proxy(species: int) -> ArrayMesh:
+	var surface = _surface()
+	var color: Color = [Color("425534"), Color("526341"), Color("354e35"), Color("314e3b")][species]
+	# A rounded six-sided crown keeps the height/width silhouette at distance;
+	# a triangular trunk adds only six triangles. No distant shadow pass.
+	for side in range(6):
+		var angle = side * TAU / 6.0
+		var next = (side + 1) * TAU / 6.0
+		var a = Vector3(cos(angle) * 0.40, 0.53, sin(angle) * 0.40)
+		var b = Vector3(cos(next) * 0.40, 0.53, sin(next) * 0.40)
+		if species == 3:
+			a = Vector3(cos(angle) * 0.36, 0.30, sin(angle) * 0.36)
+			b = Vector3(cos(next) * 0.36, 0.30, sin(next) * 0.36)
+			_triangle(surface, a, Vector3(0, 1.0, 0), b, color)
+		else:
+			var upper_a = Vector3(cos(angle) * 0.32, 0.80, sin(angle) * 0.32)
+			var upper_b = Vector3(cos(next) * 0.32, 0.80, sin(next) * 0.32)
+			_triangle(surface, a, upper_a, b, color)
+			_triangle(surface, b, upper_a, upper_b, color)
+			_triangle(surface, upper_a, Vector3(0, 1.0, 0), upper_b, color)
+			_triangle(surface, b, Vector3(0, 0.29, 0), a, color * 0.92)
+	for side in range(3):
+		var angle = side * TAU / 3.0
+		var next = (side + 1) * TAU / 3.0
+		var a = Vector3(cos(angle) * 0.022, 0, sin(angle) * 0.022)
+		var b = Vector3(cos(next) * 0.022, 0, sin(next) * 0.022)
+		_triangle(surface, a, a + Vector3.UP * 0.43, b, Color("554c3d"))
+		_triangle(surface, b, a + Vector3.UP * 0.43, b + Vector3.UP * 0.43, Color("554c3d"))
+	surface.generate_normals()
+	return surface.commit()
 
 static func _tree_mesh(species: int) -> ArrayMesh:
 	var surface = _surface()

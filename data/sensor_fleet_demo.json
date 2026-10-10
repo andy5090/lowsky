@@ -3,18 +3,63 @@
   "synthetic": true,
   "health_only": true,
   "purpose": "240 virtual logical sensor endpoints for health-display workload testing. Counts are assumptions, not physical deployments or detection coverage. Heartbeats do not produce object detections or affect channels A/B.",
-  "duration_ms": 180000,
+  "duration_ms": 780000,
   "heartbeat_interval_ms": 10000,
   "receipt_delay_ms": 1000,
   "freshness_ms": 20000,
   "groups": [
-    {"id": "personnel_phone", "count": 60, "label": {"en": "Personnel phones", "ko": "인원 휴대폰"}},
-    {"id": "facility_sensor", "count": 60, "label": {"en": "Facility sensors", "ko": "시설 센서"}},
-    {"id": "civilian_phone", "count": 60, "label": {"en": "Civilian phones", "ko": "민간 휴대폰"}},
-    {"id": "fixed_phone", "count": 60, "label": {"en": "Fixed phones", "ko": "고정 휴대폰"}}
+    {
+      "id": "personnel_phone",
+      "count": 60,
+      "label": {
+        "en": "Personnel phones",
+        "ko": "인원 휴대폰"
+      }
+    },
+    {
+      "id": "facility_sensor",
+      "count": 60,
+      "label": {
+        "en": "Facility sensors",
+        "ko": "시설 센서"
+      }
+    },
+    {
+      "id": "civilian_phone",
+      "count": 60,
+      "label": {
+        "en": "Civilian phones",
+        "ko": "민간 휴대폰"
+      }
+    },
+    {
+      "id": "fixed_phone",
+      "count": 60,
+      "label": {
+        "en": "Fixed phones",
+        "ko": "고정 휴대폰"
+      }
+    }
   ],
   "interruptions": [
-    {"case_id": "case_003", "group_id": "facility_sensor", "from_ms": 60000, "until_ms": 130000, "mode": "offline"},
-    {"case_id": "case_003", "group_id": "fixed_phone", "from_ms": 60000, "until_ms": 130000, "mode": "silent"}
-  ]
+    {
+      "case_id": "case_003",
+      "group_id": "facility_sensor",
+      "from_ms": 60000,
+      "until_ms": 130000,
+      "mode": "offline"
+    },
+    {
+      "case_id": "case_003",
+      "group_id": "fixed_phone",
+      "from_ms": 60000,
+      "until_ms": 130000,
+      "mode": "silent"
+    }
+  ],
+  "case_duration_ms": {
+    "case_001": 780000,
+    "case_002": 780000,
+    "case_003": 180000
+  }
 }

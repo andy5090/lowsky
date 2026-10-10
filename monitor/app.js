@@ -1,13 +1,22 @@
+import {enhanceSelects} from './custom_selects.mjs';
+import {desktopCommand, desktopShortcut, acceptDesktopState} from './desktop.mjs';
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
-import {DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
-import {exerciseConfirmation} from './exercise.mjs';
-import {decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
+import {indicationOverview, earlyIndicationSummary, decisionCopyKey, DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
+import {exerciseConfirmation, exerciseMissionRows} from './exercise.mjs';
+import {activeDecision, decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
-import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
+import {createAlertPriorityPolicy, priorityAlertKey, createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
+const customSelects=enhanceSelects(document);
+let selectSyncQueued=false;
+function syncSelects() {
+  if(selectSyncQueued)return;
+  selectSyncQueued=true;
+  queueMicrotask(()=>{selectSyncQueued=false;customSelects.sync();});
+}
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let language = 'en';
 try { language = readLanguage(localStorage); } catch { /* Storage may be unavailable. */ }
@@ -16,6 +25,7 @@ const localized = value => value?.[language] || value?.en || '';
 const qualityLabel = quality => t(`quality.${quality}`);
 const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
+let desktopState=null,desktopBusy=false,desktopConnected=false,desktopError=false,desktopRequestVersion=0;
 const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')}`;
 let briefings = [], briefingSignature = '';
 let situationSignature = '', situationRun = null, situationOptions = '', reviewPending = false;
@@ -27,6 +37,8 @@ let assessmentSignature = '';
 let decisions = null, decisionBusy = false, decisionDraft = null, decisionError = '', decisionSignature = '';
 let decisionLanguagePending = false, decisionAvailable = false;
 let decisionNoticeRun = null;
+const alertPriority=createAlertPriorityPolicy();
+let priorityQueue=[],priorityExpiredChoice=null,priorityToastTimer=null;
 let rehearsals = null, rehearsalRecords = null, rehearsalBusy = false, rehearsalError = false, rehearsalRequest = 0, rehearsalSignature = '';
 let dashboardChoice = null, dashboardBusy = false, dashboardNotice = '', dashboardContext = '';
 let exerciseExpired = false;
@@ -51,7 +63,48 @@ async function api(path, body) {
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
+function renderDesktop() {
+  syncSelects();
+  $('desktop-controls').hidden=desktopState?.available!==true;
+  const options={busy:desktopBusy,connected:desktopConnected};
+  $('desktop-open-3d').disabled=!desktopCommand(desktopState,'open_3d',options);
+  $('desktop-close-3d').disabled=!desktopCommand(desktopState,'close_3d',options);
+  $('desktop-fullscreen').disabled=!desktopCommand(desktopState,'toggle_monitor_fullscreen',options);
+  $('desktop-fullscreen').textContent=t(desktopState?.fullscreen?'desktop.exitFullscreen':'desktop.enterFullscreen');
+  $('desktop-fullscreen').setAttribute('aria-pressed',String(Boolean(desktopState?.fullscreen)));
+  $('desktop-status').textContent=desktopBusy || desktopState?.pending?t('desktop.pending'):desktopError || desktopState?.error?t('desktop.failed'):'';
+}
+async function pollDesktop() {
+  const version=desktopRequestVersion;
+  if(!desktopBusy)try {
+    const result=await api('/api/desktop');
+    if(version===desktopRequestVersion){desktopState=acceptDesktopState(desktopState,result);desktopConnected=true;desktopError=false;renderDesktop();}
+  }catch{if(version===desktopRequestVersion){desktopConnected=false;desktopError=desktopState?.available===true;renderDesktop();}}
+  setTimeout(pollDesktop,1000);
+}
+async function desktopAction(action) {
+  const body=desktopCommand(desktopState,action,{busy:desktopBusy,connected:desktopConnected});
+  if(!body)return;
+  desktopBusy=true;desktopError=false;const version=++desktopRequestVersion;renderDesktop();
+  try {
+    const result=await api('/api/desktop',body);
+    if(version===desktopRequestVersion){desktopState=acceptDesktopState(desktopState,result);desktopConnected=true;}
+  }catch{desktopError=true;desktopConnected=false;}
+  finally{desktopBusy=false;renderDesktop();}
+}
+$('desktop-open-3d').onclick=()=>desktopAction('open_3d');
+$('desktop-close-3d').onclick=()=>desktopAction('close_3d');
+$('desktop-fullscreen').onclick=()=>desktopAction('toggle_monitor_fullscreen');
+document.addEventListener('keydown',event=>{
+  const body=desktopShortcut(event.key,desktopState,{busy:desktopBusy,connected:desktopConnected,
+    editing:Boolean(event.target.closest?.('input,textarea,select,[role="combobox"],[role="listbox"],[contenteditable="true"]')),
+    modal:Boolean(document.querySelector('dialog[open]')),repeat:event.repeat,
+    modifier:event.altKey || event.ctrlKey || event.metaKey || event.shiftKey});
+  if(body){event.preventDefault();desktopAction(body.action);}
+});
+
 function connection(ok, message='') {
+  syncSelects();
   connected = ok; connectionMessage = message;
   $('connection-status').textContent = ok ? t('connected') : t('disconnected');
   $('connection-status').classList.toggle('is-connected', ok);
@@ -80,6 +133,7 @@ async function poll() {
   setTimeout(poll, 500);
 }
 function render(data) {
+  syncSelects();
   state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
   renderBriefing();
@@ -97,6 +151,7 @@ function render(data) {
   renderDashboard();
 }
 function renderPlayback(data) {
+  syncSelects();
   $('case-select').value = data.case_id;
   $('sim-status').textContent = data.playing ? t('playing') : data.at_ms >= data.duration_ms ? t('finished') : t('paused');
   $('sim-status').classList.toggle('running', data.playing);
@@ -114,6 +169,7 @@ function renderPlayback(data) {
 }
 function select(id) { selected = id; renderDetails(); drawMap(); renderDashboard(); }
 function renderDetails() {
+  syncSelects();
   if(!state) return;
   $('track-count').textContent = state.tracks.length;
   if (queueRun !== state.run_id) { queuePage = 0; queueRun = state.run_id; }
@@ -148,6 +204,7 @@ function renderDetails() {
   $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
 }
 function renderAssessment() {
+  syncSelects();
   $('agent-mode').textContent = t(assessment?.mode==='llm'?'agent.llm':'agent.rules');
   const configurationError = assessment?.configuration_error;
   $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running) || Boolean(configurationError);
@@ -195,9 +252,94 @@ $('decision-bilingual').onchange=()=>{decisionSignature='';renderDecisions();};
 
 function currentDecision() {
   if (!decisions || !state || decisions.run_id !== state.run_id) return null;
-  return [...(decisions.events || [])].reverse().find(event=>!['decided','superseded','expired'].includes(event.status)) || null;
+  return activeDecision(decisions.events || [], decisionDraft);
+}
+function renderIndications() {
+  syncSelects();
+  const summary=earlyIndicationSummary(state);
+  $('indication-stage').textContent=t(`indication.stage.${summary.stage}`);
+  $('indication-summary').textContent=t('indication.summary',{zones:summary.zone_count,positive:summary.positive,tracks:summary.track_count});
+  $('indication-overview').disabled=!config || summary.positive===0;
+  $('map-indication-overview').disabled=!config || summary.positive===0;
+  $('indication-assess').disabled=!connected || !state || decisionBusy || !summary.zone_count || currentDecision()?.status==='evaluating';
+  const signature=JSON.stringify([language,summary]);
+  if($('indication-zones').dataset.signature!==signature) {
+    $('indication-zones').dataset.signature=signature;
+    const ranked=[...summary.zones].sort((a,b)=>Number(b.conflict)-Number(a.conflict) || b.positive-a.positive);
+    $('indication-zones').innerHTML=ranked.slice(0,3).map(zone=>`<div><strong>${escape(zoneLabel(state.early_warning.zones.find(item=>item.id===zone.id)))}</strong><button type="button" class="button button-secondary" data-indication-focus="${escape(zone.id)}" aria-label="${escape(t('indication.focusArea',{area:zoneLabel(state.early_warning.zones.find(item=>item.id===zone.id))}))}">${escape(t('early.focus'))}</button><span>${escape(t('indication.quality',{current:zone.current,stale:zone.stale,unavailable:zone.unavailable}))}${zone.conflict?` · ${escape(t('indication.conflict'))}`:''}</span><small>${escape(t('indication.lastReceived',{time:fmt(zone.latest_received_ms)}))}</small></div>`).join('') || `<p class="muted">${escape(t('indication.empty'))}</p>`;
+    $('indication-zones').querySelectorAll('[data-indication-focus]').forEach(button=>button.onclick=()=>focusZone(button.dataset.indicationFocus));
+    if(ranked.length>3)$('indication-zones').innerHTML+=`<p class="muted">${escape(t('indication.more',{count:ranked.length-3}))}</p>`;
+  }
+}
+$('indication-assess').onclick=()=>decisionAction({action:'assess_current',language});
+$('indication-signals').onclick=()=>showPanel('signals');
+function showIndicationOverview() {
+  if(!config || !state)return;
+  revealMap();
+  const view=indicationOverview(state,config.site.perimeter,{width:map.clientWidth,height:map.clientHeight});
+  if(view){Object.assign(plan,view);setMode('site');map.focus({preventScroll:true});}
+}
+$('indication-overview').onclick=showIndicationOverview;
+$('map-indication-overview').onclick=showIndicationOverview;
+
+function dismissPriority() {
+  const key=$('priority-dialog').dataset.noticeKey;
+  priorityQueue=priorityQueue.filter(notice=>notice.key!==key);
+  if($('priority-dialog').open)$('priority-dialog').close();
+}
+function openPriority() {
+  const notice=priorityQueue[0];
+  if(!notice || document.hidden || document.querySelector('dialog[open]'))return;
+  $('priority-dialog').dataset.noticeKey=notice.key;
+  $('priority-message').textContent=t(`priority.${notice.kind}`);
+  $('priority-context').textContent=t('priority.time',{time:fmt(state.at_ms)});
+  $('priority-review').hidden=notice.kind==='choice_expired' && !currentDecision();
+  $('priority-dialog').showModal();
+  $('priority-toast').hidden=true;
+}
+function priorityToast(message) {
+  clearTimeout(priorityToastTimer);
+  $('priority-toast-text').textContent=message;
+  $('priority-toast').hidden=false;
+  priorityToastTimer=setTimeout(()=>{$('priority-toast').hidden=true;},8000);
+}
+function renderPriorityAlerts() {
+  syncSelects();
+  if(!state)return;
+  const event=currentDecision();
+  const updates=alertPriority.observe(state,event,{expiredChoice:priorityExpiredChoice});
+  priorityExpiredChoice=null;
+  if(updates.reset){priorityQueue=[];$('priority-toast').hidden=true;clearTimeout(priorityToastTimer);}
+  priorityQueue=priorityQueue.filter(notice=>connected && notice.run_id===state.run_id && notice.expires_at_ms>state.at_ms
+    && (notice.kind==='choice_expired' || (event?.id===notice.event_id && decisionOpen(event))));
+  if($('priority-dialog').open && !priorityQueue.some(notice=>notice.key===$('priority-dialog').dataset.noticeKey))$('priority-dialog').close();
+  if(connected)for(const notice of updates.high) {
+    priorityQueue.push({...notice,run_id:state.run_id});
+    // The same opted-in delivery path handles minimized windows without low-priority noise.
+    notifier?.notifyCurrent({...state,alerts:[{id:`priority:${notice.key}`,kind:notice.kind==='direct_transition'?'review_transition':'review_expired',acknowledged:false}]});
+  }
+  if(updates.medium.length && connected && !priorityQueue.length)priorityToast(t('priority.updated',{count:updates.medium.length}));
+  if(priorityQueue.length && !$('priority-dialog').open) {
+    const editing=document.activeElement?.matches('input,textarea,select,[role="combobox"],[role="listbox"],[contenteditable="true"]');
+    if(!editing && !document.querySelector('dialog[open]'))openPriority();
+    else if(updates.high.length)priorityToast(t('priority.queued'));
+  }
+  if($('priority-dialog').open)$('priority-context').textContent=t('priority.time',{time:fmt(state.at_ms)});
+}
+$('priority-ack').onclick=dismissPriority;
+$('priority-dialog').addEventListener('cancel',dismissPriority);
+$('priority-review').onclick=()=>{dismissPriority();showPanel('decision');$('decision-title').scrollIntoView({block:'nearest'});$('decision-title').focus({preventScroll:true});};
+$('priority-toast-review').onclick=()=>{if(priorityQueue.length)openPriority();else showPanel('signals');$('priority-toast').hidden=true;};
+$('priority-toast-dismiss').onclick=()=>{$('priority-toast').hidden=true;};
+
+function decisionBriefHTML(event,report) {
+  if(!report)return '';
+  const mode=report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules');
+  return `<section class="decision-overall"><h3>${escape(t('decision.overall'))}</h3><p class="agent-summary">${escape(report.summary || '')}</p><small class="decision-overall-basis">${escape(t('decision.capturedBasis',{time:fmt(event.at_ms),mode}))}${event.new_evidence_available?` · ${escape(t('decision.capturedOnly'))}`:''}${report.language!==language?` · ${escape(t('decision.languageMismatch'))}`:''}</small><div class="decision-brief-facts">${['uncertain'].map(kind=>`<div><h4>${escape(t(`agent.${kind}`))}</h4><ul>${(report[kind] || []).slice(0,1).map(item=>`<li>${escape(item.text)}</li>`).join('') || `<li>${escape(t('none'))}</li>`}</ul></div>`).join('')}</div></section>`;
 }
 function renderDecisions() {
+  syncSelects();
+  renderIndications();
   renderOperator();
   if($('rehearsal-panel').open)renderRehearsals();
   if (decisionNoticeRun !== state?.run_id) {
@@ -205,7 +347,7 @@ function renderDecisions() {
     decisionNoticeRun = state?.run_id;
   }
   const event = currentDecision();
-  if(decisionDraft && (!connected || decisionDraftStatus(decisionDraft,event,state,language)!=='ready')) { decisionDraft=null; decisionError='dashboard.expired'; }
+  if(decisionDraft && (!connected || decisionDraftStatus(decisionDraft,event,state,language)!=='ready')) { const prior=decisions?.events?.find(item=>item.id===decisionDraft.event_id);if(connected && decisionDraft.run_id===state?.run_id && prior && (['expired','superseded'].includes(prior.status) || prior.expires_at_ms<=state.at_ms))priorityExpiredChoice=decisionDraft.event_id; decisionDraft=null; decisionError='dashboard.expired'; }
   const expired = decisions?.run_id===state?.run_id ? (decisions.events || []).find(item=>item.status==='expired' && item.run_id===state.run_id) : null;
   $('decision-expired').textContent = expired ? t('decision.expiredNotice',{time:fmt(expired.at_ms),reason:t(`decision.expiration.${expired.expiration_reason}`)}) : '';
   $('decision-expired').hidden = !expired;
@@ -219,17 +361,21 @@ function renderDecisions() {
   $('decision-assess').disabled = !connected || !state || decisionBusy || event?.status === 'evaluating';
   const statusKey = decisionStatusKey(event, decisions?.enabled, decisionError);
   $('decision-status').textContent = operatorActive() ? t('operator.autoNotice') : t(statusKey);
-  $('decision-attention').hidden = !event && !expired;
+  $('decision-status').hidden = Boolean(event?.status === 'ready' && !decisionError && !operatorActive());
+  $('decision-assess').parentElement.hidden = Boolean(event);
+  $('decision-attention').hidden = true;
   $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : expired ? $('decision-expired').textContent : '';
   const report = decisionReport(event);
   $('decision-timing').textContent = event ? t('decision.timing',{captured:fmt(event.at_ms),now:fmt(state.at_ms),age:fmt(Math.max(0,state.at_ms-event.at_ms)),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms)),count:(decisions.events || []).filter(item=>!['decided','superseded','expired'].includes(item.status)).length}) : '';
+  $('decision-new-evidence').hidden=!event?.new_evidence_available;
+  $('decision-new-evidence').textContent=t('indication.newEvidence',{time:fmt(event?.latest_evidence_at_ms || 0)});
   $('decision-bilingual-note').hidden = !$('decision-bilingual').checked;
   const signature = JSON.stringify([language,event,decisionBusy,operatorActive(),decisionDraft?.event_id,decisionDraft?.option_id]);
   if (signature !== decisionSignature) {
     decisionSignature = signature;
-    $('decision-event').innerHTML = event ? `<p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p>
-      <ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul>
-      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${decisionText(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${decisionText(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${!decisionOpen(event) || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+    $('decision-event').innerHTML = event ? `
+      ${report ? `${decisionBriefHTML(event,report)}<div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><button type="button" class="button button-secondary" data-decision-option="${option.id}" aria-pressed="${decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id}" ${!decisionOpen(event) || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${decisionText(decisionCopyKey(event,'option',option.id))}${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.suggested')}</span>`:''}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="decision-option-reasons">${(report.decision_options || []).map(option=>`<p><strong>${decisionText(decisionCopyKey(event,'option',option.id))}</strong><br>${escape(option.reason)}</p>`).join('')}</div><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      <details class="decision-trigger-details"><summary>${escape(t('decision.triggerDetails'))}</summary><p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p><ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul></details>
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
       decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
@@ -242,12 +388,14 @@ function renderDecisions() {
   $('decision-form').hidden = !decisionDraft;
   if (decisionDraft) {
     const status = decisionDraftStatus(decisionDraft,event,state,language);
-    $('decision-confirm-summary').textContent = `${t(`decision.option.${decisionDraft.option_id}`)} · ${t(`decision.effect.${decisionDraft.option_id}`)} · ${fmt(decisionDraft.at_ms)} · ${decisionDraft.event_id}`;
+    $('decision-confirm-summary').textContent = `${t(decisionCopyKey(event,'option',decisionDraft.option_id))} · ${t(decisionCopyKey(event,'effect',decisionDraft.option_id))}`;
+    $('decision-modal-brief').innerHTML=decisionBriefHTML(event,report);
     $('decision-modal-context').textContent=t('dashboard.modalContext',{evidence:fmt(event.at_ms),now:fmt(state.at_ms),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms))});
     $('decision-draft-status').textContent = status === 'stale' ? t('decision.stale') : t('decision.confirmNote');
     $('decision-confirm').disabled = !connected || !decisionAvailable || decisionBusy || operatorActive() || status !== 'ready';
   }
   $('decision-history').innerHTML = (decisions && state && decisions.run_id===state.run_id ? decisions.history || [] : []).map(record=>`<li>${record.actor?.type==='automated_test'?`<strong>${t('operator.automated')}</strong> · `:''}${fmt(record.at_ms || 0)} · ${escape(t(`decision.option.${record.option_id}`))}<p>${escape(record.reason || '')}</p></li>`).join('') || `<li>${t('none')}</li>`;
+  renderPriorityAlerts();
 }
 async function decisionAction(body) {
   if (!connected || !state || decisionBusy) return false;
@@ -288,6 +436,7 @@ $('decision-form').onsubmit=async event=>{
 };
 
 function renderRehearsals() {
+  syncSelects();
   $('rehearsal-refresh').disabled = rehearsalBusy;
   $('rehearsal-run').disabled = rehearsalBusy || !rehearsals?.runs?.length;
   const selectedRun = $('rehearsal-run').value || rehearsals?.current_run_id;
@@ -316,6 +465,7 @@ function renderRehearsals() {
   }).join('');
 }
 function renderRehearsalRuns(selectedRun) {
+  syncSelects();
   $('rehearsal-run').innerHTML = (rehearsals?.runs || []).map(run=>{
     const input=run.test_run;
     const provenance=input?.mode==='seeded'?t('rehearsal.seed',{seed:input.seed}):t(input?.mode==='fixture'?'rehearsal.baseline':'rehearsal.unknownSeed');
@@ -345,6 +495,7 @@ $('rehearsal-run').onchange=()=>loadRehearsals(false);
 
 function operatorActive() { return Boolean(testOperator?.active && testOperator.run_id === state?.run_id); }
 function renderOperator() {
+  syncSelects();
   const active = operatorActive();
   const config = testOperator?.configuration;
   $('operator-start').disabled = !connected || operatorBusy || active || !config?.available || state?.test_run?.mode !== 'seeded' || !decisions?.enabled || state?.at_ms >= state?.duration_ms;
@@ -375,6 +526,7 @@ for (const [dialogId,attribute,fallback] of [['dashboard-dialog','data-dashboard
 }
 
 function renderDashboard() {
+  syncSelects();
   const context = `${state?.run_id || ''}:${selected || ''}`;
   if (dashboardContext !== context && !dashboardChoice) {
     dashboardNotice=''; $('dashboard-comment').value=''; $('dashboard-reason').value='';
@@ -465,6 +617,7 @@ $('dashboard-form').onsubmit=event=>{
 };
 
 function renderExercise() {
+  syncSelects();
   const exercise = state?.exercise;
   const available = exercise?.scope === 'scripted_training';
   if (exerciseRun !== state?.run_id || (state?.at_ms || 0) < exerciseAt) {
@@ -473,10 +626,12 @@ function renderExercise() {
   }
   exerciseRun = state?.run_id; exerciseAt = state?.at_ms || 0;
   const selectedBranch = exercise?.selection;
-  if (exerciseDraft && (!connected || !exerciseConfirmation(state,exerciseDraft,true) || state.at_ms+5000>=state.duration_ms)) { exerciseDraft = null;exerciseExpired=true; }
+  if (exerciseDraft && (!connected || !exerciseConfirmation(state,exerciseDraft,true))) { exerciseDraft = null;exerciseExpired=true; }
   if(!exerciseDraft && $('exercise-dialog').open) $('exercise-dialog').close();
   const disabled = !connected || !available || exerciseBusy || Boolean(selectedBranch);
   const objects = exercise?.eligible_objects || [], assets = exercise?.assets || [], branches = exercise?.branches || [];
+  const missions=exerciseMissionRows(state);
+  const selectedMission=missions.find(mission=>mission.object_id===$('exercise-object').value);
   for (const [id, rows, label] of [['exercise-object',objects.map(id=>({id,label:id})),'exercise.chooseObject'],['exercise-asset',assets.map(asset=>({id:asset.id,label:localized(asset.label)})),'exercise.chooseAsset']]) {
     const select = $(id), signature = JSON.stringify([language,rows]);
     if (select.dataset.signature !== signature) {
@@ -485,7 +640,14 @@ function renderExercise() {
       if(rows.some(row=>row.id===previous))select.value=previous;
       select.dataset.signature = signature;
     }
-    select.disabled = disabled || !objects.length;
+    if(id==='exercise-asset' && selectedMission)select.value=selectedMission.asset_id;
+    select.disabled = disabled || !objects.length || (id==='exercise-asset' && Boolean(selectedMission));
+  }
+  $('exercise-fixed-asset').hidden=!selectedMission;
+  const missionSignature=JSON.stringify([language,missions,assets.map(asset=>[asset.id,asset.label])]);
+  if($('exercise-missions').dataset.signature!==missionSignature) {
+    $('exercise-missions').dataset.signature=missionSignature;
+    $('exercise-missions').innerHTML=missions.map(mission=>`<article><strong>${escape(mission.object_id)} · ${escape(t(`exercise.kind.${mission.kind}`))}</strong><p>${escape(t(`exercise.phase.${mission.phase}`))} · ${escape(localized(assets.find(asset=>asset.id===mission.asset_id)?.label) || mission.asset_id)}</p><span>${escape(mission.outcome?t(`exercise.outcome.${mission.outcome}`):t('exercise.outcome.pending'))}${mission.result_at_ms===null?'':` · ${fmt(mission.result_at_ms)}`}</span></article>`).join('') || `<p class="muted">${escape(t('exercise.missionEmpty'))}</p>`;
   }
   const assetSignature = JSON.stringify([language,assets]);
   if ($('exercise-assets').dataset.signature !== assetSignature) {
@@ -497,10 +659,10 @@ function renderExercise() {
     });
   }
   const canChoose = !disabled && objects.includes($('exercise-object').value) && assets.some(asset=>asset.id===$('exercise-asset').value);
-  const optionsSignature = JSON.stringify([language,branches,canChoose,exerciseDraft?.branch_id]);
+  const optionsSignature = JSON.stringify([language,branches,canChoose,exerciseDraft?.branch_id,selectedMission?.id]);
   if ($('exercise-options').dataset.signature !== optionsSignature) {
     $('exercise-options').dataset.signature = optionsSignature;
-    $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t('exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${exerciseDraft?.branch_id===branch.id}" ${canChoose?'':'disabled'}>${escape(t(exerciseDraft?.branch_id===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
+    $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t((selectedMission?branch.mission_result_timing:branch.result_timing)==='finale'?'exercise.finaleDelay':'exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${exerciseDraft?.branch_id===branch.id}" ${canChoose?'':'disabled'}>${escape(t(exerciseDraft?.branch_id===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
     $('exercise-options').querySelectorAll('[data-exercise-branch]').forEach(button=>button.onclick=()=>{
       exerciseDraft = {run_id:state.run_id,object_id:$('exercise-object').value,asset_id:$('exercise-asset').value,branch_id:button.dataset.exerciseBranch};
       exerciseError=false;exerciseExpired=false;renderExercise();
@@ -525,10 +687,12 @@ $('exercise-cancel').onclick=()=>{exerciseDraft=null;exerciseExpired=false;rende
 for (const id of ['exercise-object','exercise-asset']) $(id).onchange=()=>{exerciseDraft=null;exerciseError=false;exerciseExpired=false;renderExercise();};
 $('exercise-confirm').onclick=()=>{
   if(!connected || exerciseBusy)return;
-  const body=exerciseConfirmation(state,exerciseDraft,true);
-  if(!body)return;
+  const draft=exerciseDraft;
+  if(!exerciseConfirmation(state,draft,true))return;
   exerciseBusy=true;exerciseError=false;renderExercise();
   controlChain=controlChain.then(async()=>{
+    const body=connected && exerciseDraft===draft ? exerciseConfirmation(state,draft,true) : null;
+    if(!body){exerciseBusy=false;exerciseDraft=null;exerciseExpired=true;renderExercise();return;}
     const version=++requestVersion;
     try {const data=await api('/api/control',body);if(version===requestVersion)render(data);exerciseDraft=null;}
     catch {exerciseError=true;}
@@ -537,6 +701,7 @@ $('exercise-confirm').onclick=()=>{
 };
 
 function renderWorkload() {
+  syncSelects();
   if (!state) return;
   const queue = reviewQueue(state.tracks, state.track_reviews);
   $('workload-summary').innerHTML = [['received',queue.received],['current',queue.current],['attention',queue.attention],['unreviewed',queue.unreviewed]].map(([key,count])=>`<div><strong>${count}</strong><span>${t(`workload.${key}`)}</span></div>`).join('');
@@ -547,6 +712,7 @@ function renderWorkload() {
   $('fleet-last-seen').textContent = t('fleet.lastSeen',{total:fleet?.total || 0,received:received.length,time:last});
 }
 function renderCommentSuggestions(scope, keys, disabled=false) {
+  syncSelects();
   const box=$(`${scope}-suggestions`);
   const selected=selectedComments[scope];
   const options=selected && !keys.includes(selected)?[...keys,selected]:keys;
@@ -564,6 +730,7 @@ function trackReviewStatus(key='') {
   $('track-review-status').textContent = key ? t(key) : '';
 }
 function updateTrackReviewAvailability() {
+  syncSelects();
   const track = state?.tracks.find(track=>track.object_id===selected);
   const stale = track && reviewTargetVersion && track.evidence_version !== reviewTargetVersion;
   $('track-review-submit').disabled = !connected || trackReviewBusy || !track || Boolean(stale);
@@ -572,6 +739,7 @@ function updateTrackReviewAvailability() {
   if (stale && !trackReviewBusy) trackReviewStatus('review.changed');
 }
 function renderEvidenceExplanation(track) {
+  syncSelects();
   const key = `${state.run_id}:${track?.object_id || ''}`;
   if (reviewTargetKey !== key) {
     const hadDraft = Boolean($('track-reason').value.trim() || selectedComments.track);
@@ -620,11 +788,13 @@ function reviewStatus(key = '') {
   $('situation-review-status').textContent = key ? t(key) : '';
 }
 function updateReviewAvailability() {
+  syncSelects();
   const unavailable = !connected || reviewPending || !state?.situation?.events?.length;
   for (const id of ['situation-event-select','situation-decision','situation-reason','situation-submit']) $(id).disabled = unavailable;
   document.querySelectorAll('#situation-suggestions button').forEach(button=>button.disabled=unavailable);
 }
 function renderSituation() {
+  syncSelects();
   const situation = state?.situation;
   const events = situation?.events || [];
   const eventSelect = $('situation-event-select');
@@ -710,7 +880,15 @@ $('situation-review-form').onsubmit = event => {
 function zoneLabel(zone) { return zone?.label?.[language] || zone?.label?.en || zone?.id || t('early.unknown'); }
 function focusZone(id) {
   const zone = state?.early_warning?.zones.find(z=>z.id===id);
-  if(!zone)return;
+  if(!zone || !config)return;
+  if(zone.id==='remote_reference') {
+    revealMap();
+    const received=earlyIndicationSummary(state).zones.some(item=>item.id===zone.id && item.positive>0);
+    if(!received)return;
+    const base=Math.min(map.clientWidth/(config.site.perimeter.width_m*1.35),map.clientHeight/(config.site.perimeter.length_m*1.6));
+    Object.assign(plan,{x:zone.center[0],z:zone.center[2],zoom:Math.min(30,Math.min(map.clientWidth,map.clientHeight)*.7/(zone.radius_m*2*base))});
+    setMode('site');map.focus({preventScroll:true});return;
+  }
   const [lat,lon]=localToGeo(zone.center[0],zone.center[2],config.regional_map.site_origin);
   Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:14});revealMap();setMode('region');
 }
@@ -722,6 +900,7 @@ function deviceHealthHTML(evidence) {
   return `<small class="device-health">${t('early.healthAsReported')}: ${t('early.power')} ${t(`early.power.${power}`)} · ${t('early.network')} ${t(`early.network.${network}`)}</small>`;
 }
 function renderEarlyWarning() {
+  syncSelects();
   const feed=state?.early_warning;
   if(!feed)return;
   $('early-count').textContent=feed.zones.filter(z=>z.positive_sources>0).length;
@@ -752,13 +931,17 @@ function point(x,z) {
   }
   const s=planScale();return [map.clientWidth/2+(x-plan.x)*s,map.clientHeight/2+(z-plan.z)*s];
 }
+function visibleSignalZones() {
+  const positive=new Set(earlyIndicationSummary(state).zones.filter(zone=>zone.positive>0).map(zone=>zone.id));
+  return (state?.early_warning?.zones || []).filter(zone=>zone.id!=='remote_reference' || positive.has(zone.id));
+}
 function drawSite() {
   const {site} = config, w=map.clientWidth,h=map.clientHeight,s=planScale();
   overlay.setAttribute('viewBox',`0 0 ${w} ${h}`);
   let svg = '<defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="#48717a26" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="#0a151b"/><rect width="100%" height="100%" fill="url(#grid)"/>';
   if(mode==='region') svg='';
   const rect=(cx,cz,width,length,fill,stroke,extra='')=>{const [x,y]=point(cx-width/2,cz-length/2),[right,bottom]=point(cx+width/2,cz+length/2);return `<rect x="${x}" y="${y}" width="${right-x}" height="${bottom-y}" fill="${fill}" stroke="${stroke}" ${extra}/>`;};
-  for(const z of state?.early_warning?.zones || []){
+  for(const z of visibleSignalZones()){
     const [cx,cy]=point(z.center[0],z.center[2]);
     const active=z.positive_sources>0,color=active?'#dfb86a':'#8bc9cf';
     svg+=`<circle cx="${cx}" cy="${cy}" r="${z.radius_m*s}" fill="${color}18" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 5"/>`;
@@ -813,7 +996,7 @@ function drawSite() {
   overlay.innerHTML=svg;
   markers.replaceChildren();
   markers.classList.toggle('dense-tracks',(state?.tracks.length || 0)>48);
-  for(const z of state?.early_warning?.zones || []){
+  for(const z of visibleSignalZones()){
     const [x,y]=point(z.center[0],z.center[2]);
     if(x<0||x>w||y<0||y>h)continue;
     const marker=document.createElement('button');marker.className='area-marker';marker.dataset.status=z.status;
@@ -922,7 +1105,7 @@ function setMode(next){
   tiles.hidden=mode!=='region';$('map-attribution').hidden=mode!=='region';
   document.querySelector('.map-legend').hidden=false; drawMap();
 }
-function zoom(delta){ if(mode==='site')plan.zoom=Math.max(.5,Math.min(30,plan.zoom*(delta>0?1.35:1/1.35)));else region.zoom=Math.max(3,Math.min(18,region.zoom+delta)); drawMap(); }
+function zoom(delta){ if(mode==='site')plan.zoom=Math.max(.01,Math.min(30,plan.zoom*(delta>0?1.35:1/1.35)));else region.zoom=Math.max(3,Math.min(18,region.zoom+delta)); drawMap(); }
 $('site-plan-button').onclick=()=>setMode('site');$('region-map-button').onclick=()=>setMode('region');
 $('zoom-in').onclick=()=>zoom(1);$('zoom-out').onclick=()=>zoom(-1);
 $('recenter').onclick=()=>{plan.x=plan.z=0;plan.zoom=1;Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});drawMap();};
@@ -963,6 +1146,7 @@ $('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.valu
 const compactWorkspace = window.matchMedia('(max-width: 1099px)');
 let activePanel = compactWorkspace.matches ? 'map' : 'decision';
 function showPanel(panel) {
+  syncSelects();
   activePanel = panel === 'map' && !compactWorkspace.matches ? 'decision' : panel;
   $('workbench').dataset.panel = activePanel;
   for (const button of document.querySelectorAll('[data-panel].panel-tab')) {
@@ -993,6 +1177,7 @@ function showView(view) {
 for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>showView(tab.dataset.view);
 
 function renderNotificationSettings() {
+  syncSelects();
   if(!notifier)return;
   const status=notifier.getState();
   $('notification-toggle').textContent=t(status.optedIn?'notify.disable':'notify.enable');
@@ -1004,6 +1189,8 @@ function renderNotificationSettings() {
 }
 function notificationText(alerts, snapshot) {
   const subjects=alerts.slice(0,3).map(alert=>{
+    if(alert.kind==='review_transition')return t('priority.direct_transition');
+    if(alert.kind==='review_expired')return t('priority.choice_expired');
     if(alert.kind==='early_warning')return zoneLabel(snapshot.early_warning?.zones.find(z=>z.id===alert.zone_id));
     return `${alert.object_id || alert.source_id || ''} · ${t(['contradictory','not_comparable','stale','channel'].includes(alert.kind)?`alert.${alert.kind}`:'alert.unknown')}`;
   });
@@ -1046,6 +1233,7 @@ $('pwa-install').onclick=async()=>{
 };
 window.addEventListener('appinstalled',()=>{$('pwa-install').hidden=true;installPrompt=null;});
 function renderBriefing() {
+  syncSelects();
   const caseId=state?.case_id || $('case-select').value;
   const brief=briefings.find(b=>b.case_id===caseId);
   if(!brief)return;
@@ -1067,12 +1255,14 @@ function renderBriefing() {
 }
 
 function renderCases() {
+  syncSelects();
   if (!config) return;
   const current = state?.case_id || $('case-select').value;
   $('case-select').innerHTML = config.cases.map(c => `<option value="${escape(c.case_id)}">${escape(c.case_id)} · ${escape(localized(briefings.find(b=>b.case_id===c.case_id)?.name) || t(`variant.${c.variant}`))}</option>`).join('');
   if (current) $('case-select').value = current;
 }
 function applyLanguage(next, persist = false) {
+  syncSelects();
   language = normalizeLanguage(next);
   if (persist) { try { saveLanguage(localStorage, language); } catch { /* Storage may be unavailable. */ } }
   document.documentElement.lang = language;
@@ -1093,6 +1283,7 @@ function applyLanguage(next, persist = false) {
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');
   renderNotificationSettings();
+  renderDesktop();
 }
 $('language-select').onchange = event => {applyLanguage(event.target.value, true);syncDecisionLanguage();};
 let notificationStorage;
@@ -1100,12 +1291,13 @@ try{notificationStorage=localStorage;}catch{ /* Session-only opt-in if storage i
 const notificationSupported=isSecureContext && 'Notification' in window && 'serviceWorker' in navigator && 'MessageChannel' in window;
 const registrationPromise=isSecureContext && 'serviceWorker' in navigator
   ? navigator.serviceWorker.register('/sw.js').catch(()=>null) : Promise.resolve(null);
-notifier=createNotificationController({registration:registrationPromise,storage:notificationStorage,supported:notificationSupported,getPermission:()=>notificationSupported?Notification.permission:'default',formatMessage:notificationText,onChange:()=>renderNotificationSettings()});
+notifier=createNotificationController({registration:registrationPromise,storage:notificationStorage,supported:notificationSupported,getPermission:()=>notificationSupported?Notification.permission:'default',formatMessage:notificationText,alertFilter:alert=>Boolean(priorityAlertKey(alert)),alertKey:priorityAlertKey,onChange:()=>renderNotificationSettings()});
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',event=>{if(event.data?.type==='open-alerts')showView('alerts');});
 if(new URLSearchParams(location.search).get('view')==='alerts')showView('alerts');
 window.addEventListener('focus',()=>renderNotificationSettings());
 window.addEventListener('storage',event=>{if(event.key===NOTIFICATION_STORAGE_KEY){notifier.setEnabled(event.newValue==='1');notificationMessage='';renderNotificationSettings();}});
 applyLanguage(language);
+pollDesktop();
 try{
   config=await api('/api/config');
   renderCases();

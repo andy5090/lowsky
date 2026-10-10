@@ -91,7 +91,7 @@ class DesktopPackagingTests(unittest.TestCase):
                 with self.assertRaises(smoke.SmokeError):
                     smoke.read_ready(process, timeout=1)
         process = Process()
-        process.stdout = io.StringIO('{"event":"ready","port":12345}\n')
+        process.stdout = io.StringIO(json.dumps(dict(event="ready", port=12345, desktop_token="x" * 43)) + "\n")
         self.assertEqual(smoke.read_ready(process, timeout=1), 12345)
 
     def test_missing_packaged_data_fails_before_process_start(self):

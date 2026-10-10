@@ -32,7 +32,7 @@ class KoreanContextTests(unittest.TestCase):
         source = (terrain / document.pop("source_snapshot")).read_bytes()
         self.assertEqual(document.pop("source_sha256"), hashlib.sha256(source).hexdigest())
         self.assertEqual(document, build(json.loads(gzip.decompress(source)), origin))
-        self.assertGreater(len(document["roads"]), 2000)
+        self.assertGreater(len(document["roads"]), 1000)
         self.assertGreater(len(document["buildings"]), 200)
         self.assertEqual(len({b["id"] for b in document["buildings"]}), len(document["buildings"]))
 
