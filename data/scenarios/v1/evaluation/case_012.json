@@ -1,0 +1,184 @@
+{
+  "checkpoints": [
+    {
+      "at_ms": 30000,
+      "object_id": "object_41",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 30000,
+      "object_id": "object_42",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 30000,
+      "object_id": "object_43",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 60000,
+      "object_id": "object_41",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 60000,
+      "object_id": "object_42",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 60000,
+      "object_id": "object_43",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_41",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_42",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_43",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_41",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_42",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_43",
+      "expected_state": "missing",
+      "required_topics": [
+        "unavailable_source",
+        "last_observation_time",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    }
+  ]
+}

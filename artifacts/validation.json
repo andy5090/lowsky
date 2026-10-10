@@ -1,0 +1,61 @@
+{
+  "cases": 12,
+  "scene_groups": 4,
+  "observations": 324,
+  "checkpoints": 144,
+  "procedural_glb_assets": 7,
+  "external_glb_assets": 5,
+  "external_file_hashes_verified": 21,
+  "godot_version_tested": "4.5.stable.official.876b29033",
+  "python_unit_tests_passed": 12,
+  "godot_integration": "PASS: 12 cases, source status, keyframe positions, playback and camera input, detailed fictional buildings, PBR mipmaps and 5 external models",
+  "render": "Original hills and new plains renders inspected; final environment art remains open",
+  "not_implemented": [
+    "Deep Agents integration",
+    "observation-only UI",
+    "human review logging",
+    "final high-quality environment"
+  ],
+  "background": "fictional_air_force_base",
+  "art_direction": "photorealism_oriented_initial_scene",
+  "realistic_source_files_verified": 15,
+  "terrain_test": {
+    "preset": "fictional_plains",
+    "source": "Procedural geometry and existing materials; no map or DEM tiles",
+    "default": true,
+    "compare_control": "T or Terrain button; --hills for original startup",
+    "checks": [
+      "Godot import and script parsing passed",
+      "12 Python tests passed",
+      "Dataset validator: 12 cases, 324 observations, 144 checkpoints",
+      "Godot integration: level airfield and terrain toggling preserve scenario time, branch and object position",
+      "Close and overview renders inspected"
+    ],
+    "screenshots": [
+      "artifacts/plains-preview.png",
+      "artifacts/plains-overview.png"
+    ],
+    "limitations": [
+      "Procedural foliage is provisional",
+      "No final photorealism or geographic fidelity claim"
+    ]
+  },
+  "camera_controls": {
+    "controls": [
+      "Left/middle drag: ground-plane pan",
+      "Right/Shift+Left drag: orbit",
+      "H: home; C: view around current center"
+    ],
+    "verified": [
+      "Rendered-window viewport input: pan, orbit, UI button delivery, release over UI, focus loss, pitch clamp and home",
+      "Headless integration: camera events and existing 12-case replay; native UI delivery skipped",
+      "Updated controls rendered without text clipping"
+    ],
+    "changed_files": [
+      "godot/preview.gd",
+      "godot/tools/verify_preview.gd",
+      "README.md"
+    ],
+    "dependencies_added": false
+  }
+}

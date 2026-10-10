@@ -1,0 +1,3 @@
+# Preserve upstream asset and license bytes for provenance checksum verification.
+godot/third_party/** -text
+godot/third_party/kenney_industrial/License.txt -whitespace

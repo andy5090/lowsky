@@ -1,0 +1,154 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "duration_ms": 120000,
+  "objects": [
+    {
+      "object_id": "object_31",
+      "visual": {
+        "asset_id": "aerial_marker",
+        "marker_label": "circle"
+      },
+      "keyframes": [
+        {
+          "at_ms": 0,
+          "position": [
+            -28,
+            4,
+            -18
+          ]
+        },
+        {
+          "at_ms": 30000,
+          "position": [
+            -16,
+            4,
+            -18
+          ]
+        },
+        {
+          "at_ms": 60000,
+          "position": [
+            -4,
+            4,
+            -18
+          ]
+        },
+        {
+          "at_ms": 90000,
+          "position": [
+            8,
+            4,
+            -18
+          ]
+        },
+        {
+          "at_ms": 120000,
+          "position": [
+            20,
+            4,
+            -18
+          ]
+        }
+      ]
+    },
+    {
+      "object_id": "object_32",
+      "visual": {
+        "asset_id": "aerial_marker",
+        "marker_label": "square"
+      },
+      "keyframes": [
+        {
+          "at_ms": 0,
+          "position": [
+            -28,
+            7,
+            0
+          ]
+        },
+        {
+          "at_ms": 30000,
+          "position": [
+            -16,
+            7,
+            0
+          ]
+        },
+        {
+          "at_ms": 60000,
+          "position": [
+            -4,
+            7,
+            0
+          ]
+        },
+        {
+          "at_ms": 90000,
+          "position": [
+            8,
+            7,
+            0
+          ]
+        },
+        {
+          "at_ms": 120000,
+          "position": [
+            20,
+            7,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "object_id": "object_33",
+      "visual": {
+        "asset_id": "aerial_marker",
+        "marker_label": "triangle"
+      },
+      "keyframes": [
+        {
+          "at_ms": 0,
+          "position": [
+            -28,
+            10,
+            18
+          ]
+        },
+        {
+          "at_ms": 30000,
+          "position": [
+            -16,
+            10,
+            18
+          ]
+        },
+        {
+          "at_ms": 60000,
+          "position": [
+            -4,
+            10,
+            18
+          ]
+        },
+        {
+          "at_ms": 90000,
+          "position": [
+            8,
+            10,
+            18
+          ]
+        },
+        {
+          "at_ms": 120000,
+          "position": [
+            20,
+            10,
+            18
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,503 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "duration_ms": 120000,
+  "object_ids": [
+    "object_11",
+    "object_12",
+    "object_13"
+  ],
+  "source_ids": [
+    "channel_a",
+    "channel_b"
+  ],
+  "freshness_ms": 45000,
+  "observations": [
+    {
+      "id": "obs_001",
+      "object_id": "object_11",
+      "source_id": "channel_a",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_002",
+      "object_id": "object_12",
+      "source_id": "channel_a",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_003",
+      "object_id": "object_13",
+      "source_id": "channel_a",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_004",
+      "object_id": "object_11",
+      "source_id": "channel_b",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_005",
+      "object_id": "object_12",
+      "source_id": "channel_b",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_006",
+      "object_id": "object_13",
+      "source_id": "channel_b",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "position": [
+        -30,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_007",
+      "object_id": "object_11",
+      "source_id": "channel_a",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_008",
+      "object_id": "object_12",
+      "source_id": "channel_a",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_009",
+      "object_id": "object_13",
+      "source_id": "channel_a",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_010",
+      "object_id": "object_11",
+      "source_id": "channel_b",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_011",
+      "object_id": "object_12",
+      "source_id": "channel_b",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_012",
+      "object_id": "object_13",
+      "source_id": "channel_b",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "position": [
+        -18,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_013",
+      "object_id": "object_11",
+      "source_id": "channel_a",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_014",
+      "object_id": "object_12",
+      "source_id": "channel_a",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_015",
+      "object_id": "object_13",
+      "source_id": "channel_a",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_016",
+      "object_id": "object_11",
+      "source_id": "channel_b",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        4,
+        -18
+      ],
+      "marker_label": "diamond"
+    },
+    {
+      "id": "obs_017",
+      "object_id": "object_12",
+      "source_id": "channel_b",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_018",
+      "object_id": "object_13",
+      "source_id": "channel_b",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "position": [
+        -6,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_019",
+      "object_id": "object_11",
+      "source_id": "channel_a",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_020",
+      "object_id": "object_12",
+      "source_id": "channel_a",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_021",
+      "object_id": "object_13",
+      "source_id": "channel_a",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_022",
+      "object_id": "object_11",
+      "source_id": "channel_b",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        4,
+        -18
+      ],
+      "marker_label": "diamond"
+    },
+    {
+      "id": "obs_023",
+      "object_id": "object_12",
+      "source_id": "channel_b",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_024",
+      "object_id": "object_13",
+      "source_id": "channel_b",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "position": [
+        6,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_025",
+      "object_id": "object_11",
+      "source_id": "channel_a",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        4,
+        -18
+      ],
+      "marker_label": "circle"
+    },
+    {
+      "id": "obs_026",
+      "object_id": "object_12",
+      "source_id": "channel_a",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_027",
+      "object_id": "object_13",
+      "source_id": "channel_a",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    },
+    {
+      "id": "obs_028",
+      "object_id": "object_11",
+      "source_id": "channel_b",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        4,
+        -18
+      ],
+      "marker_label": "diamond"
+    },
+    {
+      "id": "obs_029",
+      "object_id": "object_12",
+      "source_id": "channel_b",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        7,
+        0
+      ],
+      "marker_label": "square"
+    },
+    {
+      "id": "obs_030",
+      "object_id": "object_13",
+      "source_id": "channel_b",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "position": [
+        18,
+        10,
+        18
+      ],
+      "marker_label": "triangle"
+    }
+  ],
+  "source_health": [
+    {
+      "id": "health_001",
+      "source_id": "channel_a",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "status": "online"
+    },
+    {
+      "id": "health_002",
+      "source_id": "channel_b",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "status": "online"
+    },
+    {
+      "id": "health_003",
+      "source_id": "channel_a",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "status": "online"
+    },
+    {
+      "id": "health_004",
+      "source_id": "channel_b",
+      "observed_at_ms": 30000,
+      "available_at_ms": 30000,
+      "status": "online"
+    },
+    {
+      "id": "health_005",
+      "source_id": "channel_a",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "status": "online"
+    },
+    {
+      "id": "health_006",
+      "source_id": "channel_b",
+      "observed_at_ms": 60000,
+      "available_at_ms": 60000,
+      "status": "online"
+    },
+    {
+      "id": "health_007",
+      "source_id": "channel_a",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "status": "online"
+    },
+    {
+      "id": "health_008",
+      "source_id": "channel_b",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "status": "online"
+    },
+    {
+      "id": "health_009",
+      "source_id": "channel_a",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "status": "online"
+    },
+    {
+      "id": "health_010",
+      "source_id": "channel_b",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "status": "online"
+    }
+  ],
+  "contexts": [
+    {
+      "id": "context_001",
+      "published_at_ms": 0,
+      "valid_from_ms": 0,
+      "valid_until_ms": 45000,
+      "object_ids": [
+        "object_11"
+      ],
+      "text": "가상 표시 장치 점검 일정. 관측값의 정확성을 보증하는 자료는 아니다."
+    },
+    {
+      "id": "context_002",
+      "published_at_ms": 90000,
+      "valid_from_ms": 60000,
+      "valid_until_ms": 120000,
+      "object_ids": [
+        "object_11",
+        "object_12",
+        "object_13"
+      ],
+      "text": "뒤늦게 공개된 가상 운영 메모. 관측 기록을 다시 확인하도록 요청한다."
+    }
+  ]
+}

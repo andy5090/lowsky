@@ -1,0 +1,64 @@
+{
+	"assets": [
+		{
+			"animation": false,
+			"asset_id": "ground_tile",
+			"collision": false,
+			"path": "res://assets/ground_tile.glb",
+			"pivot": "ground",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "runway",
+			"collision": false,
+			"path": "res://assets/runway.glb",
+			"pivot": "ground",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "hangar",
+			"collision": false,
+			"path": "res://assets/hangar.glb",
+			"pivot": "ground",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "control_tower",
+			"collision": false,
+			"path": "res://assets/control_tower.glb",
+			"pivot": "ground",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "observation_station",
+			"collision": false,
+			"path": "res://assets/observation_station.glb",
+			"pivot": "ground",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "aerial_marker",
+			"collision": false,
+			"path": "res://assets/aerial_marker.glb",
+			"pivot": "center",
+			"textures": false
+		},
+		{
+			"animation": false,
+			"asset_id": "utility_building",
+			"collision": false,
+			"path": "res://assets/utility_building.glb",
+			"pivot": "ground",
+			"textures": false
+		}
+	],
+	"axes": "Y-up",
+	"origin": "Generated locally with Godot primitives; no external assets",
+	"schema_version": "1.0",
+	"unit": "fictional_scene_unit"
+}

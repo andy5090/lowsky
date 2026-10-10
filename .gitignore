@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+godot/.godot/
+.DS_Store
+.omx/
+.codegraph
+.env
+.env.*
+!.env.example
+!.env.sample
+.~lock.*
+LOW_SKY_team_brief.docx

@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "purpose": "3D replay and explanation-quality smoke evaluation",
+  "generation": "deterministic; tools/scenario_dataset.py; no external sources",
+  "cases": [
+    {
+      "case_id": "case_001",
+      "group_id": "scene_01",
+      "split": "development",
+      "variant": "consistent",
+      "focus_object_id": "object_11"
+    },
+    {
+      "case_id": "case_002",
+      "group_id": "scene_01",
+      "split": "development",
+      "variant": "contradictory",
+      "focus_object_id": "object_11"
+    },
+    {
+      "case_id": "case_003",
+      "group_id": "scene_01",
+      "split": "development",
+      "variant": "missing",
+      "focus_object_id": "object_11"
+    },
+    {
+      "case_id": "case_004",
+      "group_id": "scene_02",
+      "split": "development",
+      "variant": "consistent",
+      "focus_object_id": "object_22"
+    },
+    {
+      "case_id": "case_005",
+      "group_id": "scene_02",
+      "split": "development",
+      "variant": "contradictory",
+      "focus_object_id": "object_22"
+    },
+    {
+      "case_id": "case_006",
+      "group_id": "scene_02",
+      "split": "development",
+      "variant": "missing",
+      "focus_object_id": "object_22"
+    },
+    {
+      "case_id": "case_007",
+      "group_id": "scene_03",
+      "split": "holdout",
+      "variant": "consistent",
+      "focus_object_id": "object_33"
+    },
+    {
+      "case_id": "case_008",
+      "group_id": "scene_03",
+      "split": "holdout",
+      "variant": "contradictory",
+      "focus_object_id": "object_33"
+    },
+    {
+      "case_id": "case_009",
+      "group_id": "scene_03",
+      "split": "holdout",
+      "variant": "missing",
+      "focus_object_id": "object_33"
+    },
+    {
+      "case_id": "case_010",
+      "group_id": "scene_04",
+      "split": "holdout",
+      "variant": "consistent",
+      "focus_object_id": "object_41"
+    },
+    {
+      "case_id": "case_011",
+      "group_id": "scene_04",
+      "split": "holdout",
+      "variant": "contradictory",
+      "focus_object_id": "object_41"
+    },
+    {
+      "case_id": "case_012",
+      "group_id": "scene_04",
+      "split": "holdout",
+      "variant": "missing",
+      "focus_object_id": "object_41"
+    }
+  ]
+}

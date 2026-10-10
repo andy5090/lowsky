@@ -1,0 +1,38 @@
+{
+  "name": "Kenney City Kit Industrial",
+  "version": "2.0",
+  "author": "Kenney",
+  "source_page": "https://kenney.nl/assets/city-kit-industrial",
+  "download_url": "https://kenney.nl/media/pages/assets/city-kit-industrial/0ec35b139d-1788171848/kenney_city-kit-industrial_2.0.zip",
+  "archive_sha256": "5b381164e5760f3830a2dbee43b972deee38b2a695d091b56e238ab2910c96d2",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "purpose": "Candidate modular buildings; not models of a specific airbase",
+  "modifications": "None to source files; runtime uniform scale and pivot normalization only",
+  "files": [
+    {
+      "path": "building-k.glb",
+      "sha256": "ae0692f7a9fa20bb4ae6cc4deb56d5e1919b1ba2188a1f282295ab2be5e9645d"
+    },
+    {
+      "path": "building-h.glb",
+      "sha256": "5a6a6c6824467972ba00b5a3c3cbb19da6e96673bc4e42daf1f09cfd4d2ed0e1"
+    },
+    {
+      "path": "shipping-container-a.glb",
+      "sha256": "7b2d5ca874c8e659ee6cfd1614f0470b70410b2ddc7620ac83b8954dedeb861d"
+    },
+    {
+      "path": "shipping-container-b.glb",
+      "sha256": "290b3808149f8a9456ee96ff682fcf6a99f76adeac8e3b7b38234be434ea455c"
+    },
+    {
+      "path": "Textures/colormap.png",
+      "sha256": "950f4f891ebd05a2affac810e6eeb0fea1511bc39039b65a3cbf2e17d17bc6a2"
+    },
+    {
+      "path": "License.txt",
+      "sha256": "60a8c5c31191256ec9779dc18745dea6d69c46f4b29703459ce064c1765a59ea"
+    }
+  ]
+}

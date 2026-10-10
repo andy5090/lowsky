@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "coordinates": {
+    "axes": "right-handed, Y-up",
+    "unit": "fictional_scene_unit"
+  },
+  "interpolation": "linear_between_keyframes",
+  "environment": [
+    {
+      "id": "ground",
+      "asset_id": "ground_tile",
+      "position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "runway",
+      "asset_id": "runway",
+      "position": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "building_1",
+      "asset_id": "hangar",
+      "position": [
+        20,
+        0,
+        15
+      ]
+    },
+    {
+      "id": "building_2",
+      "asset_id": "utility_building",
+      "position": [
+        20,
+        0,
+        -5
+      ]
+    },
+    {
+      "id": "tower",
+      "asset_id": "control_tower",
+      "position": [
+        17,
+        0,
+        -24
+      ]
+    },
+    {
+      "id": "station_a",
+      "asset_id": "observation_station",
+      "position": [
+        -12,
+        0,
+        20
+      ]
+    },
+    {
+      "id": "station_b",
+      "asset_id": "observation_station",
+      "position": [
+        -12,
+        0,
+        -20
+      ]
+    }
+  ]
+}
