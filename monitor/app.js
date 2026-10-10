@@ -1,6 +1,7 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
+import {DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
 import {exerciseConfirmation} from './exercise.mjs';
 import {decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
@@ -27,6 +28,8 @@ let decisions = null, decisionBusy = false, decisionDraft = null, decisionError 
 let decisionLanguagePending = false, decisionAvailable = false;
 let decisionNoticeRun = null;
 let rehearsals = null, rehearsalRecords = null, rehearsalBusy = false, rehearsalError = false, rehearsalRequest = 0, rehearsalSignature = '';
+let dashboardChoice = null, dashboardBusy = false, dashboardNotice = '', dashboardContext = '';
+let exerciseExpired = false;
 let exerciseDraft = null, exerciseRun = null, exerciseAt = 0, exerciseBusy = false, exerciseError = false;
 let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
@@ -59,6 +62,7 @@ function connection(ok, message='') {
   updateTrackReviewAvailability();
   renderNotificationSettings();
   renderExercise();
+  if (!ok) { renderDashboard(); renderDecisions(); }
   if (!ok) { if (state) { delete state.simulation_positions; drawMap(); } $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
@@ -90,6 +94,7 @@ function render(data) {
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
     renderDetails(); renderEarlyWarning(); drawMap();
   }
+  renderDashboard();
 }
 function renderPlayback(data) {
   $('case-select').value = data.case_id;
@@ -107,7 +112,7 @@ function renderPlayback(data) {
   $('speed-select').value = data.speed;
   drawRadar(data.at_ms);
 }
-function select(id) { selected = id; renderDetails(); drawMap(); }
+function select(id) { selected = id; renderDetails(); drawMap(); renderDashboard(); }
 function renderDetails() {
   if(!state) return;
   $('track-count').textContent = state.tracks.length;
@@ -200,6 +205,7 @@ function renderDecisions() {
     decisionNoticeRun = state?.run_id;
   }
   const event = currentDecision();
+  if(decisionDraft && (!connected || decisionDraftStatus(decisionDraft,event,state,language)!=='ready')) { decisionDraft=null; decisionError='dashboard.expired'; }
   const expired = decisions?.run_id===state?.run_id ? (decisions.events || []).find(item=>item.status==='expired' && item.run_id===state.run_id) : null;
   $('decision-expired').textContent = expired ? t('decision.expiredNotice',{time:fmt(expired.at_ms),reason:t(`decision.expiration.${expired.expiration_reason}`)}) : '';
   $('decision-expired').hidden = !expired;
@@ -225,14 +231,17 @@ function renderDecisions() {
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
       decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
+      if(decisionDraft && !$('decision-dialog').open) { $('decision-dialog').dataset.restoreChoice=decisionDraft.option_id; $('decision-dialog').showModal(); }
       $('decision-confirm').focus();
     });
     if ($('decision-retry')) $('decision-retry').onclick=()=>decisionAction({action:'retry',event_id:event.id,language});
   }
+  if(!decisionDraft && $('decision-dialog').open) $('decision-dialog').close();
   $('decision-form').hidden = !decisionDraft;
   if (decisionDraft) {
     const status = decisionDraftStatus(decisionDraft,event,state,language);
     $('decision-confirm-summary').textContent = `${t(`decision.option.${decisionDraft.option_id}`)} · ${t(`decision.effect.${decisionDraft.option_id}`)} · ${fmt(decisionDraft.at_ms)} · ${decisionDraft.event_id}`;
+    $('decision-modal-context').textContent=t('dashboard.modalContext',{evidence:fmt(event.at_ms),now:fmt(state.at_ms),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms))});
     $('decision-draft-status').textContent = status === 'stale' ? t('decision.stale') : t('decision.confirmNote');
     $('decision-confirm').disabled = !connected || !decisionAvailable || decisionBusy || operatorActive() || status !== 'ready';
   }
@@ -267,6 +276,7 @@ async function pollDecisions() {
 }
 $('decision-enabled').onchange=()=>decisionAction({action:'configure',enabled:$('decision-enabled').checked,language});
 $('decision-assess').onclick=()=>decisionAction({action:'assess_current',language});
+$('decision-dialog').addEventListener('cancel',()=>{decisionDraft=null;decisionError='';renderDecisions();});
 $('decision-cancel').onclick=()=>{decisionDraft=null;decisionError='';renderDecisions();};
 $('decision-form').onsubmit=async event=>{
   event.preventDefault();
@@ -354,16 +364,115 @@ async function operatorCommand(action) {
 $('operator-start').onclick=()=>operatorCommand('start');
 $('operator-stop').onclick=()=>operatorCommand('stop');
 
+for (const [dialogId,attribute,fallback] of [['dashboard-dialog','data-dashboard-action','dashboard-object'],['decision-dialog','data-decision-option','decision-assess'],['exercise-dialog','data-exercise-branch','exercise-object']]) {
+  $(dialogId).addEventListener('close',()=>{
+    const choice=$(dialogId).dataset.restoreChoice;
+    const button=[...document.querySelectorAll(`[${attribute}]`)].find(item=>item.getAttribute(attribute)===choice && !item.disabled);
+    (button || $(fallback)).focus();
+  });
+}
+
+function renderDashboard() {
+  const context = `${state?.run_id || ''}:${selected || ''}`;
+  if (dashboardContext !== context && !dashboardChoice) {
+    dashboardNotice=''; $('dashboard-comment').value=''; $('dashboard-reason').value='';
+  }
+  dashboardContext=context;
+  const dashboard = state?.dashboard;
+  const cards = dashboard?.scope === 'simulation_review' ? dashboard.cards || [] : [];
+  const card = dashboardCard(state,selected);
+  if(dashboardChoice && (!dashboardDraftValid(state,dashboardChoice,connected) || dashboardChoice.object_id !== selected)) {
+    dashboardChoice=null;dashboardNotice='dashboard.expired';$('dashboard-reason').value='';
+  }
+  const optionsSignature=JSON.stringify([language,cards.map(item=>[item.object_id,item.status])]);
+  if($('dashboard-object').dataset.signature!==optionsSignature) {
+    $('dashboard-object').dataset.signature=optionsSignature;
+    $('dashboard-object').innerHTML=cards.length ? cards.map(item=>`<option value="${escape(item.object_id)}">${escape(item.object_id)} · ${escape(t(`dashboard.status.${item.status}`))}</option>`).join('') : `<option value="">${escape(t('dashboard.waiting'))}</option>`;
+  }
+  $('dashboard-object').value=card?.object_id || '';
+  $('dashboard-object').disabled=!cards.length || dashboardBusy;
+  $('dashboard-empty').hidden=Boolean(card);
+  $('dashboard-content').hidden=!card;
+  $('dashboard-status').textContent=t(card?`dashboard.status.${card.status}`:'dashboard.waiting');
+  $('dashboard-priority').hidden=!card?.priority;
+  if(card) {
+    $('dashboard-evidence-summary').textContent=t('dashboard.sourceSummary',{count:card.source_count,quality:qualityLabel(card.quality)});
+    const evidenceSignature=JSON.stringify(card.evidence_ids);
+    if($('dashboard-evidence').dataset.signature!==evidenceSignature) {
+      $('dashboard-evidence').dataset.signature=evidenceSignature;
+      $('dashboard-evidence').innerHTML=(card.evidence_ids || []).map(id=>`<li>${escape(id)}</li>`).join('');
+    }
+    $('dashboard-remaining').textContent=fmt(Math.max(0,card.remaining_ms));
+    $('dashboard-next').textContent=card.next_review_at_ms===null ? '' : t('dashboard.next',{time:fmt(card.next_review_at_ms)});
+    $('dashboard-action-summary').textContent=t('dashboard.available',{count:connected?card.actions.filter(action=>action.enabled).length:0});
+    const followup=card.followup;
+    $('dashboard-followup').textContent=followup?.status==='received' ? t('dashboard.received',{id:followup.id}) : followup?.status==='pending' ? t('dashboard.pending',{seconds:Math.ceil(Math.max(0,followup.available_at_ms-state.at_ms)/1000)}) : t('dashboard.schedule');
+    $('dashboard-operator').textContent=$('dashboard-reviewer').value.trim() || t('dashboard.localOperator');
+    const actionSignature=JSON.stringify([language,card.object_id,card.actions,connected,dashboardBusy,dashboardChoice?.choice]);
+    if($('dashboard-actions').dataset.signature!==actionSignature) {
+      $('dashboard-actions').dataset.signature=actionSignature;
+      $('dashboard-actions').innerHTML=card.actions.filter(action=>DASHBOARD_ACTIONS.includes(action.id)).map(action=>`<div><button type="button" class="button button-secondary" data-dashboard-action="${escape(action.id)}" aria-pressed="${dashboardChoice?.choice===action.id}" ${!action.enabled || !connected || dashboardBusy?'disabled':''}>${escape(t(`dashboard.action.${action.id}`))}</button>${action.reason?`<small>${escape(t(`dashboard.block.${action.reason}`))}</small>`:''}</div>`).join('');
+      $('dashboard-actions').querySelectorAll('[data-dashboard-action]').forEach(button=>button.onclick=()=>{
+        dashboardChoice=dashboardDraft(state,selected,button.dataset.dashboardAction,connected);dashboardNotice='';$('dashboard-reason').value='';renderDashboard();
+        if(dashboardChoice && !$('dashboard-dialog').open) { $('dashboard-dialog').dataset.restoreChoice=dashboardChoice.choice; $('dashboard-dialog').showModal(); }
+      });
+    }
+  }
+  if(!dashboardChoice && $('dashboard-dialog').open) $('dashboard-dialog').close();
+  $('dashboard-form').hidden=!dashboardChoice;
+  if(dashboardChoice) {
+    $('dashboard-modal-effect').textContent=t(`dashboard.effect.${dashboardChoice.choice}`);
+    $('dashboard-modal-context').textContent=t('dashboard.modalContext',{evidence:(card.evidence_ids || []).slice(0,3).join(', '),now:fmt(state.at_ms),remaining:fmt(card.remaining_ms)});
+    $('dashboard-confirm-summary').textContent=`${dashboardChoice.object_id} · ${t(`dashboard.action.${dashboardChoice.choice}`)}`;
+    $('dashboard-dismiss').hidden=dashboardChoice.choice!=='dismiss';
+    $('dashboard-message').hidden=dashboardChoice.choice!=='notify_mock';
+    $('dashboard-message-text').textContent=localized(card.mock_notice) || t('dashboard.mockDraft',{object:card.object_id,status:t(`dashboard.status.${card.status}`)});
+  }
+  $('dashboard-confirm').disabled=dashboardBusy || !dashboardConfirmation(state,dashboardChoice,{connected,confirmed:true,reason:$('dashboard-reason').value});
+  $('dashboard-cancel').disabled=dashboardBusy;
+  $('dashboard-notice').textContent=t(dashboardBusy?'dashboard.saving':!connected?'dashboard.offline':dashboardNotice || 'dashboard.scope');
+  const recentSignature=JSON.stringify([language,dashboard?.recent]);
+  if($('dashboard-history').dataset.signature!==recentSignature) {
+    $('dashboard-history').dataset.signature=recentSignature;
+    $('dashboard-history').innerHTML=(dashboard?.recent || []).slice(-20).reverse().map(record=>`<li>${fmt(record.at_ms)} · ${escape(record.object_id)} · ${escape(t(`dashboard.action.${record.decision}`))}${record.reason?`<p>${escape(['bird','civil_aircraft','friendly','sensor_error'].includes(record.reason)?t(`dashboard.reason.${record.reason}`):record.reason)}</p>`:''}</li>`).join('') || `<li>${escape(t('none'))}</li>`;
+  }
+}
+$('dashboard-dialog').addEventListener('cancel',()=>{dashboardChoice=null;dashboardNotice='';renderDashboard();});
+$('dashboard-object').onchange=event=>select(event.target.value);
+$('dashboard-reason').onchange=()=>renderDashboard();
+$('dashboard-reviewer').oninput=()=>renderDashboard();
+$('dashboard-cancel').onclick=()=>{dashboardChoice=null;dashboardNotice='';renderDashboard();};
+$('dashboard-form').onsubmit=event=>{
+  event.preventDefault();
+  if(dashboardBusy)return;
+  const choice=dashboardChoice;
+  const extras={connected,confirmed:true,reason:$('dashboard-reason').value,comment:$('dashboard-comment').value,reviewer:$('dashboard-reviewer').value};
+  if(!dashboardConfirmation(state,choice,extras))return;
+  dashboardBusy=true;dashboardNotice='';renderDashboard();
+  controlChain=controlChain.then(async()=>{
+    const body=dashboardConfirmation(state,choice,{...extras,connected});
+    if(!body){dashboardBusy=false;dashboardNotice='dashboard.expired';renderDashboard();return;}
+    const version=++requestVersion;
+    try {
+      const data=await api('/api/control',body);
+      dashboardChoice=null;dashboardNotice='dashboard.saved';$('dashboard-comment').value='';$('dashboard-reason').value='';$('dashboard-extra').open=false;
+      if(version===requestVersion)render(data);
+    } catch {dashboardChoice=null;dashboardNotice='dashboard.failed';}
+    finally {dashboardBusy=false;renderDashboard();}
+  });
+};
+
 function renderExercise() {
   const exercise = state?.exercise;
   const available = exercise?.scope === 'scripted_training';
   if (exerciseRun !== state?.run_id || (state?.at_ms || 0) < exerciseAt) {
-    exerciseDraft = null; exerciseError = false;
+    exerciseExpired=Boolean(exerciseDraft);exerciseDraft = null; exerciseError = false;
     $('exercise-object').value = ''; $('exercise-asset').value = '';
   }
   exerciseRun = state?.run_id; exerciseAt = state?.at_ms || 0;
   const selectedBranch = exercise?.selection;
-  if (exerciseDraft && !exerciseConfirmation(state,exerciseDraft,true)) exerciseDraft = null;
+  if (exerciseDraft && (!connected || !exerciseConfirmation(state,exerciseDraft,true) || state.at_ms+5000>=state.duration_ms)) { exerciseDraft = null;exerciseExpired=true; }
+  if(!exerciseDraft && $('exercise-dialog').open) $('exercise-dialog').close();
   const disabled = !connected || !available || exerciseBusy || Boolean(selectedBranch);
   const objects = exercise?.eligible_objects || [], assets = exercise?.assets || [], branches = exercise?.branches || [];
   for (const [id, rows, label] of [['exercise-object',objects.map(id=>({id,label:id})),'exercise.chooseObject'],['exercise-asset',assets.map(asset=>({id:asset.id,label:localized(asset.label)})),'exercise.chooseAsset']]) {
@@ -392,11 +501,12 @@ function renderExercise() {
     $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t('exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${exerciseDraft?.branch_id===branch.id}" ${canChoose?'':'disabled'}>${escape(t(exerciseDraft?.branch_id===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
     $('exercise-options').querySelectorAll('[data-exercise-branch]').forEach(button=>button.onclick=()=>{
       exerciseDraft = {run_id:state.run_id,object_id:$('exercise-object').value,asset_id:$('exercise-asset').value,branch_id:button.dataset.exerciseBranch};
-      exerciseError=false;renderExercise();
+      exerciseError=false;exerciseExpired=false;renderExercise();
+      if(exerciseDraft && !$('exercise-dialog').open) { $('exercise-dialog').dataset.restoreChoice=exerciseDraft.branch_id; $('exercise-dialog').showModal(); }
     });
   }
   $('exercise-confirm').disabled = disabled || !exerciseConfirmation(state,exerciseDraft,true);
-  let status = exerciseBusy ? t('exercise.saving') : exerciseError ? t('exercise.failed') : !connected ? t('exercise.disconnected') : !available ? t('exercise.unavailable') : !objects.length ? t('exercise.waiting') : t('exercise.ready');
+  let status = exerciseBusy ? t('exercise.saving') : exerciseError ? t('exercise.failed') : exerciseExpired ? t('dashboard.expired') : !connected ? t('exercise.disconnected') : !available ? t('exercise.unavailable') : !objects.length ? t('exercise.waiting') : t('exercise.ready');
   if(selectedBranch) {
     const branch=branches.find(item=>item.id===selectedBranch.branch_id), asset=assets.find(item=>item.id===selectedBranch.asset_id);
     status = t(selectedBranch.status==='applied'?'exercise.applied':'exercise.pending',{object:selectedBranch.object_id,asset:localized(asset?.label),branch:localized(branch?.label),time:fmt(selectedBranch.effective_at_ms)});
@@ -404,8 +514,13 @@ function renderExercise() {
     status = t('exercise.confirmSummary',{object:exerciseDraft.object_id,asset:localized(assets.find(item=>item.id===exerciseDraft.asset_id)?.label),branch:localized(branches.find(item=>item.id===exerciseDraft.branch_id)?.label)});
   }
   $('exercise-status').textContent = status;
+  $('exercise-modal-summary').textContent=status;
+  $('exercise-modal-effect').textContent=localized(branches.find(item=>item.id===exerciseDraft?.branch_id)?.description);
+  $('exercise-modal-context').textContent=state?t('exercise.modalTime',{now:fmt(state.at_ms),effective:fmt(state.at_ms+5000)}):'';
 }
-for (const id of ['exercise-object','exercise-asset']) $(id).onchange=()=>{exerciseDraft=null;exerciseError=false;renderExercise();};
+$('exercise-dialog').addEventListener('cancel',()=>{exerciseDraft=null;exerciseExpired=false;renderExercise();});
+$('exercise-cancel').onclick=()=>{exerciseDraft=null;exerciseExpired=false;renderExercise();};
+for (const id of ['exercise-object','exercise-asset']) $(id).onchange=()=>{exerciseDraft=null;exerciseError=false;exerciseExpired=false;renderExercise();};
 $('exercise-confirm').onclick=()=>{
   if(!connected || exerciseBusy)return;
   const body=exerciseConfirmation(state,exerciseDraft,true);
@@ -943,7 +1058,7 @@ function applyLanguage(next, persist = false) {
   renderCases();
   renderBriefing();
   renderRehearsalRuns($('rehearsal-run').value);renderRehearsals();
-  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); renderDashboard(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');

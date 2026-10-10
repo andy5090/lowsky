@@ -139,6 +139,15 @@ def build_bundle(state):
     ids.update(row['evidence_id'] for row in sources if row['evidence_id'])
     ids.update(row['id'] for row in fleet + early)
     ids.update(row['id'] for track in examples for row in track['records'])
+    dashboard = state.get('dashboard', {})
+    followups = [c['followup'] for c in dashboard.get('cards', [])
+                 if c.get('object_id') in known_tracks and c.get('followup')]
+    if followups:
+        bundle['dashboard_review'] = _aggregate('dashboard_review', dict(scope='scripted_review',
+            pending=sum(f['available_at_ms'] > at_ms for f in followups),
+            received=sum(f['available_at_ms'] <= at_ms for f in followups),
+            note='Predetermined visual-review exercise receipts, not real EO measurements or identity confirmation.'))
+        ids.add(bundle['dashboard_review']['id'])
     selection = state.get('exercise', {}).get('selection')
     if selection:
         bundle['exercise'] = _aggregate('exercise', dict(scope='scripted_training',
@@ -238,7 +247,8 @@ def _evidence_tools(bundle):
 
     def pending_reviews() -> dict:
         """Read current-evidence review counts. Pending includes needs_review decisions, not only unreviewed tracks. No names or free text."""
-        return copy.deepcopy({'reviews': bundle['reviews'], **({'exercise':bundle['exercise']} if 'exercise' in bundle else {})})
+        return copy.deepcopy({'reviews': bundle['reviews'],
+                              **{key: bundle[key] for key in ('exercise', 'dashboard_review') if key in bundle}})
     return [observation_summary, source_and_fleet_health, early_signals, pending_reviews]
 
 

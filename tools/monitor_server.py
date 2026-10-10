@@ -22,6 +22,7 @@ try:
     from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from .test_operator import TestOperator
     from . import exercise
+    from .decision_dashboard import DecisionDashboard
     from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
@@ -35,6 +36,7 @@ except ImportError:
     from simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from test_operator import TestOperator
     import exercise
+    from decision_dashboard import DecisionDashboard
     from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -47,13 +49,15 @@ class AssessmentBusy(ValueError):
 class Simulation:
     def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None, audit_path=None,
                  assessment_evaluator=None, assessment_configuration=None,
-                 decision_evaluator=None, decision_audit_path=None, operator_runner=None, operator_configuration=None):
+                 decision_evaluator=None, decision_audit_path=None, operator_runner=None, operator_configuration=None,
+                 dashboard_audit_path=None):
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
         self.fleet_feed = read_json(PROJECT / 'data' / 'sensor_fleet_demo.json')
         self.test_public = self.test_early = self.test_fleet = None
         self.test_run = fixture_metadata()
         self.audit = AuditLog(audit_path)
+        self.dashboard = DecisionDashboard(dashboard_audit_path)
         self.reviews = []
         self.context_reviews = []
         self.situation_feed = read_json(PROJECT / "data/situation_review.json")
@@ -134,6 +138,7 @@ class Simulation:
                 position_record = max(fresh or records, key=lambda r: (r['observed_at_ms'], r['available_at_ms']), default=None)
                 quality = information_state({**payload, 'observations': object_rows}, obj)
                 track = dict(object_id=obj, quality=quality, records=records,
+                             first_received_at_ms=min(r['available_at_ms'] for r in object_rows),
                              position=position_record['position'] if position_record else None,
                              observed_at_ms=position_record['observed_at_ms'] if position_record else None,
                              position_source=position_record['source_id'] if position_record else None,
@@ -175,6 +180,7 @@ class Simulation:
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
             result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'])
+            result['dashboard'] = self.dashboard.view(result)
             if show_positions:
                 # Explicit author view: only positions at this response's replay time.
                 # Never merge truth into observed tracks, alerts, or evidence.
@@ -300,6 +306,8 @@ class Simulation:
                 self.speed = speed
             elif action == 'exercise_branch':
                 self.exercise_selection = exercise.select(command, self.state())
+            elif action == 'dashboard_action':
+                self.dashboard.confirm(command, self.state())
             elif action == 'review_track':
                 state = self.state()
                 track = next((item for item in state['tracks'] if item['object_id'] == command.get('object_id')), None)
@@ -385,6 +393,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/decisions/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.decisions.audit.export())
+        elif path == '/api/dashboard/audit':
+            with self.server.simulation.lock:
+                self.respond(200, self.server.simulation.dashboard.export())
         elif path == '/api/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.audit.export())
@@ -411,6 +422,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/test_runs.mjs': ('test_runs.mjs', 'text/javascript; charset=utf-8'),
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/exercise.mjs': ('exercise.mjs', 'text/javascript; charset=utf-8'),
+                      '/dashboard.mjs': ('dashboard.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),
@@ -486,9 +498,11 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--audit-path', type=Path, default=PROJECT / '.local' / 'track-reviews.jsonl')
     parser.add_argument('--decision-audit-path', type=Path, default=PROJECT / '.local' / 'event-decisions.jsonl')
+    parser.add_argument('--dashboard-audit-path', type=Path, default=PROJECT / '.local' / 'dashboard-decisions.jsonl')
     args = parser.parse_args()
     load_agent_env(PROJECT / '.env')
-    server = make_server(args.port, Simulation(audit_path=args.audit_path, decision_audit_path=args.decision_audit_path))
+    server = make_server(args.port, Simulation(audit_path=args.audit_path, decision_audit_path=args.decision_audit_path,
+                                             dashboard_audit_path=args.dashboard_audit_path))
     print(f'LOW SKY monitor: http://127.0.0.1:{server.server_port}', flush=True)
     try:
         server.serve_forever()

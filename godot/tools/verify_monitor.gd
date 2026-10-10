@@ -75,8 +75,14 @@ func verify() -> void:
 	assert(not preview.follow_drone, "Manual camera movement must exit follow")
 	await control({"action": "case", "case_id": "case_003"})
 	await control({"action": "seek", "at_ms": 150000})
-	await create_timer(0.5).timeout
-	assert(preview.case_id == "case_003" and preview.elapsed_ms == 150000)
+	# Case loading and a 240-track response can exceed one poll interval.
+	var sync_deadline = Time.get_ticks_msec() + 10000
+	while (preview.case_id != "case_003" or preview.elapsed_ms != 150000) and Time.get_ticks_msec() < sync_deadline:
+		await create_timer(0.1).timeout
+	if preview.case_id != "case_003" or preview.elapsed_ms != 150000:
+		push_error("Case switch did not synchronize: %s / %s" % [preview.case_id, preview.elapsed_ms])
+		quit(1)
+		return
 	var event = InputEventKey.new()
 	event.pressed = true
 	event.keycode = KEY_R

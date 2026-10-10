@@ -81,6 +81,9 @@ def semantic_state(bundle):
         status = ('conflicting' if positive and negative else 'corroborated' if positive >= 2 else
                   'single' if positive else 'no_current_positive')
         state[('early_signal', zone['zone_id'])] = (status, [zone['id']])
+    review = bundle.get('dashboard_review')
+    if review:
+        state[('dashboard_followup', 'scripted_review')] = (review['received'], [review['id']])
     return state
 
 
@@ -91,6 +94,8 @@ def transitions(previous, current):
         if before == value:
             continue
         if kind == 'first_tracks' and not value:
+            continue
+        if kind == 'dashboard_followup' and not value:
             continue
         if (kind in ('source_health', 'fleet_health') and before in (None, 'unknown', 'waiting')
                 and value in ('online', 'unknown', 'waiting')):

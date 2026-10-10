@@ -293,3 +293,35 @@ button:disabled{cursor:not-allowed}
 #exercise-options button[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
 #exercise-status { font-size:12px; line-height:1.6; color:var(--ink); }
 .brief-counts { margin:8px 18px; font-size:12px; line-height:1.5; }
+
+/* The live judgment card stays compact above the map; detail is progressively disclosed. */
+.dashboard-panel { margin-bottom:18px; border-color:#748b76; }
+.dashboard-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:10px; padding:12px 18px; font-size:12px; }
+.dashboard-toolbar select,.dashboard-panel select { min-width:0; max-width:100%; background:#0b161d; color:#d3e2de; border:1px solid #466069; padding:8px; font:inherit; }
+.dashboard-toolbar a { margin-left:auto; color:var(--ink-soft); }
+.dashboard-priority { color:#e5cb82; }
+.dashboard-grid { display:grid; grid-template-columns:1.1fr .85fr .85fr 1.15fr 1fr; padding:0 18px; }
+.dashboard-grid > section { padding:13px; background:#142024; border:1px solid #344b48; min-width:0; }
+.dashboard-grid h3 { margin:0 0 12px; font-size:11px; color:#9fb8b1; line-height:1.5; }
+.dashboard-grid strong { font-size:13px; color:#e0e8d6; }
+.dashboard-grid p { font-size:11px; line-height:1.5; color:#b0c1bc; margin:9px 0; }
+.dashboard-grid small,.dashboard-grid details { font-size:10px; line-height:1.5; color:#9fb4ae; }
+.dashboard-grid summary { cursor:pointer; }
+.dashboard-grid ul { max-height:90px; overflow:auto; padding-left:14px; overflow-wrap:anywhere; }
+.dashboard-clock strong { font:26px ui-monospace,monospace; color:#e5cb82; }
+.dashboard-wait { border-top-color:#a39562!important; }
+.dashboard-actions { display:flex; flex-wrap:wrap; gap:8px; padding:14px 18px 0; }
+.dashboard-actions > div { display:flex; flex-direction:column; gap:5px; }
+.dashboard-actions button { font-size:11px; }
+.dashboard-actions button[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
+.dashboard-actions small { font-size:10px; color:var(--muted); }
+.dashboard-notice { margin:12px 18px; font-size:11px; color:#c1d1c5; }
+.dashboard-message { padding:12px; background:#20322d; border:1px solid #657a65; line-height:1.6; }
+.review-dialog { width:min(610px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); padding:0; color:#d3e2de; background:#111d24; border:1px solid #a39562; box-shadow:0 24px 100px #000b; }
+.review-dialog::backdrop { background:#03090dbb; backdrop-filter:blur(3px); }
+.review-dialog .decision-form { margin:0; border:0; padding:24px; }
+.review-dialog select { display:block; margin:8px 0; width:100%; background:#0b161d; color:#d3e2de; border:1px solid #466069; padding:9px; }
+.review-dialog summary { cursor:pointer; margin:10px 0; }
+.review-dialog label { display:block; margin:8px 0 5px; }
+@media(max-width:1100px) { .dashboard-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:640px) { .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding:0 12px; } .dashboard-grid > section:last-child { grid-column:1/-1; } .dashboard-toolbar { padding:12px; } .dashboard-toolbar a { margin-left:0; } .review-dialog .decision-form { padding:18px; } }
