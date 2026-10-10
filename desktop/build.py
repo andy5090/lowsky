@@ -107,7 +107,8 @@ def main():
         for mobile in ('android', 'ios'):
             shutil.rmtree(DESKTOP / 'src-tauri/icons' / mobile, ignore_errors=True)
         bundles = 'app,dmg' if sys.platform == 'darwin' else 'nsis'
-        run(npm, 'run', 'build', '--', '--bundles', bundles, cwd=DESKTOP)
+        # Keep packaging non-interactive, including DMG creation without Finder automation.
+        run(npm, 'run', 'build', '--', '--bundles', bundles, cwd=DESKTOP, env={**os.environ, 'CI': 'true'})
         output = ROOT / 'dist'
         output.mkdir(exist_ok=True)
         suffix = '.dmg' if sys.platform == 'darwin' else '.exe'
