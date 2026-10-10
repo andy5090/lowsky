@@ -69,7 +69,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertIsNone(self.engine.worker)
 
-    def test_first_observation_pauses_exact_clock_and_no_automatic_effect(self):
+    def test_first_observation_keeps_clock_running_and_no_automatic_decision(self):
         self.sim.control({'action': 'play'})
         self.clock.advance(10)
         self.engine.tick()
@@ -78,9 +78,9 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(event['status'], 'ready')
         self.assertEqual(event['at_ms'], 10000)
         self.assertIn('first_tracks', [t['kind'] for t in event['triggers']])
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
         self.clock.advance(10)
-        self.assertEqual(self.sim.clock_state()['at_ms'], 10000)
+        self.assertEqual(self.sim.clock_state()['at_ms'], 20000)
         self.assertEqual(self.engine.audit.records, [])
         self.assertNotIn('simulation_positions', self.calls[0][0])
         self.assertEqual(self.calls[0][0]['at_ms'], 10000)
@@ -95,7 +95,7 @@ class DecisionEngineTests(unittest.TestCase):
             self.assertFalse(self.sim.playing)
             self.assertEqual(self.engine.audit.records, [])
         self.engine.command(command)
-        self.assertTrue(self.sim.playing)
+        self.assertFalse(self.sim.playing)
         with self.assertRaises(ValueError):
             self.engine.command(command)
         self.assertEqual(len(self.engine.audit.records), 1)
@@ -106,18 +106,19 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertFalse(self.sim.playing)
         deferred = self.assess()
         self.engine.command(self.confirmation(deferred, 'defer'))
-        self.assertTrue(self.sim.playing)
+        self.assertFalse(self.sim.playing)
         self.assertEqual(self.engine.audit.records[-1]['outcome'], 'deferred')
 
-    def test_confirmed_continue_at_end_uses_normal_play_new_run_behavior(self):
+    def test_expired_end_card_cannot_restart_run(self):
         self.sim.control({'action': 'seek', 'at_ms': 180000})
         old_run = self.sim.run_id
         event = self.assess()
-        self.engine.command(self.confirmation(event, 'continue_monitoring'))
-        self.assertTrue(self.sim.playing)
-        self.assertEqual(self.sim.clock_state()['at_ms'], 0)
-        self.assertNotEqual(self.sim.run_id, old_run)
-        self.assertEqual(self.engine.audit.records[-1]['run_id'], old_run)
+        with self.assertRaises(ValueError):
+            self.engine.command(self.confirmation(event, 'continue_monitoring'))
+        self.assertFalse(self.sim.clock_state()['playing'])
+        self.assertEqual(self.sim.clock_state()['at_ms'], 180000)
+        self.assertEqual(self.sim.run_id, old_run)
+        self.assertEqual(self.engine.audit.records, [])
 
     def test_heartbeat_and_ack_dedupe_semantic_events(self):
         self.sim.control({'action': 'play'})
@@ -158,15 +159,81 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(row['reviewer'], '')
         self.assertEqual(row['actor'], {'type': 'human'})
 
-    def test_play_drift_invalidates_old_card_even_without_new_observation(self):
-        event = self.assess()
+    def test_clock_drift_keeps_card_valid_and_confirmation_never_rewinds(self):
         self.sim.control({'action': 'play'})
-        self.clock.advance(.001)
+        self.clock.advance(10)
+        event = self.assess()
+        self.clock.advance(1)
+        self.engine.command(self.confirmation(event))
+        self.assertTrue(self.sim.playing)
+        self.assertEqual(self.sim.clock_state()['at_ms'], 11000)
+        row = self.engine.audit.records[-1]
+        self.assertEqual(row['at_ms'], 10000)
+        self.assertEqual(row['decided_at_simulation_ms'], 11000)
+        self.assertEqual(row['snapshot']['evidence']['at_ms'], 10000)
+
+    def test_all_choices_preserve_running_clock_and_manual_pause(self):
+        for option in ('continue_monitoring','hold_review','defer'):
+            with self.subTest(option=option):
+                self.sim.control({'action':'reset'})
+                self.sim.control({'action':'play'})
+                self.clock.advance(10)
+                event=self.assess()
+                self.clock.advance(1)
+                self.engine.command(self.confirmation(event, option))
+                self.assertTrue(self.sim.clock_state()['playing'])
+                self.assertEqual(self.sim.clock_state()['at_ms'],11000)
+                self.sim.control({'action':'pause'})
+                event=self.assess()
+                self.clock.advance(1)
+                self.engine.command(self.confirmation(event, option))
+                self.assertFalse(self.sim.clock_state()['playing'])
+                self.assertEqual(self.sim.clock_state()['at_ms'],11000)
+
+    def test_deadline_rejects_late_confirmation_without_pausing(self):
+        self.sim.control({'action': 'play'})
+        event = self.assess()
+        self.clock.advance(30)
         with self.assertRaises(ValueError):
             self.engine.command(self.confirmation(event))
-        self.assertEqual(self.engine.snapshot()['events'][0]['status'], 'superseded')
+        expired = self.engine.snapshot()['events'][0]
+        self.assertEqual(expired['status'], 'expired')
+        self.assertEqual(expired['expiration_reason'], 'deadline')
+        self.assertTrue(self.sim.playing)
+        self.assertEqual(self.engine.audit.records, [])
 
-    def test_failure_pauses_and_retry_captures_current_input(self):
+    def test_material_situation_change_expires_card_and_captures_new_event(self):
+        self.sim.control({'action': 'play'})
+        event = self.assess()
+        self.clock.advance(10)
+        self.engine.tick()
+        self.wait()
+        old = next(e for e in self.engine.snapshot()['events'] if e['id']==event['id'])
+        self.assertEqual(old['status'], 'expired')
+        self.assertEqual(old['expiration_reason'], 'situation_changed')
+        self.assertEqual(self.engine.snapshot()['events'][0]['status'], 'ready')
+        with self.assertRaises(ValueError):
+            self.engine.command(self.confirmation(event))
+        self.assertTrue(self.sim.playing)
+
+    def test_slow_assessment_does_not_stop_clock_and_late_result_is_discarded(self):
+        entered, release = threading.Event(), threading.Event()
+        def slow(*args):
+            entered.set(); release.wait(3)
+            return report(*args)
+        self.engine.evaluator = slow
+        self.sim.control({'action':'play'})
+        self.engine.command(dict(action='assess_current',run_id=self.sim.run_id))
+        self.assertTrue(entered.wait(1))
+        self.clock.advance(31)
+        self.assertEqual(self.sim.clock_state()['at_ms'],31000)
+        release.set(); self.wait()
+        event = self.engine.snapshot()['events'][0]
+        self.assertEqual(event['status'],'expired')
+        self.assertIsNone(event['report'])
+        self.assertTrue(self.sim.playing)
+
+    def test_failure_preserves_playback_and_retry_captures_current_input(self):
         def fail(*args):
             raise RuntimeError('secret credential provider detail')
         self.engine.evaluator = fail
@@ -200,7 +267,7 @@ class DecisionEngineTests(unittest.TestCase):
         self.assertEqual(event['status'], 'superseded')
         self.assertIsNone(event['report'])
 
-    def test_new_run_event_pauses_while_old_provider_finishes_then_evaluates(self):
+    def test_new_run_event_advances_while_old_provider_finishes_then_evaluates(self):
         entered, release = threading.Event(), threading.Event()
         received = []
         def delayed(state, event, language):
@@ -220,9 +287,9 @@ class DecisionEngineTests(unittest.TestCase):
         pending = self.engine.snapshot()['events'][0]
         self.assertEqual(pending['status'], 'pending')
         self.assertEqual(pending['at_ms'], 10000)
-        self.assertFalse(self.sim.playing)
-        self.clock.advance(5)
-        self.assertEqual(self.sim.clock_state()['at_ms'], 10000)
+        self.assertTrue(self.sim.playing)
+        self.clock.advance(1)
+        self.assertEqual(self.sim.clock_state()['at_ms'], 11000)
         self.assertEqual(len(received), 1)
         release.set()
         old_worker.join(3)

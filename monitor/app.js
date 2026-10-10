@@ -187,7 +187,7 @@ $('decision-bilingual').onchange=()=>{decisionSignature='';renderDecisions();};
 
 function currentDecision() {
   if (!decisions || !state || decisions.run_id !== state.run_id) return null;
-  return (decisions.events || []).find(event=>!['decided','superseded'].includes(event.status)) || null;
+  return [...(decisions.events || [])].reverse().find(event=>!['decided','superseded','expired'].includes(event.status)) || null;
 }
 function renderDecisions() {
   renderOperator();
@@ -197,16 +197,21 @@ function renderDecisions() {
     decisionNoticeRun = state?.run_id;
   }
   const event = currentDecision();
-  const waiting = (decisions && state && decisions.run_id === state.run_id ? decisions.events || [] : []).filter(item=>!['decided','superseded'].includes(item.status));
+  const expired = decisions?.run_id===state?.run_id ? (decisions.events || []).find(item=>item.status==='expired' && item.run_id===state.run_id) : null;
+  $('decision-expired').textContent = expired ? t('decision.expiredNotice',{time:fmt(expired.at_ms),reason:t(`decision.expiration.${expired.expiration_reason}`)}) : '';
+  $('decision-expired').hidden = !expired;
+  if(decisionDraft && decisions?.events?.some(item=>item.id===decisionDraft.event_id && item.status==='expired')) {decisionDraft=null;$('decision-reason').value='';}
+  const waiting = (decisions && state && decisions.run_id === state.run_id ? decisions.events || [] : []).filter(item=>!['decided','superseded','expired'].includes(item.status));
   $('decision-count').textContent = waiting.length;
   if (decisions) $('decision-enabled').checked = decisions.enabled;
   $('decision-enabled').disabled = !connected || decisionBusy;
   $('decision-assess').disabled = !connected || !state || decisionBusy || event?.status === 'evaluating';
   const statusKey = decisionStatusKey(event, decisions?.enabled, decisionError);
   $('decision-status').textContent = operatorActive() ? t('operator.autoNotice') : t(statusKey);
-  $('decision-attention').hidden = !event;
-  $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : '';
+  $('decision-attention').hidden = !event && !expired;
+  $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : expired ? $('decision-expired').textContent : '';
   const report = event?.report;
+  $('decision-timing').textContent = event ? t('decision.timing',{captured:fmt(event.at_ms),now:fmt(state.at_ms),age:fmt(Math.max(0,state.at_ms-event.at_ms)),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms)),count:(decisions.events || []).filter(item=>!['decided','superseded','expired'].includes(item.status)).length}) : '';
   $('decision-bilingual-note').hidden = !$('decision-bilingual').checked;
   const signature = JSON.stringify([language,event,decisionBusy,operatorActive(),decisionDraft?.event_id,decisionDraft?.option_id]);
   if (signature !== decisionSignature) {

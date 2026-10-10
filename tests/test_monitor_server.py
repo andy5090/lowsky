@@ -478,7 +478,7 @@ class HTTPTests(SimulationFixture):
                                      json.dumps(dict(action='stop', run_id=self.sim.run_id)), headers)
         self.assertEqual(status, 200)
         self.assertFalse(json.loads(raw)['active'])
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
 
     def test_seeded_test_http_contract_and_invalid_requests(self):
         status, _, raw = self.post(dict(action='start_test', case_id='case_003', seed=42))
@@ -538,7 +538,7 @@ class HTTPTests(SimulationFixture):
             self.assertEqual(self.request('POST', '/api/decisions', json.dumps(confirmation), headers)[0], 503)
         self.assertFalse(self.sim.playing)
         self.assertEqual(self.request('POST', '/api/decisions', json.dumps(confirmation), headers)[0], 200)
-        self.assertTrue(self.sim.playing)
+        self.assertFalse(self.sim.playing)
         exported = json.loads(self.request('GET', '/api/decisions/audit')[2])
         self.assertEqual(exported['records'][0]['outcome'], 'deferred')
         self.assertIn('evidence', exported['records'][0]['snapshot'])

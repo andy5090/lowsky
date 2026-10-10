@@ -48,11 +48,13 @@
     <section class="panel decision-panel" aria-labelledby="decision-title">
       <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
       <div class="agent-controls"><label><input id="decision-enabled" type="checkbox" checked> <span data-i18n="decision.guided">Pause and assess important events</span></label><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button><a href="/api/decisions/audit" download="lowsky-decisions.json" class="button button-secondary" data-i18n="decision.export">Export decision journal</a></div>
-      <p class="agent-scope" data-i18n="decision.scope">Important received events pause shared playback for assessment and your decision. Selecting an option does not execute it.</p>
+      <p class="agent-scope" data-i18n="decision.scope">Simulation time continues during assessment and decisions. Choices close when the situation changes or their response window expires.</p>
 
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
       <div class="decision-language-controls"><label><input id="decision-bilingual" type="checkbox"><span data-i18n="decision.bilingual">Show choices in English and Korean</span></label><p id="decision-bilingual-note" class="muted" hidden data-i18n="decision.originalReport">Choice labels and effects are bilingual. Agent reasoning remains in its original assessment language.</p></div>
-      <div id="decision-event" class="decision-event"></div>
+      <p id="decision-expired" class="decision-status" role="status" hidden></p>
+      <p id="decision-timing" class="muted"></p>
+        <div id="decision-event" class="decision-event"></div>
       <form id="decision-form" class="decision-form" hidden>
         <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
         <p id="decision-confirm-summary"></p><p id="decision-draft-status" role="status" aria-live="polite"></p>

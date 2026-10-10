@@ -226,6 +226,7 @@ button:disabled{cursor:not-allowed}
 .test-operator input { width:64px; background:#0b161d; color:#d3e2de; border:1px solid #466069; padding:8px; }
 .test-operator ol { padding-left:18px; }
 .decision-status { margin:8px 18px; padding:12px; background:#252a20; border-left:3px solid #d3c38e; color:#e7e1bf; font-size:13px; }
+#decision-timing { margin:8px 18px; }
 .decision-event { padding:0 18px 18px; }
 .decision-triggers { font-size:12px; line-height:1.6; padding-left:18px; }
 .decision-triggers small,.decision-options small { display:block; color:#8ba5aa; overflow-wrap:anywhere; }

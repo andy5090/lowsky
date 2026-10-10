@@ -16,7 +16,8 @@ export function decisionDraftStatus(draft, event, state, language) {
   if (!draft) return 'empty';
   if (!event || event.status !== 'ready' || draft.run_id !== state?.run_id
       || draft.run_id !== event.run_id || draft.event_id !== event.id
-      || draft.evidence_version !== event.evidence_version || draft.at_ms !== state.at_ms
+      || draft.evidence_version !== event.evidence_version || draft.at_ms !== event.at_ms
+      || (Number.isFinite(event.expires_at_ms) && state.at_ms >= event.expires_at_ms)
       || draft.language !== language || event.report?.language !== language
       || !event.report?.decision_options?.some(option => option.id === draft.option_id)) return 'stale';
   return 'ready';

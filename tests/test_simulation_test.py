@@ -139,7 +139,7 @@ class SeededTestTests(unittest.TestCase):
         self.sim.decisions.worker.join(3)
         event = self.sim.decisions.snapshot()['events'][0]
         self.assertEqual(event['status'], 'ready')
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
         self.assertEqual(calls[0]['test_run']['seed'], 42)
         self.start(43)
         with self.assertRaises(ValueError):

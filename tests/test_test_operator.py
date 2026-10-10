@@ -70,17 +70,17 @@ class TestOperatorTests(unittest.TestCase):
         self.assertNotIn('simulation_positions', self.calls[0])
         self.assertNotIn('evidence_bundle', self.calls[0]['report'])
 
-    def test_limit_pauses_after_confirmed_effect(self):
+    def test_limit_stops_only_automation(self):
         self.start_test(); self.event(); self.enable(1); self.select()
         self.assertEqual(self.operator.status, 'decision_limit')
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
         self.assertFalse(self.operator.active)
 
     def test_hold_ends_automation_instead_of_silently_resuming(self):
         self.operator.runner = lambda *_: dict(option_id='hold_review', reason='Hold this test for review.')
         self.start_test(); self.event(); self.enable(); self.select()
         self.assertEqual(self.operator.status, 'held')
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
 
     def test_stop_discards_inflight_choice(self):
         entered, release = threading.Event(), threading.Event()
@@ -94,8 +94,23 @@ class TestOperatorTests(unittest.TestCase):
         self.operator.command(dict(action='stop',run_id=self.sim.run_id))
         release.set(); self.operator.worker.join(2)
         self.assertEqual(self.sim.decisions.audit.records, [])
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
         self.assertEqual(self.operator.status, 'stopped')
+
+    def test_expired_inflight_automatic_choice_is_rejected_without_pausing(self):
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        def slow(context, cancel):
+            entered.set(); release.wait(2)
+            return dict(option_id='continue_monitoring',reason='Late answer')
+        self.operator.runner=slow
+        self.start_test(); self.event(); self.enable(); self.operator.tick()
+        self.assertTrue(entered.wait(1))
+        self.now += 31
+        release.set(); self.operator.worker.join(2)
+        self.assertEqual(self.sim.decisions.audit.records,[])
+        self.assertEqual(self.operator.status,'evidence_changed')
+        self.assertTrue(self.sim.clock_state()['playing'])
 
     def test_new_test_cancels_old_operator(self):
         self.start_test(); self.enable()
@@ -107,25 +122,26 @@ class TestOperatorTests(unittest.TestCase):
     def test_manual_pause_and_checkpoint_disable_cancel(self):
         self.start_test(); self.enable()
         self.sim.control(dict(action='pause'))
+        self.assertFalse(self.sim.playing)
         self.assertFalse(self.operator.active)
         self.enable()
         self.sim.decisions.command(dict(action='configure', run_id=self.sim.run_id, enabled=False, language='en'))
         self.assertFalse(self.operator.active)
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
 
-    def test_failures_never_confirm_and_leave_simulation_paused(self):
+    def test_failures_never_confirm_and_leave_simulation_running(self):
         self.operator.runner = lambda *_: dict(option_id='invented', reason='No')
         self.start_test(); self.event(); self.enable(); self.select()
         self.assertEqual(self.operator.status, 'failed')
         self.assertEqual(self.sim.decisions.audit.records, [])
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
 
     def test_journal_failure_never_applies_automatic_choice(self):
         self.start_test(); self.event(); self.enable()
         with patch.object(self.sim.decisions.audit, 'append', side_effect=OSError('disk failure')):
             self.select()
         self.assertEqual(self.operator.status, 'failed')
-        self.assertFalse(self.sim.playing)
+        self.assertTrue(self.sim.playing)
         self.assertEqual(self.operator.decisions, [])
         self.assertEqual(self.sim.decisions.snapshot()['events'][0]['status'], 'ready')
 

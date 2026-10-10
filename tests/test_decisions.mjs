@@ -20,13 +20,13 @@ test('a recommendation never selects or confirms a decision',()=>{
  const body=decisionConfirmation(draft,event,state,'en',' operator ',' Inspect evidence ',true);
  assert.equal(body.confirm,true);assert.equal(body.option_id,'hold_review');assert.equal(body.reason,'Inspect evidence');assert.equal(body.evidence_version,'v1');
 });
-test('drafts cannot confirm after evidence, event, replay time, run or language changes',()=>{
+test('drafts cannot confirm after evidence, event, run or language changes',()=>{
  const draft=selectDecision(event,'hold_review');
  for(const changed of [{...event,evidence_version:'v2'},{...event,id:'event_2'},{...event,status:'decided'},{...event,status:'superseded'},{...event,report:{...event.report,decision_options:[]}}]){
   assert.equal(decisionDraftStatus(draft,changed,state,'en'),'stale');
   assert.equal(decisionConfirmation(draft,changed,state,'en','operator','reason',true),null);
  }
- assert.equal(decisionDraftStatus(draft,event,{...state,at_ms:5001},'en'),'stale');
+ assert.equal(decisionDraftStatus(draft,event,{...state,at_ms:5001},'en'),'ready');
  assert.equal(decisionDraftStatus(draft,event,{...state,run_id:'run_2'},'en'),'stale');
  assert.equal(decisionDraftStatus(draft,event,state,'ko'),'stale');
  assert.equal(draft.evidence_version,'v1');
@@ -39,4 +39,12 @@ test('confirmation accepts optional comments but bounds submitted text',()=>{
  assert.equal(decisionConfirmation(draft,event,state,'en','alias','Further evidence needed',true).option_id,'defer');
  const empty=decisionConfirmation(draft,event,state,'en','',' ',true);
  assert.equal(empty.option_id,'defer');assert.equal(empty.reason,'');assert.equal(empty.reviewer,'');
+});
+
+test('expired cards and elapsed deadlines cannot be confirmed',()=>{
+ const timed={...event,expires_at_ms:35000};
+ const draft=selectDecision(timed,'hold_review');
+ assert.equal(decisionDraftStatus(draft,timed,{...state,at_ms:34999},'en'),'ready');
+ assert.equal(decisionDraftStatus(draft,timed,{...state,at_ms:35000},'en'),'stale');
+ assert.equal(decisionConfirmation(draft,{...timed,status:'expired'},state,'en','','',true),null);
 });

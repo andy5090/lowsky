@@ -34,19 +34,12 @@ class TestOperator:
                         completed=len(self.decisions), decisions=copy.deepcopy(self.decisions),
                         error=self.error, configuration=self.configuration())
 
-    def cancel(self, status='stopped', pause=True):
+    def cancel(self, status='stopped'):
         with self.sim.lock:
             if not self.active:
                 return
             self.cancelled.set()
             self.active, self.status = False, status
-            if pause:
-                self._pause()
-
-    def _pause(self):
-        self.sim.anchor_ms, self.sim.anchor_wall = self.sim._time(), self.sim.clock()
-        self.sim.playing = False
-        self.sim.revision += 1
 
     def command(self, command):
         with self.sim.lock:
@@ -88,7 +81,7 @@ class TestOperator:
             if not self.active:
                 return
             if self.run_id != self.sim.run_id:
-                self.cancel('run_changed', pause=False)
+                self.cancel('run_changed')
                 return
             if time.monotonic() - self.started > 600:
                 self.cancel('time_limit')
@@ -98,7 +91,7 @@ class TestOperator:
                 return
             if self.worker and self.worker.is_alive():
                 return
-            event = next((e for e in self.sim.decisions.snapshot()['events']
+            event = next((e for e in reversed(self.sim.decisions.snapshot()['events'])
                           if e['status'] in ('pending', 'evaluating', 'ready', 'failed')), None)
             if event is None or event['status'] in ('pending', 'evaluating'):
                 return

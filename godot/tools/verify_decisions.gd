@@ -17,7 +17,10 @@ func api(path: String, command = null) -> Dictionary:
 	assert(request.request(base_url + path, ["Content-Type: application/json"], method, body) == OK)
 	var response = await request.request_completed
 	request.queue_free()
-	assert(response[0] == HTTPRequest.RESULT_SUCCESS and response[1] >= 200 and response[1] < 300)
+	if response[0] != HTTPRequest.RESULT_SUCCESS or response[1] < 200 or response[1] >= 300:
+		push_error("Unexpected API response: %s" % response[1])
+		quit(1)
+		return {}
 	return JSON.parse_string(response[3].get_string_from_utf8())
 
 func verify() -> void:
@@ -26,14 +29,14 @@ func verify() -> void:
 	assert(status.mode == "rules", "Use LOW_SKY_AGENT_MODEL='' on the isolated test server")
 	var clock = await api("/api/control", {"action":"case", "case_id":"case_001"})
 	await api("/api/decisions", {"action":"configure", "run_id":clock.run_id, "enabled":true, "language":"en"})
-	await api("/api/control", {"action":"speed", "speed":4})
+	await api("/api/control", {"action":"speed", "speed":1})
 	var preview = (load("res://preview.tscn") as PackedScene).instantiate()
 	root.add_child(preview)
 	await create_timer(0.8).timeout
 	assert(preview.monitor_connected)
 	await api("/api/control", {"action":"start_test", "seed":42})
 	var event: Dictionary = {}
-	for _attempt in range(60):
+	for _attempt in range(150):
 		await create_timer(0.2).timeout
 		var decisions = await api("/api/decisions")
 		if decisions.events.size() > 0 and decisions.events[0].status == "ready":
@@ -41,17 +44,17 @@ func verify() -> void:
 			break
 	assert(not event.is_empty(), "First received event must create a decision checkpoint")
 	await create_timer(0.5).timeout
-	assert(not preview.monitor_playing)
+	assert(preview.monitor_playing)
 	assert(preview.monitor_test_run.get("seed") == 42, "Godot must identify the shared seeded test")
-	assert(int(preview.elapsed_ms) == int(event.at_ms))
+	assert(int(preview.elapsed_ms) >= int(event.at_ms))
 	var frozen: float = preview.elapsed_ms
 	await create_timer(0.4).timeout
-	assert(preview.elapsed_ms == frozen, "Godot must remain paused before human confirmation")
+	assert(preview.elapsed_ms > frozen, "Godot must advance while awaiting human confirmation")
 	await api("/api/decisions", {"action":"confirm", "run_id":event.run_id, "event_id":event.id,
-		"evidence_version":event.evidence_version, "option_id":"continue_monitoring", "confirm":true,
-		"reviewer":"integration-test", "reason":"Verify shared replay resumes only after explicit confirmation"})
+		"evidence_version":event.evidence_version, "option_id":"hold_review", "confirm":true,
+		"reviewer":"integration-test", "reason":"Verify evidence review does not stop shared playback"})
 	await create_timer(0.7).timeout
-	assert(preview.elapsed_ms > frozen, "Godot must follow confirmed resume")
+	assert(preview.elapsed_ms > frozen, "Godot must keep advancing after evidence-review confirmation")
 	await api("/api/control", {"action":"pause"})
 	await api("/api/control", {"action":"speed", "speed":1})
 	var state = await api("/api/state")
@@ -61,7 +64,7 @@ func verify() -> void:
 		if not track.last_known:
 			received_ids[str(track.object_id)] = true
 	assert(preview.detected_ids == received_ids, "Godot labels must match generated received evidence")
-	print("PASS: seeded test matches Godot seed and received labels, pauses on an event, holds for confirmation, and resumes")
+	print("PASS: seeded test matches Godot seed and received labels, advances during event review and after confirmation")
 	preview.queue_free()
 	await process_frame
 	quit()

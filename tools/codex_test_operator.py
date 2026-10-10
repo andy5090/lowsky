@@ -41,8 +41,8 @@ is available. A preceding agent recommendation is advisory, not a mandatory
 choice. Evaluate its reasons and uncertainties. Do not infer hidden identities,
 intent, routes, future events, or any real operational action. Keep the reason
 grounded in the supplied report and in the requested language, if specified.
-Continue resumes this virtual test; hold keeps it paused for evidence review;
-defer records a local unresolved item and resumes. None validates observations
+Continue records monitoring; hold records a need for evidence review;
+defer records a local unresolved item. All choices leave the simulation clock unchanged. None validates observations
 or dispatches any external action. You may choose any of these three options.
 Return only the JSON object required by the output schema. Do not execute tools,
 read files, browse, delegate, contact anyone, or confirm/apply the choice yourself.

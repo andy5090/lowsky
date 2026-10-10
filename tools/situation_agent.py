@@ -16,9 +16,9 @@ MAX_TRACK_EXAMPLES = 12
 DEFAULT_AGENT_MODEL = 'openai:gpt-6.1-sol'
 QUALITIES = ('consistent', 'contradictory', 'not_comparable', 'missing')
 DECISION_EFFECTS = {
-    'continue_monitoring': 'Record the human choice and resume the shared simulation clock (start a new run if completed). No observation is validated by this choice.',
-    'hold_review': 'Record the need for human evidence review and keep the shared simulation paused. No external task is dispatched.',
-    'defer': 'Record an unresolved local follow-up and resume the shared simulation (start a new run if completed). No external recipient is contacted.',
+    'continue_monitoring': 'Record the human choice and leave the shared simulation clock unchanged. No observation is validated by this choice.',
+    'hold_review': 'Record the need for human evidence review and leave the shared simulation clock unchanged. No external task is dispatched.',
+    'defer': 'Record an unresolved local follow-up and leave the shared simulation clock unchanged. No external recipient is contacted.',
 }
 
 
@@ -364,10 +364,10 @@ def evaluate_decision(state, event, language='en', runner=None):
         texts = {
             'continue_monitoring': ('새 수신 근거를 기다리며 재생을 계속합니다. 현재의 불확실성이 해결되는 것은 아닙니다.',
                                     'Continue playback for new received evidence; this does not resolve current uncertainty.'),
-            'hold_review': ('재생을 멈춘 상태로 유지하여 근거를 직접 확인합니다. 재생은 수동으로 재개해야 합니다.',
-                            'Keep playback paused to inspect evidence; playback needs manual resumption.'),
+            'hold_review': ('추가 근거 검토가 필요함을 기록합니다. 시뮬레이션 시간은 계속 흐릅니다.',
+                            'Record that evidence needs further review. Simulation time continues.'),
             'defer': ('추가 검토를 로컬 기록에 남기고 재생합니다. 해당 검토는 미해결로 남으며 외부에 전달되지 않습니다.',
-                      'Record an unresolved local follow-up and resume; no external reviewer is contacted.'),
+                      'Record an unresolved local follow-up without changing playback; no external reviewer is contacted.'),
         }
         report['decision_options'] = [dict(id=key, reason=texts[key][0 if language == 'ko' else 1],
                                             evidence_ids=[bundle['observations']['id']]) for key in DECISION_EFFECTS]

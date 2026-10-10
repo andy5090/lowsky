@@ -323,7 +323,7 @@ class Simulation:
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
             if not self.test_operator.applying and action in ('start_test', 'case', 'reset', 'seek', 'pause', 'play'):
-                self.test_operator.cancel('manual_override', pause=False)
+                self.test_operator.cancel('manual_override')
             self.decisions.observe_control()
             return self.state()
 

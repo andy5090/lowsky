@@ -1,4 +1,4 @@
-"""Event-driven, received-evidence review gates for a synthetic replay.
+"""Event-driven, received-evidence review records for a synthetic replay.
 
 All effects are local replay/review actions. Model prose never authorizes effects.
 """
@@ -18,11 +18,12 @@ except ImportError:
     from situation_agent import build_bundle
 
 OPTIONS = (
-    {'id': 'continue_monitoring', 'effect': 'resume'},
-    {'id': 'hold_review', 'effect': 'pause'},
-    {'id': 'defer', 'effect': 'resume_with_further_review'},
+    {'id': 'continue_monitoring', 'effect': 'record_monitoring'},
+    {'id': 'hold_review', 'effect': 'record_review_needed'},
+    {'id': 'defer', 'effect': 'record_deferred_review'},
 )
 ACTIVE = ('pending', 'evaluating', 'ready', 'failed')
+DECISION_WINDOW_MS = 30000  # Simulation-time review window, not a real-world response standard.
 
 
 class DecisionBusy(ValueError):
@@ -120,17 +121,26 @@ class DecisionEngine:
         return build_bundle(self.sim.state())
 
     def _reconcile(self, bundle):
+        current = semantic_state(bundle)
         for event in self.events:
-            if event['status'] in ACTIVE and (event['run_id'] != bundle['run_id']
-                    or event['evidence_version'] != bundle['input_version']):
+            if event['status'] not in ACTIVE:
+                continue
+            if event['run_id'] != bundle['run_id']:
                 event['status'] = 'superseded'
-                event.pop('_frozen', None)
+            elif (bundle['at_ms'] >= event['expires_at_ms']
+                  or transitions(semantic_state(build_bundle(event['_frozen'])), current)):
+                event['status'] = 'expired'
+                event['expiration_reason'] = ('deadline' if bundle['at_ms'] >= event['expires_at_ms'] else 'situation_changed')
+                event['expired_at_ms'] = bundle['at_ms']
+            else:
+                continue
+            event.pop('_frozen', None)
         if bundle['run_id'] != self.previous_run:
             self.previous_run = bundle['run_id']
-            self.previous = semantic_state(bundle)
+            self.previous = current
 
     def observe_control(self):
-        """Record reset/seek baselines and invalidate frozen cards synchronously."""
+        """Recheck runs, response deadlines and material changes after a control action."""
         self._reconcile(self._bundle())
 
     def snapshot(self):
@@ -189,16 +199,9 @@ class DecisionEngine:
         busy = bool(self.worker and self.worker.is_alive())
         if busy and not queue_if_busy:
             raise DecisionBusy('An event assessment is already running')
-        for event in self.events:
-            if event['status'] in ACTIVE:
-                event['status'] = 'superseded'
-                event.pop('_frozen', None)
-        # Anchor to exactly the captured input, including when a tick consumed time.
-        self.sim.anchor_ms, self.sim.anchor_wall = state['at_ms'], self.sim.clock()
-        self.sim.playing = False
-        self.sim.revision += 1
         event = dict(id=uuid.uuid4().hex, run_id=state['run_id'], case_id=state['case_id'],
-                     at_ms=state['at_ms'], evidence_version=bundle['input_version'],
+                     at_ms=state['at_ms'], expires_at_ms=min(state['at_ms'] + DECISION_WINDOW_MS, state['duration_ms']),
+                     evidence_version=bundle['input_version'],
                      triggers=copy.deepcopy(triggers), status='pending', language=language,
                      report=None, error=None, decision=None,
                      created_at_unix_ms=int(time.time() * 1000), _frozen=copy.deepcopy(state))
@@ -241,10 +244,10 @@ class DecisionEngine:
             self._reconcile(self._bundle())
             if self.stopping.is_set():
                 return
-            if event['status'] != 'superseded':
+            if event['status'] in ACTIVE:
                 event['report'], event['error'] = copy.deepcopy(result), error
                 event['status'] = 'failed' if error else 'ready'
-            pending = next((item for item in reversed(self.events) if item['status'] == 'pending'), None)
+            pending = next((item for item in self.events if item['status'] == 'pending'), None)
             if pending is not None:
                 self._start_evaluation(pending)
 
@@ -269,6 +272,14 @@ class DecisionEngine:
                     raise ValueError('Invalid assessment language')
                 if action == 'retry' and not any(e['id'] == command.get('event_id') for e in self.events):
                     raise ValueError('Unknown event')
+                if self.worker and self.worker.is_alive():
+                    raise DecisionBusy('An event assessment is already running')
+                if action == 'retry':
+                    old = next(e for e in self.events if e['id'] == command['event_id'])
+                    if old['run_id'] != self.sim.run_id or old['status'] not in ACTIVE:
+                        raise ValueError('Event is no longer open')
+                    old['status'] = 'superseded'
+                    old.pop('_frozen', None)
                 state = self.sim.state()
                 bundle = build_bundle(state)
                 self._reconcile(bundle)
@@ -276,7 +287,7 @@ class DecisionEngine:
                                current='requested', evidence_ids=[bundle['observations']['id']])
                 self._capture(state, bundle, [trigger], language)
             elif action == 'confirm':
-                self.sim.test_operator.cancel('manual_override', pause=False)
+                self.sim.test_operator.cancel('manual_override')
                 self._confirm(command)
             else:
                 raise ValueError('Unknown decision action')
@@ -304,7 +315,8 @@ class DecisionEngine:
         row = dict(schema_version=1, kind='event_decision', id=uuid.uuid4().hex,
                    actor=copy.deepcopy(actor or {'type': 'human'}),
                    run_id=event['run_id'], case_id=event['case_id'], event_id=event['id'],
-                   at_ms=event['at_ms'], evidence_version=event['evidence_version'],
+                   at_ms=event['at_ms'], decided_at_simulation_ms=self.sim._time(),
+                   evidence_version=event['evidence_version'],
                    option_id=option, outcome='deferred' if option == 'defer' else 'confirmed',
                    reviewer=reviewer.strip(), reason=reason.strip(), decided_at_unix_ms=int(time.time() * 1000),
                    snapshot=snapshot, snapshot_hash=digest(snapshot))
@@ -312,10 +324,4 @@ class DecisionEngine:
         event['status'] = 'decided'
         event.pop('_frozen', None)
         event['decision'] = {k: copy.deepcopy(v) for k, v in row.items() if k != 'snapshot'}
-        self.sim.playing = False
-        self.sim.anchor_ms, self.sim.anchor_wall = event['at_ms'], self.sim.clock()
-        if option in ('continue_monitoring', 'defer'):
-            # Preserve the normal Play contract, including starting a new run at the end.
-            self.sim.control({'action': 'play'})
-        else:
-            self.sim.revision += 1
+        # Recording a choice never controls, rewinds, or restarts the shared clock.

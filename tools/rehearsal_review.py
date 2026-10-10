@@ -53,6 +53,7 @@ def export_run(records, run_id, clock):
                 decision=dict(option_id=row['option_id'], outcome=row['outcome'],
                               actor=copy.deepcopy(row.get('actor', {'type': 'human'}))),
                 reason=row['reason'],
-                time=dict(simulation_ms=row['at_ms'], recorded_at_unix_ms=row['decided_at_unix_ms']))))
+                time=dict(simulation_ms=row['at_ms'], decided_at_simulation_ms=row.get('decided_at_simulation_ms'),
+                          recorded_at_unix_ms=row['decided_at_unix_ms']))))
     return dict(schema_version=1, scope='simulation_review', run_id=run_id,
                 case_id=selected[0]['case_id'] if selected else clock['case_id'], records=entries)
