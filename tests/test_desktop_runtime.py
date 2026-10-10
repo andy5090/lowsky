@@ -91,7 +91,9 @@ class DesktopRuntimeTests(unittest.TestCase):
             process.send_signal(signal.SIGTERM)
         else:
             process.stdin.close()
-        self.assertEqual(process.wait(timeout=5), 0)
+        # Windows SIGTERM maps to TerminateProcess(exit_code=1), not a POSIX handler.
+        expected_code = 1 if terminate and os.name == 'nt' else 0
+        self.assertEqual(process.wait(timeout=5), expected_code)
         self.assertEqual(process.stdout.read(), '')
         stderr = process.stderr.read()
         self.assertNotIn('Traceback', stderr)
