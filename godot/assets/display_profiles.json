@@ -1,18 +1,144 @@
 {
   "schema_version": "1.0",
   "display_units_per_meter": 1.0,
-  "scope": "Visual size calibration only; scenario coordinates remain synthetic and the airfield layout is compressed.",
+  "scope": "Visual geometry and size calibration only; one scene unit is one meter. No role, link or flight-performance classification.",
   "default_drone_profile": "small_multirotor",
   "profiles": {
     "small_multirotor": {
       "horizontal_span_m": 0.6,
-      "measurement": "Maximum horizontal extent, including rotor disks",
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
       "source": "User-selected provisional 0.6 m size reference, not a measured aircraft model"
     },
     "medium_multirotor": {
       "horizontal_span_m": 1.5,
-      "measurement": "Maximum horizontal extent, including rotor disks",
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
       "source": "Provisional size-class assumption, not a measured aircraft model"
+    },
+    "delta_large": {
+      "horizontal_span_m": 3.5,
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
+      "source": "Provisional visualization envelope informed by LOW_SKY_scenario_v2.docx; not verified manufacturer dimensions"
+    },
+    "fixed_wing_medium": {
+      "horizontal_span_m": 3.1,
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
+      "source": "Provisional visualization envelope informed by LOW_SKY_scenario_v2.docx; not verified manufacturer dimensions"
+    },
+    "fixed_wing_compact": {
+      "horizontal_span_m": 2.0,
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
+      "source": "Provisional visualization envelope informed by LOW_SKY_scenario_v2.docx; not verified manufacturer dimensions"
+    },
+    "tandem_wing": {
+      "horizontal_span_m": 1.6,
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
+      "source": "Provisional visualization envelope informed by LOW_SKY_scenario_v2.docx; not verified manufacturer dimensions"
+    },
+    "delta_compact": {
+      "horizontal_span_m": 2.5,
+      "measurement": "Maximum horizontal extent in the neutral model pose, including propeller meshes; not necessarily wingspan or swept rotor envelope",
+      "source": "Provisional visualization envelope informed by LOW_SKY_scenario_v2.docx; not verified manufacturer dimensions"
+    }
+  },
+  "default_airframe": "quadcopter",
+  "airframes": {
+    "quadcopter": {
+      "label": "Quadcopter",
+      "size_profile": "small_multirotor",
+      "model_id": "cesium_drone",
+      "fidelity": "generic textured asset",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "fpv": {
+      "label": "FPV quad",
+      "size_profile": "small_multirotor",
+      "model_id": "fpv",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "hexacopter": {
+      "label": "Hexacopter",
+      "size_profile": "medium_multirotor",
+      "model_id": "hexacopter",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "geran_2": {
+      "label": "Geran-2 / Shahed-136",
+      "size_profile": "delta_large",
+      "model_id": "geran_2",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "geran_3": {
+      "label": "Geran-3 / jet delta",
+      "size_profile": "delta_large",
+      "model_id": "geran_3",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "lancet": {
+      "label": "Lancet / tandem X",
+      "size_profile": "tandem_wing",
+      "model_id": "lancet",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "garpiya": {
+      "label": "Garpiya / delta",
+      "size_profile": "delta_large",
+      "model_id": "garpiya",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "orlan_10": {
+      "label": "Orlan-10 / fixed wing",
+      "size_profile": "fixed_wing_medium",
+      "model_id": "orlan_10",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "orlan_30": {
+      "label": "Orlan-30 / fixed wing",
+      "size_profile": "fixed_wing_medium",
+      "model_id": "orlan_30",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "zala": {
+      "label": "ZALA / flying wing",
+      "size_profile": "fixed_wing_medium",
+      "model_id": "zala",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "supercam": {
+      "label": "Supercam / flying wing",
+      "size_profile": "fixed_wing_medium",
+      "model_id": "supercam",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "gerbera": {
+      "label": "Gerbera / light delta",
+      "size_profile": "delta_compact",
+      "model_id": "gerbera",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "parodiya": {
+      "label": "Parodiya / light fixed wing",
+      "size_profile": "fixed_wing_compact",
+      "model_id": "parodiya",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
+    },
+    "molniya": {
+      "label": "Molniya / twin boom",
+      "size_profile": "fixed_wing_compact",
+      "model_id": "molniya",
+      "fidelity": "procedural visual approximation",
+      "reference": "LOW_SKY_scenario_v2.docx; data/references/drone_sources.json"
     }
   }
 }

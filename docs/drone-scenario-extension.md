@@ -1,16 +1,47 @@
 # 드론 크기·역할·통신 방식 확장
 
-## 현재 적용한 크기
+## 현재 적용한 3D 외형과 크기
 
-사용자가 선택한 소형 쿼드콥터의 **프로펠러 포함 최대 수평 폭 0.6m**를 기본 표시 기준으로 적용했다. 실제 특정 기종의 실측값은 아니다. 기존 임시 모델의 최대 수평 폭은 약 4.1 장면 단위였으며, 렌더링 시 메시 경계를 측정해 균일하게 축소한다. 식별자 글자는 메시 크기와 분리한다.
+제작자 3D 보기는 `visual.airframe_id`로 14가지 외형을 선택한다. 세 케이스 모두 같은 순서로 기체를 배정한다. 관측 표식 세 종류와 독립적으로 순환하며, 역할·통신 상태·탐지 정답을 외형이나 색으로 표현하지 않는다. `public.json`, 에이전트 관측 스냅샷에는 기종을 추가하지 않는다.
 
-`godot/assets/display_profiles.json`에서 표시 크기를 관리한다. `world.json`의 객체별 `visual.size_profile`로 프로필을 지정할 수 있고, 생략하면 `small_multirotor`가 적용된다. `medium_multirotor`의 1.5m는 향후 비교용 가정값이다. 역할이나 통신 방식으로 크기를 자동 결정하지 않는다.
+| 외형 | 구현 | 기본 최대 수평 폭 |
+| --- | --- | --- |
+| 상용 쿼드콥터 | 무료 CesiumDrone GLB, 텍스처·카메라·프로펠러 애니메이션 | 0.6m |
+| FPV | 노출 카본 프레임·배터리 스트랩·전방 카메라·안테나·3엽 프로펠러 | 0.6m |
+| 헥사콥터 | 6개 모터·암·프로펠러, 하부 카메라·스키드 | 1.5m |
+| Geran-2 / Shahed-136 | 델타익·끝단 수직핀·후방 프로펠러 | 3.5m |
+| Geran-3 | 델타익·제트 흡입구와 배기구, 프로펠러 없음 | 3.5m |
+| Garpiya | 별도 동체·날개 비율의 델타익 | 3.5m |
+| Lancet | 전후 두 쌍의 X자 날개·광학부·후방 프로펠러 | 1.6m |
+| Orlan-10 / Orlan-30 | 긴 주익·꼬리날개·전방 프로펠러, 다른 센서 크기와 동체 비율 | 3.1m |
+| ZALA / Supercam | 서로 다른 후퇴각·날개 폭 비율·윙렛의 전익형 | 3.1m |
+| Gerbera | 경량 델타익·중앙 수직꼬리 | 2.5m |
+| Parodiya | 단순 주익·꼬리날개·가느다란 동체 | 2.0m |
+| Molniya | 주익·쌍붐·연결된 꼬리날개 | 2.0m |
 
-현재 공통 로컬 좌표는 1단위=1m이며 활주로 2.5km, 부지 1.2×2.9km로 확장했다. 경로는 여전히 합성 데이터이며 실제 운항 실측값이 아니다. 정확한 기종을 도입할 때는 치수 출처와 측정 기준을 프로필에 기록해야 한다.
+이는 **형상 구분을 위한 시각적 근사 모델**이며 실측 복제품이 아니다. 크기는 프로펠러 메시를 포함한 기준 포즈의 X/Z 최대 외접 폭이다. 회전 중 블레이드의 순간 외접 폭은 달라질 수 있으며 회전 원판 전체의 실측 직경을 의미하지 않는다. 날개 폭과 기체 길이 중 더 큰 값이므로 문서의 날개 폭과 같은 측정값으로 해석하지 않는다. 기존 0.6m 기준은 소형 멀티콥터에 유지하고, 고정익은 문서의 크기 등급을 참고한 잠정 표시 프로필로 구분했다. `LOW_SKY_scenario_v2.docx`의 기체 표와 `data/references/drone_sources.json`의 명칭을 참고했으며, 미검증 명칭·치수를 제조사 검증값으로 승격하지 않았다.
+
+`godot/assets/display_profiles.json`에서 형상, 기본 크기, 근사 여부를 관리한다. `visual.size_profile`을 지정하면 기체 기본값보다 우선한다. 기종이 없거나 알려지지 않은 경우 기존 소형 쿼드콥터로 돌아간다. 역할이나 통신 방식으로 크기를 자동 결정하지 않는다. 로컬 좌표는 1단위=1m이고 경로·원점·기존 관측 시각은 유지한다.
+
+`[` / `]`로 기체를 선택하면 제작자용 카메라 패널에 이름과 표시 크기가 나타난다. 추적 거리는 크기에 비례하고 기수는 기존 경로의 진행 방향을 따른다. 프로펠러 위상은 시뮬레이션 시각을 사용하므로 일시정지·시간 이동·연동 모드에서 따로 흘러가지 않는다. 가까운 150m 이내에서만 애니메이션을 갱신하며 먼 거리에서도 본체는 계속 존재한다. 정적 메시를 재질별로 병합하고 같은 기종끼리 공유해 240대 장면의 중복 생성을 줄였다.
+
+[14종 렌더 비교](../artifacts/drone-catalog.png) · [FPV 추적 화면](../artifacts/drone-follow-fpv.png) · [무료 에셋 검토](drone-asset-review.md)
+
+### 재현과 검증
+
+```sh
+python3 tools/fetch_drone_asset.py
+python3 tools/scenario_dataset.py build
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --editor --import
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_drone_models.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_drone_follow.gd
+/Applications/Godot.app/Contents/MacOS/Godot --path godot --script res://tools/capture_drone_catalog.gd
+/Applications/Godot.app/Contents/MacOS/Godot --path godot -- --capture --capture-airframe=fpv
+```
 
 ## 다음 확장의 데이터 분리
 
-아래는 추가 요구사항을 정리한 설계이며 아직 실행 데이터나 통신 시뮬레이터에 적용하지 않았다.
+아래 축 중 기체 외형과 크기는 위와 같이 구현했다. 역할·통신 매체·통신 상태의 확장은 아직 실행 데이터나 통신 시뮬레이터에 적용하지 않았다.
 
 | 축 | 필드 제안 | 예시와 의미 |
 | --- | --- | --- |

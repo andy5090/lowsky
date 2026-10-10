@@ -7,7 +7,8 @@
       "object_id": "object_11",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "quadcopter"
       },
       "keyframes": [
         {
@@ -168,7 +169,8 @@
       "object_id": "object_12",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "fpv"
       },
       "keyframes": [
         {
@@ -329,7 +331,8 @@
       "object_id": "object_13",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "hexacopter"
       },
       "keyframes": [
         {
@@ -490,7 +493,8 @@
       "object_id": "object_14",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "geran_2"
       },
       "keyframes": [
         {
@@ -651,7 +655,8 @@
       "object_id": "object_15",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "geran_3"
       },
       "keyframes": [
         {
@@ -812,7 +817,8 @@
       "object_id": "object_16",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "lancet"
       },
       "keyframes": [
         {
@@ -973,7 +979,8 @@
       "object_id": "object_17",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "garpiya"
       },
       "keyframes": [
         {
@@ -1134,7 +1141,8 @@
       "object_id": "object_18",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "orlan_10"
       },
       "keyframes": [
         {
@@ -1295,7 +1303,8 @@
       "object_id": "object_19",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "orlan_30"
       },
       "keyframes": [
         {
@@ -1456,7 +1465,8 @@
       "object_id": "object_20",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "zala"
       },
       "keyframes": [
         {
@@ -1617,7 +1627,8 @@
       "object_id": "object_21",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "supercam"
       },
       "keyframes": [
         {
@@ -1778,7 +1789,8 @@
       "object_id": "object_22",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "gerbera"
       },
       "keyframes": [
         {
@@ -1939,7 +1951,8 @@
       "object_id": "object_23",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "parodiya"
       },
       "keyframes": [
         {
@@ -2100,7 +2113,8 @@
       "object_id": "object_24",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "molniya"
       },
       "keyframes": [
         {
@@ -2261,7 +2275,8 @@
       "object_id": "object_25",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "quadcopter"
       },
       "keyframes": [
         {
@@ -2422,7 +2437,8 @@
       "object_id": "object_26",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "fpv"
       },
       "keyframes": [
         {
@@ -2583,7 +2599,8 @@
       "object_id": "object_27",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "hexacopter"
       },
       "keyframes": [
         {
@@ -2744,7 +2761,8 @@
       "object_id": "object_28",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "geran_2"
       },
       "keyframes": [
         {
@@ -2905,7 +2923,8 @@
       "object_id": "object_29",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "geran_3"
       },
       "keyframes": [
         {
@@ -3066,7 +3085,8 @@
       "object_id": "object_30",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "lancet"
       },
       "keyframes": [
         {
@@ -3227,7 +3247,8 @@
       "object_id": "object_31",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "garpiya"
       },
       "keyframes": [
         {
@@ -3388,7 +3409,8 @@
       "object_id": "object_32",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "orlan_10"
       },
       "keyframes": [
         {
@@ -3549,7 +3571,8 @@
       "object_id": "object_33",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "orlan_30"
       },
       "keyframes": [
         {
@@ -3710,7 +3733,8 @@
       "object_id": "object_34",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "zala"
       },
       "keyframes": [
         {
@@ -3871,7 +3895,8 @@
       "object_id": "object_35",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "supercam"
       },
       "keyframes": [
         {
@@ -4032,7 +4057,8 @@
       "object_id": "object_36",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "gerbera"
       },
       "keyframes": [
         {
@@ -4193,7 +4219,8 @@
       "object_id": "object_37",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "parodiya"
       },
       "keyframes": [
         {
@@ -4354,7 +4381,8 @@
       "object_id": "object_38",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "molniya"
       },
       "keyframes": [
         {
@@ -4515,7 +4543,8 @@
       "object_id": "object_39",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "quadcopter"
       },
       "keyframes": [
         {
@@ -4676,7 +4705,8 @@
       "object_id": "object_40",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "fpv"
       },
       "keyframes": [
         {
@@ -4837,7 +4867,8 @@
       "object_id": "object_41",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "hexacopter"
       },
       "keyframes": [
         {
@@ -4998,7 +5029,8 @@
       "object_id": "object_42",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "geran_2"
       },
       "keyframes": [
         {
@@ -5159,7 +5191,8 @@
       "object_id": "object_43",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "geran_3"
       },
       "keyframes": [
         {
@@ -5320,7 +5353,8 @@
       "object_id": "object_44",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "lancet"
       },
       "keyframes": [
         {
@@ -5481,7 +5515,8 @@
       "object_id": "object_45",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "garpiya"
       },
       "keyframes": [
         {
@@ -5642,7 +5677,8 @@
       "object_id": "object_46",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "orlan_10"
       },
       "keyframes": [
         {
@@ -5803,7 +5839,8 @@
       "object_id": "object_47",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "orlan_30"
       },
       "keyframes": [
         {
@@ -5964,7 +6001,8 @@
       "object_id": "object_48",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "zala"
       },
       "keyframes": [
         {
@@ -6125,7 +6163,8 @@
       "object_id": "object_49",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "supercam"
       },
       "keyframes": [
         {
@@ -6286,7 +6325,8 @@
       "object_id": "object_50",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "gerbera"
       },
       "keyframes": [
         {
@@ -6447,7 +6487,8 @@
       "object_id": "object_51",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "parodiya"
       },
       "keyframes": [
         {
@@ -6608,7 +6649,8 @@
       "object_id": "object_52",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "molniya"
       },
       "keyframes": [
         {
@@ -6769,7 +6811,8 @@
       "object_id": "object_53",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "quadcopter"
       },
       "keyframes": [
         {
@@ -6930,7 +6973,8 @@
       "object_id": "object_54",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "fpv"
       },
       "keyframes": [
         {
@@ -7091,7 +7135,8 @@
       "object_id": "object_55",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "hexacopter"
       },
       "keyframes": [
         {
@@ -7252,7 +7297,8 @@
       "object_id": "object_56",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "circle"
+        "marker_label": "circle",
+        "airframe_id": "geran_2"
       },
       "keyframes": [
         {
@@ -7413,7 +7459,8 @@
       "object_id": "object_57",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "square"
+        "marker_label": "square",
+        "airframe_id": "geran_3"
       },
       "keyframes": [
         {
@@ -7574,7 +7621,8 @@
       "object_id": "object_58",
       "visual": {
         "asset_id": "aerial_marker",
-        "marker_label": "triangle"
+        "marker_label": "triangle",
+        "airframe_id": "lancet"
       },
       "keyframes": [
         {

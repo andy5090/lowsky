@@ -13,6 +13,7 @@ SOURCES = ("channel_a", "channel_b")
 VARIANTS = ("consistent", "contradictory", "missing")
 WORKLOAD_COUNTS = (48, 96, 240)
 TTL_MS = 45_000
+DISPLAY_PROFILES = Path(__file__).resolve().parents[1] / "godot/assets/display_profiles.json"
 
 
 def write_json(path, value):
@@ -37,6 +38,7 @@ def build(root):
     """Rebuild the three deterministic representative workload fixtures."""
     entries, briefings = [], []
     layout = read_json(Path(__file__).resolve().parents[1] / "data/site_layout.json")
+    airframes = tuple(read_json(DISPLAY_PROFILES)["airframes"])
     write_json(root / "scene.json", {
         "schema_version": "1.0", "synthetic": True,
         "coordinates": {"axes": "right-handed, Y-up", "unit": "meter"},
@@ -76,7 +78,8 @@ def build(root):
         world = {
             "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
             "objects": [
-                {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj]},
+                {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj],
+                                              "airframe_id": airframes[i % len(airframes)]},
                  "keyframes": [
                      {"at_ms": tick, "position": [
                          -750 + (i % columns) * column_spacing + (tick / TIMES[-1]) * (80 if i % 2 else -80),

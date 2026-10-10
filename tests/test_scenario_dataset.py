@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.scenario_dataset import build, information_state, read_json, snapshot, validate, write_json
+from tools.scenario_dataset import DISPLAY_PROFILES, build, information_state, read_json, snapshot, validate, write_json
 
 
 class DatasetTests(unittest.TestCase):
@@ -89,6 +89,19 @@ class DatasetTests(unittest.TestCase):
         build(self.root)
         after = {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob("*.json")}
         self.assertEqual(before, after)
+
+    def test_airframe_variety_is_author_only_and_independent_of_markers(self):
+        catalog = read_json(DISPLAY_PROFILES)
+        for case in ("case_001", "case_002", "case_003"):
+            world = read_json(self.root / "cases" / case / "world.json")
+            self.assertEqual({obj["visual"]["airframe_id"] for obj in world["objects"]}, set(catalog["airframes"]))
+            for airframe in catalog["airframes"]:
+                markers = {obj["visual"]["marker_label"] for obj in world["objects"]
+                           if obj["visual"]["airframe_id"] == airframe}
+                self.assertEqual(markers, {"circle", "square", "triangle"})
+            import json
+            self.assertNotIn("airframe_id", json.dumps(self.public(case)))
+            self.assertNotIn("airframe_id", json.dumps(snapshot(self.public(case), 180000)))
 
     def test_future_events_and_unpublished_context_are_hidden(self):
         payload = snapshot(self.public("case_003"), 59_999)
