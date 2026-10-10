@@ -12,7 +12,16 @@ func verify() -> void:
 	preview._process(0)
 	assert(preview.detected_ids.is_empty())
 	assert(preview.drone_overlay.markers().is_empty())
-	preview.elapsed_ms = 10000
+	# Use the fixture's delivery boundary; paced scenarios now begin at 04:30.
+	var first_delivery = INF
+	for observation in preview.public_data.observations:
+		if observation.get("detected", true):
+			first_delivery = minf(first_delivery, float(observation.available_at_ms))
+	assert(is_finite(first_delivery))
+	preview.elapsed_ms = first_delivery - 1
+	preview._process(0)
+	assert(preview.detected_ids.is_empty(), "No label may precede the first received report")
+	preview.elapsed_ms = first_delivery
 	preview._process(0)
 	assert(not preview.detected_ids.is_empty() and preview.detected_ids.size() < preview.objects.size())
 	for item in preview.objects:
