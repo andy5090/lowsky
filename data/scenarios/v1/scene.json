@@ -29,11 +29,15 @@
         2.2,
         4.5
       ],
-      "group": "flight_line"
+      "group": "flight_line",
+      "label": {
+        "en": "Hangar A",
+        "ko": "격납고 A"
+      }
     },
     {
       "id": "hangar_2",
-      "asset_id": "hangar",
+      "asset_id": "arched_hangar",
       "position": [
         110,
         0,
@@ -44,7 +48,11 @@
         2.2,
         4.5
       ],
-      "group": "flight_line"
+      "group": "flight_line",
+      "label": {
+        "en": "Hangar B",
+        "ko": "격납고 B"
+      }
     },
     {
       "id": "hangar_3",
@@ -59,11 +67,15 @@
         2.2,
         4.5
       ],
-      "group": "flight_line"
+      "group": "flight_line",
+      "label": {
+        "en": "Hangar C",
+        "ko": "격납고 C"
+      }
     },
     {
       "id": "maintenance_hangar",
-      "asset_id": "hangar",
+      "asset_id": "arched_hangar",
       "position": [
         150,
         0,
@@ -74,11 +86,15 @@
         2.6,
         4.8
       ],
-      "group": "maintenance"
+      "group": "maintenance",
+      "label": {
+        "en": "Maintenance hangar",
+        "ko": "정비 격납고"
+      }
     },
     {
       "id": "workshop",
-      "asset_id": "utility_building",
+      "asset_id": "service_building",
       "position": [
         295,
         0,
@@ -89,11 +105,15 @@
         2,
         5
       ],
-      "group": "maintenance"
+      "group": "maintenance",
+      "label": {
+        "en": "Workshop",
+        "ko": "작업동"
+      }
     },
     {
       "id": "admin_1",
-      "asset_id": "utility_building",
+      "asset_id": "office_building",
       "position": [
         455,
         0,
@@ -104,11 +124,15 @@
         2.5,
         4
       ],
-      "group": "administration"
+      "group": "administration",
+      "label": {
+        "en": "Administration",
+        "ko": "행정동"
+      }
     },
     {
       "id": "admin_2",
-      "asset_id": "utility_building",
+      "asset_id": "office_building",
       "position": [
         455,
         0,
@@ -119,7 +143,11 @@
         2.5,
         5
       ],
-      "group": "administration"
+      "group": "administration",
+      "label": {
+        "en": "Office annex",
+        "ko": "사무 별관"
+      }
     },
     {
       "id": "support_1",
@@ -134,11 +162,15 @@
         2,
         6
       ],
-      "group": "support"
+      "group": "support",
+      "label": {
+        "en": "Staff services",
+        "ko": "직원 지원동"
+      }
     },
     {
       "id": "support_2",
-      "asset_id": "utility_building",
+      "asset_id": "service_building",
       "position": [
         470,
         0,
@@ -149,7 +181,11 @@
         2,
         4
       ],
-      "group": "support"
+      "group": "support",
+      "label": {
+        "en": "Service workshop",
+        "ko": "지원 작업동"
+      }
     },
     {
       "id": "support_3",
@@ -164,7 +200,11 @@
         2,
         5
       ],
-      "group": "support"
+      "group": "support",
+      "label": {
+        "en": "General storage",
+        "ko": "일반 창고"
+      }
     },
     {
       "id": "tower",
@@ -179,7 +219,11 @@
         1.8,
         1.8
       ],
-      "group": "flight_line"
+      "group": "flight_line",
+      "label": {
+        "en": "Control tower",
+        "ko": "관제탑"
+      }
     },
     {
       "id": "station_a",
@@ -194,7 +238,11 @@
         1,
         1
       ],
-      "group": "demo_sensor"
+      "group": "demo_sensor",
+      "label": {
+        "en": "Demo station A",
+        "ko": "데모 관측소 A"
+      }
     },
     {
       "id": "station_b",
@@ -209,7 +257,106 @@
         1,
         1
       ],
-      "group": "demo_sensor"
+      "group": "demo_sensor",
+      "label": {
+        "en": "Demo station B",
+        "ko": "데모 관측소 B"
+      }
+    },
+    {
+      "id": "admin_annex",
+      "asset_id": "office_building",
+      "position": [
+        435,
+        0,
+        -140
+      ],
+      "scale": [
+        3.5,
+        1.8,
+        3.5
+      ],
+      "group": "administration",
+      "label": {
+        "en": "Visitor office",
+        "ko": "방문 안내동"
+      }
+    },
+    {
+      "id": "grounds_workshop",
+      "asset_id": "service_building",
+      "position": [
+        470,
+        0,
+        230
+      ],
+      "scale": [
+        4,
+        1.8,
+        4
+      ],
+      "group": "support",
+      "label": {
+        "en": "Grounds workshop",
+        "ko": "시설 관리 작업동"
+      }
+    },
+    {
+      "id": "staff_services",
+      "asset_id": "utility_building",
+      "position": [
+        435,
+        0,
+        510
+      ],
+      "scale": [
+        4,
+        1.8,
+        3.5
+      ],
+      "group": "support",
+      "label": {
+        "en": "Staff rest building",
+        "ko": "직원 휴게동"
+      }
+    },
+    {
+      "id": "pole_phone_1",
+      "asset_id": "phone_sensor_pole",
+      "position": [
+        500,
+        0,
+        105
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "group": "phone_pilot",
+      "label": {
+        "en": "Fixed-phone pole 1",
+        "ko": "고정형 휴대폰 폴 1"
+      }
+    },
+    {
+      "id": "pole_phone_2",
+      "asset_id": "phone_sensor_pole",
+      "position": [
+        500,
+        0,
+        155
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "group": "phone_pilot",
+      "label": {
+        "en": "Fixed-phone pole 2",
+        "ko": "고정형 휴대폰 폴 2"
+      }
     }
   ]
 }

@@ -44,13 +44,13 @@ def build(root):
     })
     descriptions = [
         (
-            localized("First signals in mixed traffic", "혼재된 비행체의 첫 탐지"),
+            localized("0200: Indicators and first reports", "새벽 2시: 전조와 첫 관측"),
             localized("12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", "합성 비행체 12개가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
             localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
             localized("12 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", "소형 비행체 12개와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
         ),
         (
-            localized("Conflicting identification and reconfirmation", "식별 상충과 재확인"),
+            localized("0200: Conflicting evidence and review", "새벽 2시: 상충 근거와 검토"),
             localized("24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.", "합성 비행체 24개가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 6개 대상의 표식을 다르게 보고하고 이후 재확인합니다."),
             localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
             localized("24 synthetic objects; six conflicting tracks, with the remaining tracks as comparison traffic.", "합성 비행체 24개. 6개 대상에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
@@ -149,6 +149,8 @@ def build(root):
         briefings.append({
             "case_id": case_id, "group": index + 1, "variant": variant,
             "scenario_type": "load_test" if variant == "missing" else "observation_narrative",
+            "context_feed": "data/situation_review.json",
+            "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
             "name": name, "summary": summary, "objective": objective, "composition": composition,
             "count_basis": localized("Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.", "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."),
             "object_count": count, "object_ids": objects, "duration_ms": TIMES[-1],

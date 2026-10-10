@@ -92,6 +92,37 @@ class EarlyWarningTests(unittest.TestCase):
         self.assertEqual(reset['reviews'], [])
         self.assertEqual(reset['early_warning']['zones'][0]['evidence'], [])
 
+    def test_fixed_phone_receipt_loss_and_recovery(self):
+        self.assertEqual(self.area(89999, 3)['status'], 'stale')
+        self.assertEqual(self.area(90000, 3)['status'], 'single')
+        self.assertEqual(self.area(94999, 3)['positive_sources'], 1)
+        current = self.area(95000, 3)
+        self.assertEqual(current['deployment_type'], 'fixed_phone')
+        self.assertEqual(current['status'], 'corroborated')
+        self.assertEqual(current['evidence'][1]['available_at_ms'], 95000)
+        lost = self.area(120000, 3)
+        self.assertEqual(lost['status'], 'unavailable')
+        self.assertEqual(lost['positive_sources'], 0)
+        self.assertIsNone(lost['evidence'][0]['object_present'])
+        self.assertEqual(lost['evidence'][0]['device_health'],
+                         {'power_status': 'battery', 'network_status': 'offline'})
+        recovered = self.area(150000, 3)
+        self.assertEqual(recovered['status'], 'no_signal')
+        self.assertEqual(recovered['evidence'][0]['device_health']['network_status'], 'online')
+
+    def test_fixed_phone_health_and_locations_are_allowlisted(self):
+        row = next(r for r in self.feed['observations'] if r['id'] == 'pole_1_signal')
+        row['device_health'].update(power_status='private-canary', imei='private-canary')
+        state = self.area(95000, 3)
+        self.assertNotIn('private-canary', json.dumps(state))
+        self.assertEqual(state['evidence'][0]['device_health']['power_status'], 'unknown')
+        layout = json.loads((Path(__file__).resolve().parents[1] / 'data/site_layout.json').read_text())
+        facilities = {f['id']: f for f in layout['facilities']}
+        for installation in state['installations']:
+            facility = facilities[installation['sensor_id']]
+            self.assertEqual(installation['position'], facility['position'])
+            self.assertEqual(facility['asset_id'], 'phone_sensor_pole')
+
 
 if __name__ == '__main__':
     unittest.main()

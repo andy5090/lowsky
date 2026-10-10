@@ -9,9 +9,11 @@
       "group": 1,
       "variant": "consistent",
       "scenario_type": "observation_narrative",
+      "context_feed": "data/situation_review.json",
+      "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
       "name": {
-        "en": "First signals in mixed traffic",
-        "ko": "혼재된 비행체의 첫 탐지"
+        "en": "0200: Indicators and first reports",
+        "ko": "새벽 2시: 전조와 첫 관측"
       },
       "summary": {
         "en": "12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
@@ -109,9 +111,11 @@
       "group": 2,
       "variant": "contradictory",
       "scenario_type": "observation_narrative",
+      "context_feed": "data/situation_review.json",
+      "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
       "name": {
-        "en": "Conflicting identification and reconfirmation",
-        "ko": "식별 상충과 재확인"
+        "en": "0200: Conflicting evidence and review",
+        "ko": "새벽 2시: 상충 근거와 검토"
       },
       "summary": {
         "en": "24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.",
@@ -221,6 +225,8 @@
       "group": 3,
       "variant": "missing",
       "scenario_type": "load_test",
+      "context_feed": "data/situation_review.json",
+      "adaptation": "Non-operational observation and human review themes from LOW_SKY_Detailed_Scenario.docx; no attack sequence or response model.",
       "name": {
         "en": "Monitoring load test: source loss and recovery",
         "ko": "모니터링 부하 시험: 채널 단절·복구"

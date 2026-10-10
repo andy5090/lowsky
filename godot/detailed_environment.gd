@@ -84,6 +84,70 @@ static func make_tower(m: Dictionary) -> Node3D:
 	rod(root, Vector3(0, 10.8, 0), Vector3(0, 13, 0), 0.045, m.dark_metal)
 	return root
 
+static func make_arched_hangar(m: Dictionary) -> Node3D:
+	var root = Node3D.new()
+	root.name = "ArchedHangar"
+	# Lightweight curved sheet-metal roof, not a hardened shelter.
+	box(root, Vector3(12, 0.25, 15), Vector3(0, 0.1, 0.8), m.concrete)
+	for side in [-1, 1]:
+		box(root, Vector3(0.2, 3.2, 12), Vector3(side * 5.2, 1.8, 0), m.metal)
+		box(root, Vector3(0.3, 0.6, 12), Vector3(side * 5.2, 0.5, 0), m.concrete)
+		box(root, Vector3(2.8, 3.1, 0.16), Vector3(side * 4.1, 1.8, 6.18), m.painted_metal)
+		for seam in range(7):
+			box(root, Vector3(0.04, 3.05, 0.05), Vector3(side * 4.1 - 1.25 + seam * 0.4, 1.8, 6.29), m.dark_metal)
+	box(root, Vector3(10.4, 3.2, 0.2), Vector3(0, 1.8, -6), m.metal)
+	for segment in range(20):
+		var a = PI * segment / 20.0
+		var b = PI * (segment + 1) / 20.0
+		var start = Vector3(cos(a) * 5.3, 3.4 + sin(a) * 2.8, 0)
+		var end = Vector3(cos(b) * 5.3, 3.4 + sin(b) * 2.8, 0)
+		var roof = box(root, Vector3(start.distance_to(end) + 0.02, 0.14, 12.7), (start + end) * 0.5, m.metal)
+		roof.rotation.z = atan2(end.y - start.y, end.x - start.x)
+		for z in [-6.4, -3.0, 0.0, 3.0, 6.4]:
+			rod(root, start + Vector3(0, 0.1, z), end + Vector3(0, 0.1, z), 0.055, m.dark_metal)
+		# Vertical strips close the curved rear gable without a new mesh dependency.
+		var mid_x = (start.x + end.x) * 0.5
+		var rise = (start.y + end.y) * 0.5 - 3.4
+		box(root, Vector3(absf(end.x - start.x) + 0.01, rise, 0.2), Vector3(mid_x, 3.4 + rise * 0.5, -6), m.metal)
+	box(root, Vector3(10.8, 0.2, 0.2), Vector3(0, 3.4, 6.25), m.dark_metal)
+	return root
+
+static func make_office_building(m: Dictionary) -> Node3D:
+	var root = make_utility_building(m)
+	root.name = "OfficeBuilding"
+	# A glazed entrance, horizontal sunshades and side windows distinguish offices.
+	box(root, Vector3(2.2, 2.5, 0.16), Vector3(0, 1.6, 4.2), m.glass)
+	box(root, Vector3(3, 0.15, 1.4), Vector3(0, 2.95, 4.55), m.painted_metal)
+	for x in [-1.35, 1.35]:
+		rod(root, Vector3(x, 0.3, 5.05), Vector3(x, 2.9, 5.05), 0.045, m.dark_metal)
+	for side in [-1, 1]:
+		for z in [-2.6, -0.7, 1.2]:
+			box(root, Vector3(0.08, 1.4, 1.35), Vector3(side * 3.07, 2.15, z), m.glass)
+		box(root, Vector3(0.3, 0.09, 7.4), Vector3(side * 3.12, 2.95, 0), m.painted_metal)
+	return root
+
+static func make_service_building(m: Dictionary) -> Node3D:
+	var root = make_utility_building(m)
+	root.name = "ServiceBuilding"
+	for x in [-1.6, 1.6]:
+		box(root, Vector3(2.4, 2.6, 0.14), Vector3(x, 1.65, 4.17), m.painted_metal)
+		for seam in range(8):
+			box(root, Vector3(2.3, 0.03, 0.05), Vector3(x, 0.5 + seam * 0.32, 4.27), m.dark_metal)
+	box(root, Vector3(6, 0.15, 1.3), Vector3(0, 3.12, 4.55), m.metal)
+	box(root, Vector3(6.4, 0.12, 2.0), Vector3(0, 0.1, 5), m.concrete)
+	return root
+
+static func make_phone_sensor_pole(m: Dictionary) -> Node3D:
+	var root = Node3D.new()
+	root.name = "PhoneSensorPole"
+	# Generic mounting study only: a phone-sized enclosure on an ordinary 3 m pole.
+	box(root, Vector3(0.6, 0.2, 0.6), Vector3(0, 0.1, 0), m.concrete)
+	rod(root, Vector3(0, 0.2, 0), Vector3(0, 3, 0), 0.045, m.dark_metal)
+	box(root, Vector3(0.24, 0.36, 0.16), Vector3(0, 2.65, 0.1), m.painted_metal)
+	box(root, Vector3(0.085, 0.16, 0.02), Vector3(0, 2.65, 0.19), m.glass)
+	box(root, Vector3(0.3, 0.025, 0.24), Vector3(0, 2.86, 0.12), m.metal)
+	return root
+
 static func make_utility_building(m: Dictionary) -> Node3D:
 	var root = Node3D.new()
 	root.name = "DetailedUtilityBuilding"

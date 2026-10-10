@@ -12,6 +12,7 @@ const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
 const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')}`;
 let briefings = [], briefingSignature = '';
+let situationSignature = '', situationRun = null, situationOptions = '', reviewPending = false;
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
 let radarVisible = true, clockReceivedAt = performance.now();
@@ -35,6 +36,7 @@ function connection(ok, message='') {
   $('connection-status').classList.toggle('is-connected', ok);
   $('connection-status').classList.toggle('disconnected', !ok);
   for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
+  updateReviewAvailability();
   if (!ok) { $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
@@ -55,6 +57,7 @@ function render(data) {
   state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
   renderBriefing();
+  renderSituation();
   const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
   if (signature !== dataSignature) {
     dataSignature = signature;
@@ -102,12 +105,109 @@ function renderDetails() {
   $('events-list').innerHTML = state.sources.map(s=>`<li class="event-item"><time>${s.evidence ? fmt(s.evidence.observed_at_ms) : '--:--'}</time>${escape(s.source_id)} · ${sourceLabel(s.status)}</li>`).join('') + state.contexts.map(c=>`<li class="event-item"><time>${t('published')} ${fmt(c.published_at_ms)}</time>${escape(['context_001','context_002'].includes(c.id)?t(`context.${c.id}`):c.text)}</li>`).join('');
   $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
 }
+function reviewStatus(key = '') {
+  if (key) $('situation-review-status').dataset.i18n = key;
+  else delete $('situation-review-status').dataset.i18n;
+  $('situation-review-status').textContent = key ? t(key) : '';
+}
+function updateReviewAvailability() {
+  const unavailable = !connected || reviewPending || !state?.situation?.events?.length;
+  for (const id of ['situation-event-select','situation-decision','situation-reason','situation-submit']) $(id).disabled = unavailable;
+}
+function renderSituation() {
+  const situation = state?.situation;
+  const events = situation?.events || [];
+  const eventSelect = $('situation-event-select');
+  const previous = eventSelect.value;
+  const changedRun = situationRun !== null && situationRun !== state.run_id;
+  const removedEvent = previous && !events.some(event => event.id === previous);
+  if (changedRun || removedEvent) {
+    const hadDraft = $('situation-reason').value.trim().length > 0;
+    $('situation-reason').value = '';
+    $('situation-decision').value = 'noted';
+    reviewStatus(hadDraft ? 'situation.reset' : '');
+  }
+  situationRun = state.run_id;
+  const optionsSignature = JSON.stringify([language, state.run_id, events.map(event => [event.id,event.title])]);
+  if (optionsSignature !== situationOptions) {
+    situationOptions = optionsSignature;
+    eventSelect.innerHTML = events.map(event => `<option value="${escape(event.id)}">${escape(localized(event.title))} · ${escape(event.id)}</option>`).join('');
+    if (!changedRun && events.some(event => event.id === previous)) eventSelect.value = previous;
+  }
+  updateReviewAvailability();
+  const signature = JSON.stringify([language, situation, config?.research_sources]);
+  if (signature === situationSignature) return;
+  situationSignature = signature;
+  const latest = events.at(-1);
+  $('situation-stage').textContent = latest ? localized(latest.title) : t('situation.waiting');
+  $('situation-count').textContent = t('situation.counts', {count:events.length});
+  $('situation-compression').textContent = localized(situation?.time_compression_note);
+  const ids = values => (values || []).map(escape).join(', ') || t('none');
+  $('situation-events').innerHTML = events.map(event => `<li class="situation-card">
+    <h3>${escape(localized(event.title))}</h3><p class="situation-times">${t('situation.observed')} ${fmt(event.observed_at_ms)} · ${t('situation.received')} ${fmt(event.available_at_ms)}${event.story_time ? ` · ${t('situation.storyTime')} ${escape(localized(event.story_time))}` : ''}</p>
+    <p>${escape(localized(event.summary))}</p><p class="situation-uncertainty"><strong>${t('situation.uncertainty')}:</strong> ${escape(localized(event.uncertainty))}</p>
+    <dl><dt>${t('situation.evidence')}</dt><dd>${ids(event.evidence_ids)}</dd><dt>${t('situation.sourceIds')}</dt><dd>${ids(event.source_ids)}</dd>${event.related_event_id ? `<dt>${t('situation.related')}</dt><dd>${escape(event.related_event_id)}</dd>` : ''}</dl>
+    <p class="muted">${escape(event.id)} · ${t('situation.linkedReviews')}: ${(event.related_reviews || []).length}</p>
+  </li>`).join('') || `<li class="empty-state">${t('situation.empty')}</li>`;
+  const reviews = situation?.review_log || [];
+  const decisions = situation?.summary?.decisions || {};
+  $('situation-review-counts').textContent = t('situation.reviewCounts', {total:reviews.length,noted:decisions.noted || 0,needs_review:decisions.needs_review || 0,dismissed:decisions.dismissed || 0});
+  $('situation-reviews').innerHTML = reviews.map(review => `<li class="situation-card"><dl>
+    <dt>${t('situation.event')}</dt><dd>${escape(review.event_id)}</dd>
+    <dt>${t('situation.evidence')}</dt><dd>${ids(review.evidence_ids)}</dd>
+    <dt>${t('situation.assessment')}</dt><dd>${escape(localized(review.assessment))}</dd>
+    <dt>${t('situation.uncertainty')}</dt><dd>${escape(localized(review.uncertainty))}</dd>
+    <dt>${t('situation.decision')}</dt><dd>${escape(t(`situation.${review.decision}`))}</dd>
+    <dt>${t('situation.reason')}</dt><dd class="situation-reason-text">${escape(review.reason)}</dd>
+    <dt>${t('situation.reviewTime')}</dt><dd>${fmt(review.reviewed_at_ms)}</dd>
+    </dl><p class="muted">${t('situation.metadata')}: ${escape(review.id)} / ${escape(review.run_id)} / ${escape(review.case_id)}</p></li>`).join('') || `<li class="empty-state">${t('situation.emptyReviews')}</li>`;
+  $('situation-sources').innerHTML = (config?.research_sources || []).map(source => {
+    let link = escape(source.title);
+    try { const url = new URL(source.url); if (['https:','http:'].includes(url.protocol)) link = `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${link}</a>`; } catch { /* Keep an invalid reference as plain text. */ }
+    return `<li class="situation-card"><h3>${link}</h3><p class="muted">${escape(source.publisher)} · ${escape(source.published_at)} · ${escape(source.id)}</p><p><strong>${t('situation.claim')}:</strong> ${escape(localized(source.claim))}</p><p><strong>${t('situation.use')}:</strong> ${escape(localized(source.simulation_use))}</p></li>`;
+  }).join('') || `<li class="empty-state">${t('situation.noSources')}</li>`;
+}
+$('situation-event-select').onchange = () => {
+  $('situation-reason').value = '';
+  $('situation-decision').value = 'noted';
+  reviewStatus();
+};
+$('situation-review-form').onsubmit = event => {
+  event.preventDefault();
+  if (reviewPending || !connected || !state?.situation?.events?.length) return;
+  const reason = $('situation-reason').value.trim();
+  if (!reason) { reviewStatus('situation.required'); $('situation-reason').focus(); return; }
+  const body = {action:'review_event',run_id:state.run_id,event_id:$('situation-event-select').value,decision:$('situation-decision').value,reason};
+  reviewPending = true; updateReviewAvailability();
+  reviewStatus('situation.saving');
+  controlChain = controlChain.then(async () => {
+    const version = ++requestVersion;
+    try {
+      const data = await api('/api/control',body);
+      if (version === requestVersion) render(data);
+      if (state.run_id === body.run_id && $('situation-event-select').value === body.event_id) {
+        $('situation-reason').value = '';
+        reviewStatus('situation.saved');
+      }
+    } catch {
+      reviewStatus('situation.failed');
+    } finally { reviewPending = false; updateReviewAvailability(); }
+  });
+};
+
 function zoneLabel(zone) { return zone?.label?.[language] || zone?.label?.en || zone?.id || t('early.unknown'); }
 function focusZone(id) {
   const zone = state?.early_warning?.zones.find(z=>z.id===id);
   if(!zone)return;
   const [lat,lon]=localToGeo(zone.center[0],zone.center[2],config.regional_map.site_origin);
-  Object.assign(region,{lat,lon,zoom:14});setMode('region');
+  Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:14});setMode('region');
+}
+function deviceHealthHTML(evidence) {
+  if (!evidence.device_health) return '';
+  const health = evidence.device_health;
+  const power = ['external','battery'].includes(health.power_status) ? health.power_status : 'unknown';
+  const network = ['online','offline'].includes(health.network_status) ? health.network_status : 'unknown';
+  return `<small class="device-health">${t('early.healthAsReported')}: ${t('early.power')} ${t(`early.power.${power}`)} · ${t('early.network')} ${t(`early.network.${network}`)}</small>`;
 }
 function renderEarlyWarning() {
   const feed=state?.early_warning;
@@ -115,10 +215,12 @@ function renderEarlyWarning() {
   $('early-count').textContent=feed.zones.filter(z=>z.positive_sources>0).length;
   // Preserve expanded evidence while incoming data refreshes the cards.
   const open=new Set([...$('early-zones').querySelectorAll('details[open]')].map(d=>d.dataset.zone));
-  $('early-zones').innerHTML=feed.zones.map(z=>`<article class="early-zone">
+  $('early-zones').innerHTML=feed.zones.map(z=>`<article class="early-zone${z.deployment_type==='fixed_phone'?' fixed-phone-zone':''}">
     <header><h3>${escape(zoneLabel(z))}</h3><button class="button button-secondary" data-zone-focus="${escape(z.id)}">${t('early.focus')}</button></header>
+    <p class="deployment-label">${t(`early.deployment.${z.deployment_type === 'fixed_phone' ? 'fixed_phone' : 'community'}`)}</p>
+    ${(z.installations || []).length ? `<p class="installation-list">${t('early.installations')}: ${(z.installations || []).map(installation => escape(t('early.mount',{id:installation.sensor_id,height:installation.mount_height_m}))).join(' · ')}</p>` : ''}
     <p><span class="early-status" data-status="${escape(z.status)}">${t(`early.${z.status}`)}</span> · ${t('early.sources',{count:z.positive_sources})}</p>
-    <details data-zone="${escape(z.id)}" ${open.has(z.id)?'open':''}><summary>${t('early.evidence')}</summary><ul>${z.evidence.map(e=>`<li><strong>${escape(e.sensor_id)}</strong> · ${t(`early.${e.sensor_type}`)}<br>${t(e.assessment==='unavailable'?'early.sourceUnavailable':`early.${e.assessment}`)} · ${t(e.object_present===true?'early.present':e.object_present===false?'early.negative':'early.unknown')}<small>${t('lastObservation')} ${e.observed_at_ms===null?'--:--':fmt(e.observed_at_ms)} · ${t('early.received')} ${fmt(e.available_at_ms)}</small><small>${e.classifier_score===null?t('early.noScore'):t('early.score',{score:e.classifier_score.toFixed(2)})}</small><small>${t('evidence')} ${escape(e.id)}</small></li>`).join('')||`<li>${t('early.empty')}</li>`}</ul></details>
+    <details data-zone="${escape(z.id)}" ${open.has(z.id)?'open':''}><summary>${t('early.evidence')}</summary><ul>${z.evidence.map(e=>`<li><strong>${escape(e.sensor_id)}</strong> · ${t(`early.${e.sensor_type}`)}<br><strong class="report-assessment">${t(e.assessment==='unavailable'?'early.sourceUnavailable':`early.${e.assessment}`)}</strong> · ${t(e.object_present===true?'early.present':e.object_present===false?'early.negative':'early.unknown')}<small>${t('lastObservation')} ${e.observed_at_ms===null?'--:--':fmt(e.observed_at_ms)} · ${t('early.received')} ${fmt(e.available_at_ms)}</small><small>${e.classifier_score===null?t('early.noScore'):t('early.score',{score:e.classifier_score.toFixed(2)})}</small>${deviceHealthHTML(e)}<small>${t('evidence')} ${escape(e.id)}</small></li>`).join('')||`<li>${t('early.empty')}</li>`}</ul></details>
   </article>`).join('')+`<div class="early-footer">${t('early.ttl',{seconds:feed.freshness_ms/1000})} · ${t('early.areaNote')}</div>`;
   $('early-zones').querySelectorAll('[data-zone-focus]').forEach(b=>b.onclick=()=>focusZone(b.dataset.zoneFocus));
 }
@@ -171,8 +273,22 @@ function drawSite() {
   const [lx,ly]=point(r.center[0]+80,r.center[2]+r.length_m/2);
   svg+=`<text x="${lx}" y="${ly}" fill="#acc2c8" font-size="10">${t('runway',{length:r.length_m.toLocaleString(language),width:r.width_m})}</text>`;
   for(const f of site.facilities){
-    const size=({hangar:[10,12],utility_building:[6,8],control_tower:[5.8,5.8],observation_station:[3,3]})[f.asset_id] || [8,8];
+    if(f.asset_id==='phone_sensor_pole')continue; // Installation symbols below stay legible at overview scale.
+    const size=({hangar:[10,12],arched_hangar:[10.6,12.7],office_building:[6,8],service_building:[6,8],utility_building:[6,8],control_tower:[5.8,5.8],observation_station:[3,3]})[f.asset_id] || [8,8];
     svg+=rect(f.position[0],f.position[2],size[0]*f.scale[0],size[1]*f.scale[2],'#617b74','#a3b6a4');
+  }
+  for(const zone of site.display_zones || []){
+    if(s<0.3 || zone.id==='phone_pilot')continue;
+    const [x,y]=point(zone.position[0],zone.position[2]);
+    const color=/^#[0-9a-f]{6}$/i.test(zone.color) ? zone.color : '#b5c3be';
+    svg+=`<text class="site-zone-label" x="${x}" y="${y}" fill="${color}" font-size="10">${escape(localized(zone.label))}</text>`;
+  }
+  for(const zone of state?.early_warning?.zones || []){
+    for(const installation of zone.installations || []){
+      const [x,y]=point(installation.position[0],installation.position[2]);
+      const title=t('early.mount',{id:installation.sensor_id,height:installation.mount_height_m});
+      svg+=`<g class="fixed-phone-point"><title>${escape(title)}</title><path d="M ${x} ${y+8} V ${y-4}" stroke="#d1c49b" stroke-width="2"/><rect x="${x-3}" y="${y-9}" width="6" height="9" fill="#172b2e" stroke="#d1c49b" stroke-width="1.5"/></g>`;
+    }
   }
   for(const t of state?.tracks || []){
     const coords=t.history.map(r=>point(r.position[0],r.position[2]).join(',')).join(' ');
@@ -185,7 +301,7 @@ function drawSite() {
     const [x,y]=point(z.center[0],z.center[2]);
     if(x<0||x>w||y<0||y>h)continue;
     const marker=document.createElement('button');marker.className='area-marker';marker.dataset.status=z.status;
-    marker.style.left=`${x}px`;marker.style.top=`${y}px`;
+    marker.style.left=`${x}px`;marker.style.top=`${y+(z.deployment_type==='fixed_phone'?-60:0)}px`;
     marker.textContent=zoneLabel(z);marker.title=`${zoneLabel(z)} · ${t(`early.${z.status}`)}`;
     marker.setAttribute('aria-label',`${zoneLabel(z)} · ${t(`early.${z.status}`)} · ${t('early.focus')}`);
     marker.onclick=()=>focusZone(z.id);markers.append(marker);
@@ -326,7 +442,7 @@ function applyLanguage(next, persist = false) {
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
   renderBriefing();
-  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');

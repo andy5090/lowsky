@@ -87,3 +87,29 @@ test('every generated case briefing resolves in both languages', () => {
   assert.equal(translate('en','workspace'),'Decision making workspace');
   assert.equal(translate('ko','workspace'),'의사결정 워크스페이스');
 });
+
+
+test('human review decisions and all seven audit fields resolve in both languages', () => {
+  const keys = ['event','evidence','assessment','uncertainty','decision','reason','reviewTime',
+    'noted','needs_review','dismissed','saving','saved','failed','reset','synthetic','referenceNote'];
+  for (const language of ['en','ko']) {
+    for (const key of keys) assert.ok(Object.hasOwn(messages[language], `situation.${key}`), `${language} ${key}`);
+    const counts = translate(language, 'situation.reviewCounts', {total:0,noted:0,needs_review:0,dismissed:0});
+    assert.doesNotMatch(counts, /\{\w+\}/);
+  }
+  assert.match(translate('en','situation.synthetic'), /not measured detection or decision accuracy/);
+  assert.match(translate('en','situation.referenceNote'), /not live sensor evidence/);
+});
+
+
+test('fixed phone deployments and last-reported health resolve in both languages', () => {
+  const keys = ['early.deployment.community','early.deployment.fixed_phone','early.fixed_phone_acoustic',
+    'early.healthAsReported','early.power.external','early.power.battery','early.power.unknown',
+    'early.network.online','early.network.offline','early.network.unknown','early.stale','situation.linkedReviews'];
+  for (const language of ['en','ko']) {
+    for (const key of keys) assert.ok(Object.hasOwn(messages[language],key), `${language} ${key}`);
+    const mount=translate(language,'early.mount',{id:'phone_01',height:3});
+    assert.match(mount,/phone_01/);assert.match(mount,/3 m/);
+  }
+  assert.match(translate('en','early.areaNote'),/not drone positions or sensor range/);
+});

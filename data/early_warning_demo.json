@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "synthetic": true,
-  "description": "Independent community early-signal overlay replayed with every quality-test case. No association with the existing object tracks or real residents. All times, scores and area radii are demo assumptions.",
+  "description": "Independent community and fixed-phone pilot observations sharing the replay clock. All positions, times, scores and area radii are fictional demo assumptions, not detector performance.",
   "freshness_ms": 30000,
   "zones": [
     {
@@ -15,7 +15,8 @@
         0,
         -1600
       ],
-      "radius_m": 400
+      "radius_m": 400,
+      "deployment_type": "community"
     },
     {
       "id": "community_b",
@@ -28,7 +29,8 @@
         0,
         1400
       ],
-      "radius_m": 350
+      "radius_m": 350,
+      "deployment_type": "community"
     },
     {
       "id": "community_c",
@@ -41,7 +43,42 @@
         0,
         -1600
       ],
-      "radius_m": 350
+      "radius_m": 350,
+      "deployment_type": "community"
+    },
+    {
+      "id": "fixed_phone_pilot",
+      "label": {
+        "en": "Fixed-phone pilot",
+        "ko": "고정 폰 시범 구역"
+      },
+      "deployment_type": "fixed_phone",
+      "center": [
+        500,
+        0,
+        130
+      ],
+      "radius_m": 100,
+      "installations": [
+        {
+          "sensor_id": "pole_phone_1",
+          "position": [
+            500,
+            0,
+            105
+          ],
+          "mount_height_m": 3
+        },
+        {
+          "sensor_id": "pole_phone_2",
+          "position": [
+            500,
+            0,
+            155
+          ],
+          "mount_height_m": 3
+        }
+      ]
     }
   ],
   "observations": [
@@ -206,6 +243,182 @@
       },
       "synthetic": true,
       "sensor_spec_id": "civilian_acoustic_reference"
+    },
+    {
+      "id": "pole_1_ready",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_1",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_1_signal",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_1",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 90000,
+      "available_at_ms": 90000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": 0.7
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_1_loss",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_1",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "sensor_status": "offline",
+      "measurement_status": "unavailable",
+      "measurement": {
+        "object_present": null
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "battery",
+        "network_status": "offline"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_1_recovery",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_1",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 150000,
+      "available_at_ms": 150000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_2_ready",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_2",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 0,
+      "available_at_ms": 0,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_2_signal",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_2",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 90000,
+      "available_at_ms": 95000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": 0.7
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_2_loss",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_2",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 120000,
+      "available_at_ms": 120000,
+      "sensor_status": "offline",
+      "measurement_status": "unavailable",
+      "measurement": {
+        "object_present": null
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "battery",
+        "network_status": "offline"
+      },
+      "synthetic": true
+    },
+    {
+      "id": "pole_2_recovery",
+      "zone_id": "fixed_phone_pilot",
+      "sensor_id": "pole_phone_2",
+      "sensor_type": "fixed_phone_acoustic",
+      "sensor_spec_id": "pole_phone_reference",
+      "observed_at_ms": 150000,
+      "available_at_ms": 150000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "device_health": {
+        "power_status": "external",
+        "network_status": "online"
+      },
+      "synthetic": true
     }
   ],
   "spec_catalog": "data/sensors/civilian_reference_specs.json"

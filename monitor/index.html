@@ -42,13 +42,33 @@
       <details id="brief-details"><summary data-i18n="brief.expand">Timeline &amp; review points</summary>
         <p class="brief-preview-note" data-i18n="brief.preview">Scripted overview — includes future events. This is not live observation evidence.</p>
         <div class="brief-body"><div><h3 data-i18n="brief.timeline">Scenario timeline</h3><ol id="brief-timeline"></ol></div>
-        <div><h3 data-i18n="brief.review">What to check</h3><p id="brief-review"></p><h3 data-i18n="brief.sharedHeading">Shared early-signal feed</h3><p data-i18n="brief.shared">The same independent community feed plays in every case. Its alerts do not confirm or identify these tracked objects.</p><p class="muted" id="brief-objects"></p></div></div>
+        <div><h3 data-i18n="brief.review">What to check</h3><p id="brief-review"></p><h3 data-i18n="brief.sharedHeading">Shared early-signal feed</h3><p data-i18n="brief.shared">The same independent community and fixed-phone feeds play in every case. Their alerts do not confirm or identify these tracked objects.</p><p class="muted" id="brief-objects"></p></div></div>
+      </details>
+    </section>
+
+    <section class="panel situation-panel" aria-labelledby="situation-heading">
+      <div class="situation-heading"><div><p class="eyebrow" id="situation-heading" data-i18n="situation.heading">RECEIVED SITUATION CONTEXT</p><h2 id="situation-stage" data-i18n="situation.waiting">Awaiting received context</h2></div><span id="situation-count" class="count-badge">0</span></div>
+      <details id="situation-details"><summary data-i18n="situation.expand">Received events &amp; evidence review</summary>
+        <div class="situation-body">
+          <p class="situation-note" data-i18n="situation.synthetic">Synthetic review exercise. Review counts are not measured detection or decision accuracy.</p>
+          <p class="muted" id="situation-compression"></p>
+          <ol id="situation-events" class="situation-events"></ol>
+          <form id="situation-review-form" class="situation-review-form">
+            <h3 data-i18n="situation.review">Record a human evidence review</h3>
+            <label for="situation-event-select" data-i18n="situation.event">Received event</label><select id="situation-event-select" required></select>
+            <label for="situation-decision" data-i18n="situation.decision">Review decision</label><select id="situation-decision"><option value="noted" data-i18n="situation.noted">Noted</option><option value="needs_review" data-i18n="situation.needs_review">Needs further review</option><option value="dismissed" data-i18n="situation.dismissed">Dismissed from this review</option></select>
+            <label for="situation-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="situation-reason" rows="3" maxlength="1000" required></textarea>
+            <button id="situation-submit" type="submit" class="button button-secondary" data-i18n="situation.save">Save review</button><p id="situation-review-status" role="status" aria-live="polite"></p>
+          </form>
+          <details class="situation-log"><summary data-i18n="situation.log">Recorded reviews</summary><p id="situation-review-counts"></p><ol id="situation-reviews" class="situation-events"></ol></details>
+          <details class="situation-references"><summary data-i18n="situation.references">Research references</summary><p class="muted" data-i18n="situation.referenceNote">Background sources inform this synthetic exercise. They are not live sensor evidence.</p><ul id="situation-sources" class="situation-events"></ul></details>
+        </div>
       </details>
     </section>
 
     <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
       <section class="panel early-warning-panel" aria-labelledby="early-title">
-        <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Community early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
+        <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Area early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
         <p class="early-note" data-i18n="early.note">Independent demo feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
         <div id="early-zones" class="early-zones"></div>
       </section>

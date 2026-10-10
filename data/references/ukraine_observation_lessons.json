@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "id": "csis_decoys_2025",
+      "title": "Russia Conducts Largest Air Attack on Ukraine to Date",
+      "publisher": "CSIS",
+      "published_at": "2025-05-29",
+      "url": "https://www.csis.org/analysis/russia-conducts-largest-air-attack-ukraine-date",
+      "claim": {
+        "en": "CSIS reports increased use of decoys alongside drones in its May 2025 analysis.",
+        "ko": "CSIS는 2025년 5월 분석에서 드론과 함께 사용되는 기만 표적의 증가를 보고했습니다."
+      },
+      "simulation_use": {
+        "en": "Exercise conflicting observations without inferring payload or intent from a track. No historical sortie is reconstructed.",
+        "ko": "항적만으로 탑재물·의도를 확정하지 않는 상충 관측 실습에 반영합니다. 실제 출격을 재현하지 않습니다."
+      },
+      "accessed_at": "2026-10-10",
+      "evidence_type": "published_analysis",
+      "use_level": "qualitative_only"
+    },
+    {
+      "id": "rusi_ew_2025",
+      "title": "Competitive Electronic Warfare in Modern Land Operations",
+      "publisher": "RUSI",
+      "published_at": "2025-01-30",
+      "url": "https://www.rusi.org/explore-our-research/publications/occasional-papers/competitive-electronic-warfare-modern-land-operations",
+      "claim": {
+        "en": "RUSI describes widespread dependence on the electromagnetic spectrum and the growing role of electronic warfare in Ukraine.",
+        "ko": "RUSI는 전자기 스펙트럼에 대한 의존과 우크라이나에서 확대된 전자전의 역할을 설명합니다."
+      },
+      "simulation_use": {
+        "en": "Keep source health separate from observations. A missing report alone does not establish interference or its cause.",
+        "ko": "출처 상태와 관측 내용을 구분합니다. 보고 누락만으로 전파 방해나 그 원인을 확정하지 않습니다."
+      },
+      "accessed_at": "2026-10-10",
+      "evidence_type": "published_analysis",
+      "use_level": "qualitative_only"
+    },
+    {
+      "id": "csis_links_2025",
+      "title": "Extending the Battlespace to Space",
+      "publisher": "CSIS",
+      "published_at": "2025-09-16",
+      "url": "https://www.csis.org/analysis/chapter-8-extending-battlespace-space",
+      "claim": {
+        "en": "CSIS describes navigation and communications interference and the use of fiber-optic links that do not depend on wireless communications.",
+        "ko": "CSIS는 항법·통신 간섭과 무선 통신에 의존하지 않는 광섬유 연결의 사용을 설명합니다."
+      },
+      "simulation_use": {
+        "en": "Represent unknown communication type. Missing RF evidence cannot establish a fiber-optic link, autonomy, or absence of an object.",
+        "ko": "통신 방식 미상을 표현합니다. RF 근거 부재만으로 광섬유·자율 방식이나 대상 부재를 확정할 수 없습니다."
+      },
+      "accessed_at": "2026-10-10",
+      "evidence_type": "published_analysis",
+      "use_level": "qualitative_only"
+    }
+  ],
+  "note": "Research context only, not live observations or calibrated performance data."
+}

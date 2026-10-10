@@ -64,6 +64,10 @@ func verify() -> void:
 		if absf(vertex.x) <= 50 and absf(vertex.z) <= 50:
 			assert(is_equal_approx(vertex.y, -0.02), "Airfield surface must remain level")
 	assert(preview.has_node("DetailedHangar"))
+	assert(preview.has_node("ArchedHangar"))
+	assert(preview.has_node("OfficeBuilding"))
+	assert(preview.has_node("ServiceBuilding"))
+	assert(preview.has_node("PhoneSensorPole"))
 	assert(preview.has_node("DetailedTower"))
 	assert(preview.get_node("SiteInfrastructure/Runway").get_meta("length_m") == 2500)
 	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("vertex_count") == preview.site_layout.perimeter.polygon.size())
@@ -127,6 +131,37 @@ func verify_site_geometry(preview: Node3D) -> void:
 	for facility in layout.facilities:
 		assert(Geometry2D.is_point_in_polygon(Vector2(facility.position[0], facility.position[2]), polygon))
 		assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, facility.position[0], facility.position[2], layout), -0.02))
+		assert(not facility.label.en.is_empty() and not facility.label.ko.is_empty())
+		var building = preview.asset_instance(facility.asset_id)
+		building.scale = preview.vector(facility.scale)
+		building.position = preview.vector(facility.position)
+		var bounds = preview.collect_bounds(building, Transform3D.IDENTITY)
+		assert(not bounds.is_empty())
+		var combined: AABB = bounds[0]
+		for bound in bounds:
+			combined = combined.merge(bound)
+		for x in [combined.position.x, combined.end.x]:
+			for z in [combined.position.z, combined.end.z]:
+				assert(Geometry2D.is_point_in_polygon(Vector2(x, z), polygon), facility.id + " footprint exceeds boundary")
+		if facility.asset_id == "arched_hangar":
+			assert(combined.size.x < 70 and combined.size.z < 80 and combined.size.y < 20, "Arched hangars must preserve ordinary building scale")
+		if facility.asset_id == "phone_sensor_pole":
+			assert(is_equal_approx(combined.size.y, 3.0) and combined.size.x < 1 and combined.size.z < 1, "Phone mount must remain a 3 m ordinary pole")
+		building.free()
+	assert(layout.display_zones.size() == 5)
+	for zone in layout.display_zones:
+		assert(preview.has_node("SiteInfrastructure/DisplayZones/" + zone.id))
+		assert(Geometry2D.is_point_in_polygon(Vector2(zone.position[0], zone.position[2]), polygon))
+	# Procedural aliases also work with existing stylized and blockout resources.
+	preview.realistic = false
+	for external in [true, false]:
+		preview.use_external_assets = external
+		for asset in ["arched_hangar", "office_building", "service_building", "phone_sensor_pole"]:
+			var fallback = preview.asset_instance(asset)
+			assert(not preview.collect_bounds(fallback, Transform3D.IDENTITY).is_empty())
+			fallback.free()
+	preview.realistic = true
+	preview.use_external_assets = true
 	for apron in layout.aprons:
 		for dx in [-1, 1]:
 			for dz in [-1, 1]:

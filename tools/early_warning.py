@@ -1,4 +1,4 @@
-"""Observation-only early signals from a fictional community sensor feed.
+"""Observation-only early signals from fictional community and fixed-phone feeds.
 
 Rules describe review priority, never identity, hostile intent or sensor performance.
 No world truth, microphone access, triangulation or trajectory prediction is used.
@@ -53,6 +53,14 @@ def snapshot(feed, at_ms):
                                  available_at_ms=row['available_at_ms'], assessment=result,
                                  object_present=present if type(present) is bool else None,
                                  classifier_score=score, synthetic=True))
+            if zone.get('deployment_type') == 'fixed_phone':
+                health = row.get('device_health', {})
+                evidence[-1]['device_health'] = {
+                    key: health.get(key) if health.get(key) in allowed else 'unknown'
+                    for key, allowed in (
+                        ('power_status', ('external', 'battery', 'unknown')),
+                        ('network_status', ('online', 'offline', 'unknown')))
+                }
         current = [e for e in evidence if e['assessment'] == 'current']
         positive = [e for e in current if e['object_present'] is True]
         negative = [e for e in current if e['object_present'] is False]
@@ -73,6 +81,11 @@ def snapshot(feed, at_ms):
         item = dict(id=zone['id'], label=zone['label'], center=zone['center'],
                     radius_m=zone['radius_m'], status=status, evidence=evidence,
                     positive_sources=len(positive), radar_association='unknown', synthetic=True)
+        item['deployment_type'] = zone.get('deployment_type', 'community')
+        item['installations'] = [
+            {key: installation[key] for key in ('sensor_id', 'position', 'mount_height_m')}
+            for installation in zone.get('installations', [])
+        ]
         zones.append(item)
         if positive:
             # New evidence gets its own acknowledgement; old acknowledgements cannot hide an escalation.

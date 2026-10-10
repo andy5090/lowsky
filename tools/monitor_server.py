@@ -11,9 +11,11 @@ from urllib.parse import urlsplit
 try:
     from .scenario_dataset import ROOT, read_json, snapshot, information_state
     from .early_warning import snapshot as early_snapshot
+    from .situation_review import snapshot as situation_snapshot, make_review
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
     from early_warning import snapshot as early_snapshot
+    from situation_review import snapshot as situation_snapshot, make_review
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -23,6 +25,8 @@ class Simulation:
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
         self.reviews = []
+        self.context_reviews = []
+        self.situation_feed = read_json(PROJECT / "data/situation_review.json")
         self.lock = threading.RLock()
         self.cases = read_json(root / 'manifest.json')['cases']
         self.public = {entry['case_id']: read_json(root / 'cases' / entry['case_id'] / 'public.json') for entry in self.cases}
@@ -100,7 +104,9 @@ class Simulation:
             alerts = early_alerts + alerts
             for alert in alerts:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
-            return dict(**clock, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
+            situation = situation_snapshot(self.situation_feed, self.case_id, clock['at_ms'], payload['object_ids'],
+                                           [r for r in self.context_reviews if r['run_id'] == self.run_id])
+            return dict(**clock, situation=situation, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
                         contexts=payload['contexts'], early_warning=early_warning,
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
@@ -136,6 +142,11 @@ class Simulation:
                 if type(speed) not in (int, float) or speed not in (1, 2, 4):
                     raise ValueError('Invalid speed')
                 self.speed = speed
+            elif action == 'review_event':
+                situation = self.state()['situation']
+                record = make_review(command, situation, self.run_id, self.case_id, now_ms, uuid.uuid4().hex)
+                self.context_reviews.append(record)
+                self.context_reviews = self.context_reviews[-1000:]
             elif action == 'ack':
                 if command.get('run_id') != self.run_id:
                     raise ValueError('Stale run')
@@ -190,7 +201,8 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(200, dict(site=read_json(PROJECT / 'data' / 'site_layout.json'),
                                    cases=[{'case_id': c['case_id'], 'variant': c['variant']} for c in self.server.simulation.cases],
                                    regional_map=read_json(PROJECT / 'monitor' / 'map_config.json'),
-                                   radar_display=read_json(PROJECT / 'data' / 'radar_display.json')))
+                                   radar_display=read_json(PROJECT / 'data' / 'radar_display.json'),
+                                   research_sources=read_json(PROJECT / 'data/references/ukraine_observation_lessons.json')['sources']))
         elif path == '/health':
             self.respond(200, {'ok': True})
         else:

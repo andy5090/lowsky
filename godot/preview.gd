@@ -102,6 +102,8 @@ func vector(values: Array) -> Vector3:
 	return Vector3(values[0], values[1], values[2])
 
 func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
+	if asset_id == "phone_sensor_pole":
+		return Detailed.make_phone_sensor_pole(materials)
 	if realistic:
 		match asset_id:
 			"ground_tile":
@@ -109,8 +111,13 @@ func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 					return Geographic.make(terrain_data, materials.grass, site_layout)
 				return Plains.make(materials.grass, site_layout) if plains_test else Detailed.make_terrain(materials.grass, site_layout)
 			"hangar": return Detailed.make_hangar(materials)
+			"arched_hangar": return Detailed.make_arched_hangar(materials)
 			"control_tower": return Detailed.make_tower(materials)
 			"utility_building": return Detailed.make_utility_building(materials)
+			"office_building": return Detailed.make_office_building(materials)
+			"service_building": return Detailed.make_service_building(materials)
+	# Existing low-detail resources remain the fallback for each procedural variant.
+	asset_id = {"arched_hangar": "hangar", "office_building": "utility_building", "service_building": "utility_building"}.get(asset_id, asset_id)
 	var replacements = {"hangar": ["building-k", 10.0], "utility_building": ["building-h", 6.0]}
 	var path = "res://assets/%s.glb" % asset_id
 	if use_external_assets and asset_id in replacements:

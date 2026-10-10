@@ -49,6 +49,22 @@ static func make(layout: Dictionary, materials: Dictionary) -> Node3D:
 		add_path(root, line, taxi_paint, 0.155)
 	for road in layout.roads:
 		add_path(root, road, materials.asphalt, 0.04)
+	var labels = Node3D.new()
+	labels.name = "DisplayZones"
+	root.add_child(labels)
+	for zone in layout.get("display_zones", []):
+		var label = Label3D.new()
+		label.name = zone.id
+		label.text = zone.label.en
+		label.set_meta("label_ko", zone.label.ko)
+		label.position = vector(zone.position) + Vector3(0, 22, 0)
+		label.modulate = Color(zone.color)
+		label.font_size = 40
+		label.pixel_size = 0.15
+		label.outline_size = 8
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		label.visibility_range_begin = 150.0
+		labels.add_child(label)
 	add_perimeter(root, layout.perimeter, materials)
 	return root
 

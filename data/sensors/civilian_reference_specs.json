@@ -68,6 +68,25 @@
         "classification_accuracy": null
       },
       "simulation_use": "Presence report with null classifier confidence. No identities, real phone locations or recordings."
+    },
+    {
+      "id": "pole_phone_reference",
+      "input_type": "fixed_phone_acoustic",
+      "hardware_model": null,
+      "interaction": "Dedicated fixed smartphone on a fictional pilot pole; separate from voluntary citizen reports. Synthetic acoustic candidate and device-health metadata only.",
+      "deployment_assumptions": {
+        "mount_height_m": 3,
+        "power": "External supply with illustrative battery fallback",
+        "network": "Unspecified IP uplink; synthetic online/offline telemetry",
+        "enclosure": "Weather enclosure shown for visualization; no IP rating or thermal qualification claimed"
+      },
+      "integration_status": "Phone, microphone, application, enclosure, power and network hardware have not been selected or tested. No installation or wiring specification. Offline status is a synthetic gateway report, not a message transmitted by a disconnected handset.",
+      "detector_performance": {
+        "detection_range_m": null,
+        "classification_accuracy": null,
+        "false_alarm_rate": null
+      },
+      "simulation_use": "Two fixed installations with delayed receipt, loss and recovery. No real microphone access, audio recording or automatic association with radar tracks."
     }
   ],
   "simulation_contract": {
@@ -78,7 +97,8 @@
     "reporting_zone_radius": "Fictional map annotation; not sensor range or measured positional accuracy.",
     "clock": "observed_at_ms and available_at_ms are offsets from shared replay start, preserving observation vs receipt time.",
     "radar_association": "unknown; community reports are not automatically linked to existing tracks.",
-    "raw_audio_collected": false
+    "raw_audio_collected": false,
+    "device_health": "Latest received synthetic gateway/device report, with observation and receipt times; stale metadata is not live health."
   },
   "scope": {
     "civilian_components": [
