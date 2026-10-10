@@ -193,6 +193,8 @@ The [recorded local benchmark](artifacts/monitor-workload-benchmark.json) measur
 
 ## PWA and current-alert notifications
 
+**Alert sound** is independent of notification permission. Use the sound button beside the view tabs to mute or enable it; the preference is saved locally. Sound activates after an interaction with the page: low urgency uses one soft tone, medium uses two notes, and high uses three warning pulses. The highest level in each batch wins; semantic deduplication and real-time cooldowns (30/8/3 seconds) suppress repeated sounds. Initial load, seeks, reconnection catch-up and paused playback stay silent. System notifications request silent delivery to avoid a second chime. Background suspension or system audio settings may prevent sound.
+
 The monitor includes a [web app manifest](monitor/manifest.webmanifest) and [service worker](monitor/sw.js). Use **Install app** when the browser offers an installation prompt, or its install/Add to Home Screen menu otherwise. Installation availability depends on the browser. Notifications require a supported browser, HTTPS or a localhost origin, and browser/OS permission.
 
 1. Select **Enable notifications** and allow the browser request. This sends the currently unacknowledged alerts once, including while replay is paused.

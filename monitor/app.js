@@ -7,8 +7,9 @@ import {indicationOverview, earlyIndicationSummary, decisionCopyKey, DASHBOARD_A
 import {exerciseConfirmation, exerciseMissionRows} from './exercise.mjs';
 import {activeDecision, decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
-import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
+import {translate, readLanguage, saveLanguage, normalizeLanguage, triggerValue, triggerSubject, localizedValue} from './i18n.mjs';
 import {createAlertPriorityPolicy, priorityAlertKey, createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
+import {createAlertAudioController, ALERT_AUDIO_STORAGE_KEY} from './alert_audio.mjs';
 const $ = id => document.getElementById(id);
 const customSelects=enhanceSelects(document);
 let selectSyncQueued=false;
@@ -21,7 +22,7 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 let language = 'en';
 try { language = readLanguage(localStorage); } catch { /* Storage may be unavailable. */ }
 const t = (key, values) => translate(language, key, values);
-const localized = value => value?.[language] || value?.en || '';
+const localized = value => localizedValue(language,value);
 const qualityLabel = quality => t(`quality.${quality}`);
 const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
@@ -31,7 +32,7 @@ let briefings = [], briefingSignature = '';
 let situationSignature = '', situationRun = null, situationOptions = '', reviewPending = false;
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
-let notifier, notificationBusy = false, notificationMessage = '', installPrompt;
+let notifier, alertAudio, notificationBusy = false, notificationMessage = '', installPrompt;
 let assessment = null, assessmentBusy = false, assessmentLastAttempt = 0, assessmentFailure = false;
 let assessmentSignature = '';
 let decisions = null, decisionBusy = false, decisionDraft = null, decisionError = '', decisionSignature = '';
@@ -200,8 +201,16 @@ function renderDetails() {
   $('active-alerts').innerHTML = alertHTML;
   document.querySelectorAll('[data-alert]').forEach(b=> b.onclick=()=>control({action:'ack',alert_id:b.dataset.alert,run_id:state.run_id}));
   $('source-status').textContent = state.sources.map(s=>`${s.source_id}: ${sourceLabel(s.status)}`).join(' · ');
-  $('events-list').innerHTML = state.sources.map(s=>`<li class="event-item"><time>${s.evidence ? fmt(s.evidence.observed_at_ms) : '--:--'}</time>${escape(s.source_id)} · ${sourceLabel(s.status)}</li>`).join('') + state.contexts.map(c=>`<li class="event-item"><time>${t('published')} ${fmt(c.published_at_ms)}</time>${escape(['context_001','context_002'].includes(c.id)?t(`context.${c.id}`):c.text)}</li>`).join('');
+  $('events-list').innerHTML = state.sources.map(s=>`<li class="event-item"><time>${s.evidence ? fmt(s.evidence.observed_at_ms) : '--:--'}</time>${escape(s.source_id)} · ${sourceLabel(s.status)}</li>`).join('') + state.contexts.map(c=>`<li class="event-item"><time>${t('published')} ${fmt(c.published_at_ms)}</time>${escape(['context_001','context_002'].includes(c.id)?t(`context.${c.id}`):localized(c.text))}</li>`).join('');
   $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
+}
+function originalReportLabel(report) {
+  return t('report.original',{language:t(`report.language.${normalizeLanguage(report.language)}`)});
+}
+function reportLanguageHTML(report,html) {
+  const lang=normalizeLanguage(report.language);
+  if(lang===language)return html;
+  return `<p class="muted">${escape(t('report.otherLanguage'))}</p><details><summary>${escape(originalReportLabel(report))}</summary><div lang="${lang}">${html}</div></details>`;
 }
 function renderAssessment() {
   syncSelects();
@@ -217,7 +226,7 @@ function renderAssessment() {
   const signature = JSON.stringify([language,report,Boolean(stale)]);
   if(signature===assessmentSignature)return;
   assessmentSignature=signature;
-  $('agent-report').innerHTML = report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>` : `<p class="empty-state">${t('agent.empty')}</p>`;
+  $('agent-report').innerHTML = report ? reportLanguageHTML(report,`<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>`) : `<p class="empty-state">${t('agent.empty')}</p>`;
 }
 async function runAssessment() {
   if(!connected || !state || assessmentBusy || assessment?.running || assessment?.configuration_error)return;
@@ -308,6 +317,7 @@ function renderPriorityAlerts() {
   if(!state)return;
   const event=currentDecision();
   const updates=alertPriority.observe(state,event,{expiredChoice:priorityExpiredChoice});
+  alertAudio?.observe({...state,connected},updates);
   priorityExpiredChoice=null;
   if(updates.reset){priorityQueue=[];$('priority-toast').hidden=true;clearTimeout(priorityToastTimer);}
   priorityQueue=priorityQueue.filter(notice=>connected && notice.run_id===state.run_id && notice.expires_at_ms>state.at_ms
@@ -335,7 +345,7 @@ $('priority-toast-dismiss').onclick=()=>{$('priority-toast').hidden=true;};
 function decisionBriefHTML(event,report) {
   if(!report)return '';
   const mode=report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules');
-  return `<section class="decision-overall"><h3>${escape(t('decision.overall'))}</h3><p class="agent-summary">${escape(report.summary || '')}</p><small class="decision-overall-basis">${escape(t('decision.capturedBasis',{time:fmt(event.at_ms),mode}))}${event.new_evidence_available?` · ${escape(t('decision.capturedOnly'))}`:''}${report.language!==language?` · ${escape(t('decision.languageMismatch'))}`:''}</small><div class="decision-brief-facts">${['uncertain'].map(kind=>`<div><h4>${escape(t(`agent.${kind}`))}</h4><ul>${(report[kind] || []).slice(0,1).map(item=>`<li>${escape(item.text)}</li>`).join('') || `<li>${escape(t('none'))}</li>`}</ul></div>`).join('')}</div></section>`;
+  return reportLanguageHTML(report,`<section class="decision-overall"><h3>${escape(t('decision.overall'))}</h3><p class="agent-summary">${escape(report.summary || '')}</p><small class="decision-overall-basis">${escape(t('decision.capturedBasis',{time:fmt(event.at_ms),mode}))}${event.new_evidence_available?` · ${escape(t('decision.capturedOnly'))}`:''}${report.language!==language?` · ${escape(t('decision.languageMismatch'))}`:''}</small><div class="decision-brief-facts">${['uncertain'].map(kind=>`<div><h4>${escape(t(`agent.${kind}`))}</h4><ul>${(report[kind] || []).slice(0,1).map(item=>`<li>${escape(item.text)}</li>`).join('') || `<li>${escape(t('none'))}</li>`}</ul></div>`).join('')}</div></section>`);
 }
 function renderDecisions() {
   syncSelects();
@@ -365,7 +375,7 @@ function renderDecisions() {
   $('decision-assess').parentElement.hidden = Boolean(event);
   $('decision-attention').hidden = true;
   $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : expired ? $('decision-expired').textContent : '';
-  const report = decisionReport(event);
+  const report = decisionReport(event,language);
   $('decision-timing').textContent = event ? t('decision.timing',{captured:fmt(event.at_ms),now:fmt(state.at_ms),age:fmt(Math.max(0,state.at_ms-event.at_ms)),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms)),count:(decisions.events || []).filter(item=>!['decided','superseded','expired'].includes(item.status)).length}) : '';
   $('decision-new-evidence').hidden=!event?.new_evidence_available;
   $('decision-new-evidence').textContent=t('indication.newEvidence',{time:fmt(event?.latest_evidence_at_ms || 0)});
@@ -374,11 +384,11 @@ function renderDecisions() {
   if (signature !== decisionSignature) {
     decisionSignature = signature;
     $('decision-event').innerHTML = event ? `
-      ${report ? `${decisionBriefHTML(event,report)}<div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><button type="button" class="button button-secondary" data-decision-option="${option.id}" aria-pressed="${decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id}" ${!decisionOpen(event) || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${decisionText(decisionCopyKey(event,'option',option.id))}${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.suggested')}</span>`:''}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="decision-option-reasons">${(report.decision_options || []).map(option=>`<p><strong>${decisionText(decisionCopyKey(event,'option',option.id))}</strong><br>${escape(option.reason)}</p>`).join('')}</div><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
-      <details class="decision-trigger-details"><summary>${escape(t('decision.triggerDetails'))}</summary><p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p><ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul></details>
+      ${report ? `${decisionBriefHTML(event,report)}<div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><button type="button" class="button button-secondary" data-decision-option="${option.id}" aria-pressed="${decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id}" ${!decisionOpen(event) || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${decisionText(decisionCopyKey(event,'option',option.id))}${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.suggested')}</span>`:''}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}${report.language!==language?` · ${escape(originalReportLabel(report))}`:''}</summary><div class="decision-option-reasons">${(report.decision_options || []).map(option=>`<p><strong>${decisionText(decisionCopyKey(event,'option',option.id))}</strong><br>${escape(option.reason)}</p>`).join('')}</div><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      <details class="decision-trigger-details"><summary>${escape(t('decision.triggerDetails'))}</summary><p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p><ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(triggerSubject(language,trigger.subject))} <span class="muted">(${escape(triggerValue(language,trigger.previous))} → ${escape(triggerValue(language,trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul></details>
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
-      decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
+      decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption,language);decisionError='';renderDecisions();
       if(decisionDraft && !$('decision-dialog').open) { $('decision-dialog').dataset.restoreChoice=decisionDraft.option_id; $('decision-dialog').showModal(); }
       $('decision-confirm').focus();
     });
@@ -456,7 +466,7 @@ function renderRehearsals() {
     return `<li><details><summary>${fmt(f.time.simulation_ms)} · ${escape(t(`decision.option.${f.decision.option_id}`))} · ${escape(t(`rehearsal.${['human','automated_test'].includes(actor)?actor:'unknown'}`))}</summary><dl>
       <dt>${t('rehearsal.event')}</dt><dd>${escape(f.event.id)} · ${(f.event.triggers || []).map(item=>escape(t(`decision.trigger.${item.kind}`))).join(', ')}</dd>
       <dt>${t('rehearsal.evidenceTitle')}</dt><dd>${escape(t('rehearsal.evidence',{count:f.evidence.observations.total,version:record.evidence_version.slice(0,12)}))}<br>${t('rehearsal.evidenceLink')}</dd>
-      <dt>${t('rehearsal.assessment')}</dt><dd lang="${f.assessment.language==='ko'?'ko':'en'}">${escape(f.assessment.summary || '')}</dd>
+      <dt>${t('rehearsal.assessment')}</dt><dd lang="${f.assessment.language==='ko'?'ko':'en'}">${f.assessment.language!==language?`<small>${escape(originalReportLabel(f.assessment))}</small>`:''}${escape(f.assessment.summary || '')}</dd>
       <dt>${t('rehearsal.uncertainty')}</dt><dd>${(f.uncertainty || []).map(item=>escape(item.text)).join('<br>') || t('rehearsal.noUncertainty')}</dd>
       <dt>${t('rehearsal.decision')}</dt><dd>${escape(t(`decision.option.${f.decision.option_id}`))}</dd>
       <dt>${t('rehearsal.reason')}</dt><dd>${escape(f.reason || t('rehearsal.noComment'))}</dd>
@@ -844,7 +854,7 @@ function renderSituation() {
     <dt>${t('situation.reviewTime')}</dt><dd>${fmt(review.reviewed_at_ms)}</dd>
     </dl><p class="muted">${t('situation.metadata')}: ${escape(review.id)} / ${escape(review.run_id)} / ${escape(review.case_id)}</p></li>`).join('') || `<li class="empty-state">${t('situation.emptyReviews')}</li>`;
   $('situation-sources').innerHTML = (config?.research_sources || []).map(source => {
-    let link = escape(source.title);
+    let link = escape(language==='ko' ? source.title_ko || source.title : source.title);
     try { const url = new URL(source.url); if (['https:','http:'].includes(url.protocol)) link = `<a href="${escape(url.href)}" target="_blank" rel="noopener noreferrer">${link}</a>`; } catch { /* Keep an invalid reference as plain text. */ }
     return `<li class="situation-card"><h3>${link}</h3><p class="muted">${escape(source.publisher)} · ${escape(source.published_at)} · ${escape(source.id)}</p><p><strong>${t('situation.claim')}:</strong> ${escape(localized(source.claim))}</p><p><strong>${t('situation.use')}:</strong> ${escape(localized(source.simulation_use))}</p></li>`;
   }).join('') || `<li class="empty-state">${t('situation.noSources')}</li>`;
@@ -1024,10 +1034,11 @@ function drawSite() {
     const marker=document.createElement('div');
     marker.className='truth-marker';
     marker.setAttribute('role','img');
-    marker.setAttribute('aria-label',`SIM ${drone.object_id}`);
+    const markerLabel=t('positions.marker',{id:drone.object_id});
+    marker.setAttribute('aria-label',markerLabel);
     marker.style.left=`${x}px`;marker.style.top=`${y}px`;
-    marker.innerHTML=`<span>SIM ${escape(drone.object_id)}</span>`;
-    marker.title=`SIM ${drone.object_id} · ${t('positions.warning')}`;
+    marker.innerHTML=`<span>${escape(markerLabel)}</span>`;
+    marker.title=`${markerLabel} · ${t('positions.warning')}`;
     markers.append(marker);
   }
   $('map-status').textContent=mode==='region'?t('mapRegionStatus'):t('mapSiteStatus');
@@ -1069,7 +1080,7 @@ function drawRadar(atMs) {
       <circle cx="${cx}" cy="${cy}" r="${r/2}" fill="none" stroke="${color}" stroke-opacity=".18"/>
       ${online?`<path d="M${cx} ${cy} L${tx} ${ty} A${r} ${r} 0 0 1 ${ex} ${ey} Z" fill="${color}" fill-opacity=".09"/><path d="M${cx} ${cy}L${ex} ${ey}" stroke="${color}" stroke-opacity=".7"/>`:''}
       <path d="M${cx-4} ${cy}h8 M${cx} ${cy-4}v8" stroke="${color}" stroke-width="2"/>
-      <text x="${cx-8}" y="${cy-10}" text-anchor="end" fill="${color}" font-size="9">${escape(frame.id)}${online?'':` · ${escape(connected?sourceLabel(frame.health):t('disconnected'))}`}</text>
+      <text x="${cx-8}" y="${cy-10}" text-anchor="end" fill="${color}" font-size="9">${escape(localized(config.radar_display.stations.find(station=>station.id===frame.id)?.label) || frame.id)}${online?'':` · ${escape(connected?sourceLabel(frame.health):t('disconnected'))}`}</text>
       ${online?frame.returns.map(hit=>{const [x,y]=point(hit.position[0],hit.position[2]);return `<circle cx="${x}" cy="${y}" r="${7+hit.progress*17}" fill="none" stroke="#b3eeb6" stroke-width="2" opacity="${1-hit.progress*.8}"/>`;}).join(''):''}`;
   }).join('');
   const count=frames.reduce((n,f)=>n+(connected?f.returns.length:0),0);
@@ -1177,6 +1188,7 @@ function showView(view) {
 for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>showView(tab.dataset.view);
 
 function renderNotificationSettings() {
+  renderAlertAudio();
   syncSelects();
   if(!notifier)return;
   const status=notifier.getState();
@@ -1269,7 +1281,7 @@ function applyLanguage(next, persist = false) {
   document.title = t('title');
   $('language-select').value = language;
   for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
-  for (const attribute of ['aria-label','title']) {
+  for (const attribute of ['aria-label','title','placeholder']) {
     for (const element of document.querySelectorAll(`[data-i18n-${attribute}]`)) {
       element.setAttribute(attribute, t(element.getAttribute(`data-i18n-${attribute}`)));
     }
@@ -1288,6 +1300,31 @@ function applyLanguage(next, persist = false) {
 $('language-select').onchange = event => {applyLanguage(event.target.value, true);syncDecisionLanguage();};
 let notificationStorage;
 try{notificationStorage=localStorage;}catch{ /* Session-only opt-in if storage is unavailable. */ }
+alertAudio=createAlertAudioController({storage:notificationStorage,onChange:renderAlertAudio});
+function renderAlertAudio() {
+  if(!alertAudio)return;
+  const status=alertAudio.getState();
+  const button=$('alert-audio-toggle');
+  button.textContent=t(`audio.${status.status}`);
+  button.setAttribute('aria-pressed',String(status.enabled));
+  button.title=t('audio.help');
+  button.disabled=!status.supported;
+}
+$('alert-audio-toggle').onclick=()=>{
+  const status=alertAudio.getState();
+  if(status.status==='ready')alertAudio.setEnabled(false);
+  else {alertAudio.setEnabled(true);alertAudio.unlock();}
+};
+// Start only inside a trusted gesture. The toggle handles its own gesture so
+// clicking a locked control activates sound rather than immediately muting it.
+function unlockAlertAudio(event) {
+  if(!event.isTrusted || event.target.closest?.('#alert-audio-toggle'))return;
+  if(alertAudio.getState().status==='locked')alertAudio.unlock();
+}
+document.addEventListener('pointerdown',unlockAlertAudio);
+document.addEventListener('keydown',unlockAlertAudio);
+window.addEventListener('pagehide',()=>alertAudio.stop());
+window.addEventListener('storage',event=>{if(event.key===ALERT_AUDIO_STORAGE_KEY)alertAudio.setEnabled(event.newValue!=='0');});
 const notificationSupported=isSecureContext && 'Notification' in window && 'serviceWorker' in navigator && 'MessageChannel' in window;
 const registrationPromise=isSecureContext && 'serviceWorker' in navigator
   ? navigator.serviceWorker.register('/sw.js').catch(()=>null) : Promise.resolve(null);

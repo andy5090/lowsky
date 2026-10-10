@@ -121,6 +121,20 @@ class SituationReviewTests(unittest.TestCase):
             for key in ['title','summary','uncertainty','story_time']:
                 self.assertEqual(set(row[key]), {'en','ko'})
 
+    def test_reference_and_radar_labels_preserve_identifiers_and_original_titles(self):
+        catalog = json.loads((PROJECT/'data/references/ukraine_observation_lessons.json').read_text())
+        for source in catalog['sources']:
+            self.assertIsInstance(source['title'], str)
+            self.assertTrue(source['title'])
+            self.assertRegex(source['title_ko'], '[가-힣]')
+            self.assertTrue(source['url'].startswith('https://'))
+        radar = json.loads((PROJECT/'data/radar_display.json').read_text())
+        self.assertEqual([row['id'] for row in radar['stations']], ['RADAR A', 'RADAR B'])
+        self.assertEqual([row['source_id'] for row in radar['stations']], ['channel_a', 'channel_b'])
+        for station in radar['stations']:
+            self.assertEqual(set(station['label']), {'en', 'ko'})
+            self.assertRegex(station['label']['ko'], '[가-힣]')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -69,7 +69,7 @@ async function notify(event) {
   try {
     await self.registration.showNotification(data.title, {body: data.body,
       tag: `lowsky:${data.runId}`, icon: '/logo-metal.png', badge: '/logo-metal.png',
-      data: {view: 'alerts'}, renotify: false});
+      data: {view: 'alerts'}, renotify: false, silent: true});
   } catch (error) { await release(claimed); throw error; }
   return {ok: true, status: 'sent', count: claimed.length};
 }

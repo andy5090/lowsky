@@ -15,6 +15,10 @@ import time
 MAX_TRACK_EXAMPLES = 12
 DEFAULT_AGENT_MODEL = 'openai:gpt-6.1-sol'
 QUALITIES = ('consistent', 'contradictory', 'not_comparable', 'missing')
+FLEET_LABELS_KO = {
+    'personnel_phone': '인원 휴대폰', 'facility_sensor': '시설 센서',
+    'civilian_phone': '민간 휴대폰', 'fixed_phone': '고정 휴대폰',
+}
 DECISION_EFFECTS = {
     'continue_monitoring': 'Record the human choice and leave the shared simulation clock unchanged. No observation is validated by this choice.',
     'hold_review': 'Record the need for human evidence review and leave the shared simulation clock unchanged. No external task is dispatched.',
@@ -202,7 +206,7 @@ def rules_report(bundle, language='en'):
     for group in bundle['fleet']:
         lost = group['counts']['offline'] + group['counts']['stale']
         if lost:
-            uncertain.append(item((f"{group['group_id']}: {lost}개 단말 상태가 단절 또는 오래됨이며 원인은 알 수 없습니다."
+            uncertain.append(item((f"{FLEET_LABELS_KO.get(group['group_id'], group['group_id'])}: {lost}개 단말 상태가 단절 또는 오래됨이며 원인은 알 수 없습니다."
                                    if ko else f"{group['group_id']}: {lost} endpoints are offline or stale; cause is unknown."), group['id']))
     positive = [zone for zone in bundle['early_signals'] if zone['positive_sources']]
     if positive:
@@ -371,6 +375,8 @@ def deepagents_report(bundle, language, model, decision_context=None):
     async def run():
         return await asyncio.wait_for(agent.ainvoke({'messages': [{'role': 'user', 'content':
             f"Assess the current received evidence in {'Korean' if language == 'ko' else 'English'}. "
+            "Use that language for every human-readable summary, text and decision-option reason, including descriptions of source groups. "
+            "Keep JSON keys, option IDs, evidence IDs and model/product proper names unchanged. "
             f"Replay time: {bundle['at_ms']} ms. Read all four evidence tools"
             + (" and decision_checkpoint; return a concise structured report with all allowed human choices." if decision_context is not None
                else " and return a concise structured situation report.")}]},

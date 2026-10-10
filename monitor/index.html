@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090f14">
-  <title>LOW SKY · Observation Monitor</title>
+  <title data-i18n="title">LOW SKY · Observation Monitor</title>
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="/logo-metal.png" type="image/png">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -84,7 +84,7 @@
 <div id="workbench" class="workbench" data-panel="decision"><div class="workbench-toolbar">      <nav class="view-tabs" aria-label="Monitor views" data-i18n-aria-label="viewLabel">
         <button type="button" class="view-tab is-active" data-view="monitor" aria-current="page" data-i18n="monitorView">Observation view</button>
         <button type="button" class="view-tab" data-view="alerts"><span data-i18n="currentAlerts">Current alerts</span> <span id="alert-count" class="count-badge">--</span></button>
-      </nav><nav class="workspace-panels" aria-label="Workspace panels" data-i18n-aria-label="layout.panels">
+      </nav><button id="alert-audio-toggle" type="button" class="button button-secondary alert-audio-toggle" aria-pressed="true" data-i18n="audio.locked" title="Low: one soft tone · Medium: two tones · High: three warning pulses. Repeated updates are suppressed." data-i18n-title="audio.help">Enable sound</button><nav class="workspace-panels" aria-label="Workspace panels" data-i18n-aria-label="layout.panels">
       <button type="button" class="panel-tab mobile-map-tab" data-panel="map" aria-controls="scene-pane" aria-pressed="false" data-i18n="layout.map">Map</button>
       <button type="button" class="panel-tab" data-panel="decision" aria-controls="pane-decision" aria-pressed="true"><span data-i18n="layout.decision">Decisions</span><span id="panel-decision-count" class="count-badge" hidden>0</span></button>
       <button type="button" class="panel-tab" data-panel="evidence" aria-controls="pane-evidence" aria-pressed="false" data-i18n="layout.evidence">Evidence</button>
@@ -124,7 +124,7 @@
       <div class="panel alerts-panel"><div class="panel-heading"><div><span class="section-number">01</span><h2 id="alerts-title" data-i18n="qualityAlerts">Current observation quality alerts</h2></div><span class="eyebrow" data-i18n="alertsEyebrow">CURRENT ALERTS</span></div><div class="alerts-intro"><p data-i18n="alertsIntro">Review observation quality at the current replay time.</p><span data-i18n="alertsNote">Shown for the selected scenario and replay time.</span></div><ul id="alert-list" data-empty="Waiting for data." class="alert-list" aria-label="Current observation quality alerts" data-i18n-aria-label="qualityAlerts"></ul></div>
     </section><div id="alerts-events-host"></div></div>
 <div class="inspector-pane"><div id="pane-decision" class="workspace-pane" tabindex="0" role="region" aria-label="decision" data-i18n-aria-label="layout.decision"><section class="panel decision-panel" aria-labelledby="decision-title">
-      <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
+      <div class="panel-heading"><div><span class="section-number" data-i18n="section.decide">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
       <div class="decision-request"><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button></div>
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
       <p id="decision-expired" class="decision-status" role="status" hidden></p>
@@ -145,13 +145,13 @@
 </details>
       <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
     </section><section class="panel indication-panel" aria-labelledby="indication-title">
-      <div class="panel-heading"><div><span class="section-number">SIGNAL REVIEW</span><h2 id="indication-title" data-i18n="indication.title">Review before direct detection</h2></div><span id="indication-stage" class="status-pill"></span></div>
+      <div class="panel-heading"><div><span class="section-number" data-i18n="section.signal">SIGNAL REVIEW</span><h2 id="indication-title" data-i18n="indication.title">Review before direct detection</h2></div><span id="indication-stage" class="status-pill"></span></div>
       <div class="indication-body"><p id="indication-summary"></p><p id="indication-uncertainty" class="muted" data-i18n="indication.uncertainty">Area signals do not locate a tracked object or establish its type or intent.</p>
       <div id="indication-zones" class="indication-zones"></div>
       <details><summary data-i18n="indication.alternativesTitle">What else could explain this?</summary><p class="muted" data-i18n="indication.alternatives">Ordinary aircraft, vehicles or other environmental sound, sensor faults, and delayed reports remain possible explanations. Check source reliability, timing, and an independent report.</p></details>
       <div class="indication-controls"><button id="indication-assess" class="button button-primary" type="button" data-i18n="indication.assess">Review received indications</button><button id="indication-overview" class="button button-secondary" type="button" data-i18n="indication.overview">Indication overview</button><button id="indication-signals" class="button button-secondary" type="button" data-i18n="indication.signals">Inspect area signals</button></div></div>
     </section><section class="panel dashboard-panel" aria-labelledby="dashboard-title">
-      <div class="panel-heading"><div><span class="section-number">REVIEW</span><h2 id="dashboard-title" data-i18n="dashboard.title">Decision dashboard</h2></div><span id="dashboard-status" class="status-pill"></span></div>
+      <div class="panel-heading"><div><span class="section-number" data-i18n="section.review">REVIEW</span><h2 id="dashboard-title" data-i18n="dashboard.title">Decision dashboard</h2></div><span id="dashboard-status" class="status-pill"></span></div>
       <div class="dashboard-toolbar"><label for="dashboard-object" data-i18n="dashboard.object">Received object</label><select id="dashboard-object"></select><span id="dashboard-priority" class="dashboard-priority" hidden data-i18n="dashboard.priority">Review priority raised</span><a href="/api/dashboard/audit" download="lowsky-review-decisions.json" data-i18n="dashboard.export">Export review journal</a></div>
       <p id="dashboard-empty" class="agent-scope" data-i18n="dashboard.empty">A judgment card appears after an observation is received.</p>
       <div id="dashboard-content" hidden>
@@ -174,7 +174,7 @@
       <p id="dashboard-notice" class="dashboard-notice" role="status" aria-live="polite"></p>
       <details class="decision-history"><summary data-i18n="dashboard.history">Recent review actions</summary><ol id="dashboard-history"></ol></details>
     </section><section class="panel agent-panel" aria-labelledby="agent-title">
-      <div class="panel-heading"><div><span class="section-number">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
+      <div class="panel-heading"><div><span class="section-number" data-i18n="section.assess">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
       <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>
       <p class="agent-scope" data-i18n="agent.scope">Reviews received observations, sensor health and review workload. Hidden simulation positions are excluded. Human judgment remains required.</p>
       <div id="agent-report" class="agent-report"></div>
@@ -206,11 +206,11 @@
           </section>
         </aside></div>
 <div id="pane-signals" class="workspace-pane" tabindex="0" role="region" aria-label="signals" data-i18n-aria-label="layout.signals" hidden><section class="panel early-warning-panel" aria-labelledby="early-title">
-        <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Area early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
+        <div class="panel-heading"><div><span class="section-number" data-i18n="section.early">EW</span><h2 id="early-title" data-i18n="early.title">Area early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
         <p class="early-note" data-i18n="early.note">Independent simulated feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
         <div id="early-zones" class="early-zones"></div>
       </section><section class="panel workload-panel" aria-labelledby="workload-title">
-        <div class="panel-heading"><div><span class="section-number">LOAD</span><h2 id="workload-title" data-i18n="workload.title">Observation workload</h2></div><span data-i18n="workload.synthetic">Synthetic input load</span></div>
+        <div class="panel-heading"><div><span class="section-number" data-i18n="section.load">LOAD</span><h2 id="workload-title" data-i18n="workload.title">Observation workload</h2></div><span data-i18n="workload.synthetic">Synthetic input load</span></div>
         <div id="workload-summary" class="workload-summary"></div>
         <details class="fleet-details"><summary data-i18n="fleet.title">Virtual phone and facility sensor fleet</summary><p class="muted" data-i18n="fleet.note">Health telemetry only. These virtual endpoints do not produce the A/B drone observations or represent installed devices.</p><div id="fleet-groups" class="fleet-groups"></div><p data-i18n="fleet.cause">An offline or stale endpoint has an unknown cause; this does not establish jamming.</p><p id="fleet-last-seen" class="muted"></p></details>
       </section><section class="panel situation-panel" aria-labelledby="situation-heading">
