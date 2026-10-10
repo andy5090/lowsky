@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "display_units_per_meter": 1.0,
+  "scope": "Visual size calibration only; scenario coordinates remain synthetic and the airfield layout is compressed.",
+  "default_drone_profile": "small_multirotor",
+  "profiles": {
+    "small_multirotor": {
+      "horizontal_span_m": 0.6,
+      "measurement": "Maximum horizontal extent, including rotor disks",
+      "source": "User-selected provisional 0.6 m size reference, not a measured aircraft model"
+    },
+    "medium_multirotor": {
+      "horizontal_span_m": 1.5,
+      "measurement": "Maximum horizontal extent, including rotor disks",
+      "source": "Provisional size-class assumption, not a measured aircraft model"
+    }
+  }
+}

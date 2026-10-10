@@ -57,5 +57,18 @@
       "README.md"
     ],
     "dependencies_added": false
+  },
+  "drone_size": {
+    "default_profile": "small_multirotor",
+    "maximum_horizontal_span_m": 0.6,
+    "units_per_meter_for_display": 1.0,
+    "verified_profiles_m": [
+      0.6,
+      1.5
+    ],
+    "verification": "Godot mesh bounds match both profile spans and remain centered; 12-case replay and input tests passed",
+    "source": "User-selected provisional size; not measured airframe dimensions",
+    "scope": "Visual scaling only; synthetic scenario coordinates and compressed airfield layout unchanged",
+    "role_and_communication_scenarios": "Design recorded in docs/drone-scenario-extension.md; not implemented"
   }
 }

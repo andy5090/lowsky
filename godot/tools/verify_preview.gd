@@ -65,6 +65,19 @@ func verify() -> void:
 	preview._unhandled_input(event)
 	assert(not preview.camera.position.is_equal_approx(initial_camera_position))
 	assert(verify_camera_drag(preview), "Camera drag regression checks failed")
+	for profile_id in preview.display_profiles.profiles:
+		var drone = preview.asset_instance("aerial_marker", profile_id)
+		var bounds = preview.collect_bounds(drone, Transform3D.IDENTITY)
+		var combined: AABB = bounds[0]
+		for bound in bounds:
+			combined = combined.merge(bound)
+		var expected = float(preview.display_profiles.profiles[profile_id].horizontal_span_m)
+		assert(is_equal_approx(maxf(combined.size.x, combined.size.z), expected))
+		assert(combined.get_center().is_zero_approx())
+		drone.free()
+	for item in preview.objects:
+		assert(item["node"].get_meta("size_profile") == "small_multirotor")
+	print("PASS: drone display spans 0.6 m / 1.5 m and centered origins; paths remain unchanged")
 	var provenance = preview.read_json("res://third_party/realistic/provenance.json")
 	for entry in provenance.files:
 		if entry.path.ends_with(".md"):

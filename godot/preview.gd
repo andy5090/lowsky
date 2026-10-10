@@ -20,6 +20,7 @@ var plains_test = true
 var terrain: Node3D
 var terrain_button: Button
 var materials: Dictionary = {}
+var display_profiles: Dictionary = {}
 var camera_target = Vector3(12, 2.5, 14)
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
@@ -83,7 +84,7 @@ func read_json(path: String) -> Dictionary:
 func vector(values: Array) -> Vector3:
 	return Vector3(values[0], values[1], values[2])
 
-func asset_instance(asset_id: String) -> Node3D:
+func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 	if realistic:
 		match asset_id:
 			"ground_tile": return Plains.make(materials.grass) if plains_test else Detailed.make_terrain(materials.grass)
@@ -97,6 +98,26 @@ func asset_instance(asset_id: String) -> Node3D:
 	var packed = load(path) as PackedScene
 	assert(packed != null, "Missing asset: " + asset_id)
 	var instance = packed.instantiate() as Node3D
+	if asset_id == "aerial_marker":
+		var profile_id = size_profile if not size_profile.is_empty() else str(display_profiles.default_drone_profile)
+		assert(profile_id in display_profiles.profiles, "Unknown drone size profile: " + profile_id)
+		var profile: Dictionary = display_profiles.profiles[profile_id]
+		var bounds = collect_bounds(instance, Transform3D.IDENTITY)
+		assert(not bounds.is_empty(), "Drone model has no mesh")
+		var combined: AABB = bounds[0]
+		for bound in bounds:
+			combined = combined.merge(bound)
+		var span = maxf(combined.size.x, combined.size.z)
+		var target_span = float(profile.horizontal_span_m) * float(display_profiles.display_units_per_meter)
+		assert(span > 0 and target_span > 0, "Invalid drone dimensions")
+		var factor = target_span / span
+		instance.scale *= factor
+		instance.position = -combined.get_center() * factor
+		var wrapper = Node3D.new()
+		wrapper.name = "DroneDisplay"
+		wrapper.set_meta("size_profile", profile_id)
+		wrapper.add_child(instance)
+		return wrapper
 	if realistic and asset_id == "runway":
 		set_surface_material(instance, "Surface", materials.asphalt)
 	if use_external_assets and asset_id in replacements:
@@ -124,6 +145,7 @@ func collect_bounds(node: Node3D, parent_transform: Transform3D) -> Array:
 	return bounds
 
 func _ready() -> void:
+	display_profiles = read_json("res://assets/display_profiles.json")
 	use_external_assets = not "--blockout" in OS.get_cmdline_user_args()
 	realistic = use_external_assets and not "--stylized" in OS.get_cmdline_user_args()
 	plains_test = not "--hills" in OS.get_cmdline_user_args()
@@ -297,11 +319,11 @@ func load_case(id: String) -> void:
 	world_data = read_json(data_root.path_join("cases/%s/world.json" % id))
 	public_data = read_json(data_root.path_join("cases/%s/public.json" % id))
 	for item in world_data["objects"]:
-		var instance = asset_instance(item["visual"]["asset_id"])
+		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""))
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
-		label.position.y = 2
+		label.position.y = 0.7
 		label.font_size = 40
 		label.pixel_size = 0.015 if realistic else 0.03
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
