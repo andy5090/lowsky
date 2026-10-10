@@ -3,6 +3,7 @@ extends Control
 
 var camera: Camera3D
 var objects: Array = []
+var followed_object_id = ""
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -21,7 +22,10 @@ func markers() -> Array:
 		var target: Node3D = item.node
 		if not is_instance_valid(target) or camera.is_position_behind(target.global_position):
 			continue
-		var point = camera.unproject_position(target.global_position)
+		var anchor = target.global_position
+		if item.object_id == followed_object_id:
+			anchor += Vector3.UP * float(target.get_meta("horizontal_span_m", 0.6)) * 0.45
+		var point = camera.unproject_position(anchor)
 		if Rect2(Vector2.ZERO, get_viewport_rect().size).has_point(point):
 			result.append({"point": point, "id": item.object_id, "sim": item.sim})
 	return result

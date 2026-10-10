@@ -23,7 +23,7 @@ ASSETS = ('index.html', 'app.js', 'styles.css', 'logo.svg', 'logo-metal.png', 'g
           'decisions.mjs', 'test_runs.mjs', 'review.mjs', 'exercise.mjs', 'dashboard.mjs',
           'radar.mjs', 'i18n.mjs', 'notifications.mjs', 'sw.js', 'manifest.webmanifest', 'pwa-icon.svg')
 DATA_FILES = ('site_layout.json', 'early_warning_demo.json', 'sensor_fleet_demo.json',
-              'situation_review.json', 'radar_display.json', 'terrain/korea_site.json',
+              'situation_review.json', 'radar_display.json', 'terrain/korea_site.json', 'terrain/korea_context.json',
               'references/ukraine_observation_lessons.json', 'scenarios/v1/manifest.json',
               'scenarios/v1/scene.json', 'scenarios/v1/briefings.json')
 

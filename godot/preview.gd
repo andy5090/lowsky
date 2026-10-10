@@ -6,6 +6,8 @@ const Geographic = preload("res://geographic_environment.gd")
 const Site = preload("res://site_environment.gd")
 const DroneOverlay = preload("res://drone_overlay.gd")
 const Plains = preload("res://plains_environment.gd")
+const DroneModels = preload("res://drone_models.gd")
+const SimulationUITheme = preload("res://simulation_ui_theme.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
 var objects: Array = []
@@ -14,6 +16,10 @@ var world_data: Dictionary = {}
 var camera: Camera3D
 var status_label: Label
 var time_label: Label
+var ui_panel: PanelContainer
+var ui_body: VBoxContainer
+var ui_title: Label
+var ui_toggle: Button
 var elapsed_ms = 0.0
 var playing = true
 var case_id = "case_001"
@@ -22,6 +28,7 @@ var realistic = true
 var plains_test = true
 var geographic = true
 var terrain_data: Dictionary = {}
+var geographic_context: Dictionary = {}
 var terrain: Node3D
 var field_installations: Dictionary = {}
 var terrain_button: Button
@@ -111,14 +118,16 @@ func read_json(path: String) -> Dictionary:
 func vector(values: Array) -> Vector3:
 	return Vector3(values[0], values[1], values[2])
 
-func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
+func asset_instance(asset_id: String, size_profile: String = "", airframe_id: String = "") -> Node3D:
+	if asset_id == "aerial_marker":
+		return drone_instance(airframe_id, size_profile)
 	if asset_id == "phone_sensor_pole":
 		return Detailed.make_phone_sensor_pole(materials)
 	if realistic:
 		match asset_id:
 			"ground_tile":
 				if geographic:
-					return Geographic.make(terrain_data, materials.grass, site_layout)
+					return Geographic.make(terrain_data, materials.grass, site_layout, geographic_context)
 				return Plains.make(materials.grass, site_layout) if plains_test else Detailed.make_terrain(materials.grass, site_layout)
 			"hangar": return Detailed.make_hangar(materials)
 			"arched_hangar": return Detailed.make_arched_hangar(materials)
@@ -135,26 +144,6 @@ func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 	var packed = load(path) as PackedScene
 	assert(packed != null, "Missing asset: " + asset_id)
 	var instance = packed.instantiate() as Node3D
-	if asset_id == "aerial_marker":
-		var profile_id = size_profile if not size_profile.is_empty() else str(display_profiles.default_drone_profile)
-		assert(profile_id in display_profiles.profiles, "Unknown drone size profile: " + profile_id)
-		var profile: Dictionary = display_profiles.profiles[profile_id]
-		var bounds = collect_bounds(instance, Transform3D.IDENTITY)
-		assert(not bounds.is_empty(), "Drone model has no mesh")
-		var combined: AABB = bounds[0]
-		for bound in bounds:
-			combined = combined.merge(bound)
-		var span = maxf(combined.size.x, combined.size.z)
-		var target_span = float(profile.horizontal_span_m) * float(display_profiles.display_units_per_meter)
-		assert(span > 0 and target_span > 0, "Invalid drone dimensions")
-		var factor = target_span / span
-		instance.scale *= factor
-		instance.position = -combined.get_center() * factor
-		var wrapper = Node3D.new()
-		wrapper.name = "DroneDisplay"
-		wrapper.set_meta("size_profile", profile_id)
-		wrapper.add_child(instance)
-		return wrapper
 	if realistic and asset_id == "runway":
 		set_surface_material(instance, "Surface", materials.asphalt)
 	if use_external_assets and asset_id in replacements:
@@ -170,6 +159,64 @@ func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 		wrapper.add_child(instance)
 		return wrapper
 	return instance
+
+func drone_instance(airframe_id: String = "", size_profile: String = "") -> Node3D:
+	var id = airframe_id if airframe_id in display_profiles.airframes else str(display_profiles.default_airframe)
+	var airframe: Dictionary = display_profiles.airframes[id]
+	var profile_id = size_profile if size_profile in display_profiles.profiles else str(airframe.size_profile)
+	var instance: Node3D
+	if not realistic:
+		instance = (load("res://assets/aerial_marker.glb") as PackedScene).instantiate()
+	elif airframe.model_id == "cesium_drone" and use_external_assets:
+		instance = (load("res://third_party/realistic/cesium_drone/CesiumDrone.glb") as PackedScene).instantiate()
+		instance.rotation.y = PI # Imported camera faces +Z; our airframes face -Z.
+	else:
+		instance = DroneModels.make("quadcopter" if airframe.model_id == "cesium_drone" else str(airframe.model_id))
+	var bounds = collect_bounds(instance, Transform3D.IDENTITY)
+	assert(not bounds.is_empty(), "Drone model has no mesh")
+	var combined: AABB = bounds[0]
+	for bound in bounds:
+		combined = combined.merge(bound)
+	var target_span = float(display_profiles.profiles[profile_id].horizontal_span_m) * float(display_profiles.display_units_per_meter)
+	var factor = target_span / maxf(combined.size.x, combined.size.z)
+	instance.scale *= factor
+	instance.position = -combined.get_center() * factor
+	var wrapper = Node3D.new()
+	wrapper.name = "DroneDisplay"
+	wrapper.set_meta("size_profile", profile_id)
+	wrapper.set_meta("airframe_id", id)
+	wrapper.set_meta("horizontal_span_m", target_span)
+	var visual = Node3D.new()
+	visual.name = "Visual"
+	wrapper.add_child(visual)
+	visual.add_child(instance)
+	var rotors: Array = instance.get_meta("rotors", [])
+	for rotor in rotors:
+		rotor.set_meta("rest_basis", rotor.basis)
+	wrapper.set_meta("rotors", rotors)
+	var players = instance.find_children("*", "AnimationPlayer", true, false)
+	if not players.is_empty():
+		var player: AnimationPlayer = players[0]
+		if player.has_animation("Fly"):
+			player.play("Fly")
+			player.pause()
+			wrapper.set_meta("animation_player", player)
+	return wrapper
+
+func pose_drone(node: Node3D, direction: Vector3, time_ms: float) -> void:
+	var visual = node.get_node("Visual") as Node3D
+	if direction.length_squared() > 0.0001:
+		visual.rotation.y = atan2(-direction.x, -direction.z)
+	# Animation is cosmetic, driven by the shared clock and limited to close views.
+	if camera.position.distance_squared_to(node.position) > 150.0 * 150.0:
+		return
+	var rotors: Array = node.get_meta("rotors", [])
+	for index in rotors.size():
+		var rotor: Node3D = rotors[index]
+		rotor.basis = Basis(rotor.get_meta("axis", Vector3.UP), fmod(time_ms * 0.045 * (1 if index % 2 == 0 else -1), TAU)) * rotor.get_meta("rest_basis")
+	var player = node.get_meta("animation_player") as AnimationPlayer if node.has_meta("animation_player") else null
+	if player:
+		player.seek(fmod(time_ms / 1000.0, player.get_animation("Fly").length), true)
 
 func collect_bounds(node: Node3D, parent_transform: Transform3D) -> Array:
 	var transform = parent_transform * node.transform
@@ -192,7 +239,7 @@ func _ready() -> void:
 				get_tree().quit(2)
 				return
 			data_root = directory.path_join("scenarios/v1").simplify_path()
-	for required in ["scene.json", "../../site_layout.json", "../../terrain/korea_site.json", "cases/case_001/world.json", "cases/case_001/public.json"]:
+	for required in ["scene.json", "../../site_layout.json", "../../terrain/korea_site.json", "../../terrain/korea_context.json", "cases/case_001/world.json", "cases/case_001/public.json"]:
 		if not FileAccess.file_exists(data_root.path_join(required)):
 			push_error("Missing simulation data: " + data_root.path_join(required))
 			set_process(false)
@@ -212,6 +259,7 @@ func _ready() -> void:
 	plains_test = not "--hills" in OS.get_cmdline_user_args()
 	geographic = not ("--hills" in OS.get_cmdline_user_args() or "--plains" in OS.get_cmdline_user_args())
 	terrain_data = read_json(data_root.path_join("../../terrain/korea_site.json"))
+	geographic_context = read_json(data_root.path_join("../../terrain/korea_context.json"))
 	build_materials()
 	var environment = WorldEnvironment.new()
 	var settings = Environment.new()
@@ -279,6 +327,15 @@ func _ready() -> void:
 	if "--capture" in OS.get_cmdline_user_args():
 		playing = false
 		elapsed_ms = 65000
+		var captured_airframe = ""
+		for argument in OS.get_cmdline_user_args():
+			if argument.begins_with("--capture-airframe="):
+				captured_airframe = argument.get_slice("=", 1)
+		if not captured_airframe.is_empty():
+			for index in objects.size():
+				if objects[index].node.get_meta("airframe_id") == captured_airframe:
+					select_drone(index)
+					break
 		if "--overview" in OS.get_cmdline_user_args():
 			camera.position = vector(site_layout.camera.overview)
 			camera_target = Vector3.ZERO
@@ -291,6 +348,8 @@ func _ready() -> void:
 			filename = "plains-overview.png" if "--overview" in OS.get_cmdline_user_args() else "plains-preview.png"
 		if realistic and geographic:
 			filename = "korea-overview.png" if "--overview" in OS.get_cmdline_user_args() else "korea-preview.png"
+		if not captured_airframe.is_empty() and captured_airframe in display_profiles.airframes:
+			filename = "drone-follow-%s.png" % captured_airframe
 		var capture_root = "res://../artifacts/" if OS.has_feature("editor") else "user://captures/"
 		var output = ProjectSettings.globalize_path(capture_root + filename)
 		DirAccess.make_dir_recursive_absolute(output.get_base_dir())
@@ -310,9 +369,12 @@ func add_realistic_details() -> void:
 	aircraft.position = vector(site_layout.aircraft_position) - Vector3(combined.get_center().x, combined.position.y, combined.get_center().z) * factor
 	add_child(aircraft)
 	var credit = Label.new()
-	credit.text = "FICTIONAL SITE  •  MATERIALS: POLY HAVEN  •  AIRCRAFT: CESIUM  •  KOREA TERRAIN: MAPZEN / USGS"
-	credit.position = Vector2(26, 867)
+	credit.text = "FICTIONAL SITE · POLY HAVEN · CESIUM · DRONE: ED MACKEY / AGI, CC BY 4.0 · DEM: MAPZEN / USGS\n© OpenStreetMap contributors · © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
+	credit.position = Vector2(26, 850)
 	credit.add_theme_font_size_override("font_size", 12)
+	credit.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	credit.add_theme_constant_override("shadow_offset_x", 1)
+	credit.add_theme_constant_override("shadow_offset_y", 1)
 	var layer = CanvasLayer.new()
 	layer.add_child(credit)
 	add_child(layer)
@@ -321,6 +383,8 @@ func build_ui() -> void:
 	var layer = CanvasLayer.new()
 	add_child(layer)
 	var panel = PanelContainer.new()
+	ui_panel = panel
+	panel.theme = SimulationUITheme.make()
 	panel.position = Vector2(30, 26)
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(0.025, 0.045, 0.06, 0.94)
@@ -330,18 +394,32 @@ func build_ui() -> void:
 	style.content_margin_bottom = 18
 	panel.add_theme_stylebox_override("panel", style)
 	layer.add_child(panel)
-	var column = VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
-	panel.add_child(column)
+	var contents = VBoxContainer.new()
+	contents.add_theme_constant_override("separation", 12)
+	panel.add_child(contents)
 	drone_overlay = DroneOverlay.new()
 	drone_overlay.camera = camera
 	drone_overlay.objects = objects
 	layer.add_child(drone_overlay)
 	layer.move_child(drone_overlay, 0)
-	var title = Label.new()
-	title.text = "LOW SKY / 3D SIMULATION"
-	title.add_theme_font_size_override("font_size", 24)
-	column.add_child(title)
+	var header = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 18)
+	contents.add_child(header)
+	ui_title = Label.new()
+	ui_title.text = "LOW SKY / 3D SIMULATION"
+	ui_title.add_theme_font_size_override("font_size", 24)
+	ui_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(ui_title)
+	ui_toggle = Button.new()
+	ui_toggle.text = "−"
+	ui_toggle.tooltip_text = "Collapse controls / 패널 접기"
+	ui_toggle.custom_minimum_size = Vector2(40, 38)
+	ui_toggle.pressed.connect(toggle_ui_panel)
+	header.add_child(ui_toggle)
+	var column = VBoxContainer.new()
+	ui_body = column
+	column.add_theme_constant_override("separation", 12)
+	contents.add_child(column)
 	var subtitle = Label.new()
 	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\n3D simulation · fictional facility" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
 	subtitle.modulate = Color("91b6b8")
@@ -397,9 +475,17 @@ func build_ui() -> void:
 	var hint = Label.new()
 	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nModel span 0.6 m · Camera selection is SIM context" % monitor_base_url
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nAirframe models · Camera selection is SIM context" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	column.add_child(hint)
+
+func toggle_ui_panel() -> void:
+	ui_body.visible = not ui_body.visible
+	ui_title.text = "LOW SKY / 3D SIMULATION" if ui_body.visible else "LOW SKY"
+	ui_toggle.text = "−" if ui_body.visible else "+"
+	ui_toggle.tooltip_text = "Collapse controls / 패널 접기" if ui_body.visible else "Expand controls / 패널 펼치기"
+	# PanelContainer otherwise retains its previous rect after minimum size shrinks.
+	ui_panel.reset_size.call_deferred()
 
 func terrain_caption() -> String:
 	if geographic:
@@ -464,13 +550,13 @@ func load_case(id: String) -> void:
 	world_data = read_json(data_root.path_join("cases/%s/world.json" % id))
 	public_data = read_json(data_root.path_join("cases/%s/public.json" % id))
 	for item in world_data["objects"]:
-		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""))
+		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""), item["visual"].get("airframe_id", ""))
 		instance.position = vector(item["keyframes"][0]["position"])
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
 		label.visible = false
-		label.position.y = 0.7
+		label.position.y = maxf(0.7, float(instance.get_meta("horizontal_span_m")) * 0.45)
 		label.font_size = 40
 		label.pixel_size = 0.015 if realistic else 0.03
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -493,6 +579,11 @@ func update_drone_labels() -> void:
 		item.label.visible = detected or show_drone_positions
 		item.label.text = ("SIM " if show_drone_positions else "DETECTED ") + item.object_id
 		item.label.modulate = Color("edb0fb") if show_drone_positions else Color("78e4d2")
+		item.label.outline_modulate.a = 1.0
+		# The screen callout handles the selected drone at close range.
+		if follow_drone and item == objects[selected_drone_index]:
+			item.label.modulate.a = 0.0
+			item.label.outline_modulate.a = 0.0
 
 func standalone_detections() -> Dictionary:
 	# Only received, fresh observations from online sources grant label visibility.
@@ -540,6 +631,7 @@ func _process(delta: float) -> void:
 		var interval = float(frames[index + 1].at_ms) - float(frames[index].at_ms)
 		var ratio = clampf((object_time - float(frames[index].at_ms)) / interval, 0, 1)
 		item["node"].position = vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio)
+		pose_drone(item.node, vector(frames[index + 1].position) - vector(frames[index].position), object_time)
 	if follow_drone:
 		update_follow_camera()
 	if time_label:
@@ -570,6 +662,8 @@ func stop_follow() -> void:
 func update_follow_controls() -> void:
 	var empty = objects.is_empty()
 	selected_drone_index = 0 if empty else clampi(selected_drone_index, 0, objects.size() - 1)
+	if drone_overlay:
+		drone_overlay.followed_object_id = "" if empty or not follow_drone else str(objects[selected_drone_index].object_id)
 	for index in objects.size():
 		# The screen overlay supplies readable text in the close camera view.
 		# Reduce only its duplicate world label; detection visibility stays intact.
@@ -583,7 +677,7 @@ func update_follow_controls() -> void:
 		next_drone_button.disabled = empty
 	if selected_drone_label:
 		# This is author-camera context, never a received detection or world label.
-		selected_drone_label.text = "CAMERA / SIM: No drones" if empty else "CAMERA / SIM: %s  (%d / %d)" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size()]
+		selected_drone_label.text = "CAMERA / SIM: No drones" if empty else "CAMERA / SIM: %s  (%d / %d)\n%s · %s m display span" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size(), display_profiles.airframes[objects[selected_drone_index].node.get_meta("airframe_id")].label, objects[selected_drone_index].node.get_meta("horizontal_span_m")]
 
 func select_drone(offset: int) -> void:
 	if objects.is_empty():
@@ -606,8 +700,9 @@ func update_follow_camera() -> void:
 	if objects.is_empty():
 		return
 	camera_target = objects[selected_drone_index].node.position
-	camera.position = camera_target + Vector3(4, 2.5, 6)
-	camera.size = 5
+	var span = float(objects[selected_drone_index].node.get_meta("horizontal_span_m", 0.6))
+	camera.position = camera_target + Vector3(1.5, 0.9, 2.2) * span
+	camera.size = span * 2.8
 	camera.near = 0.1
 	camera.look_at(camera_target)
 

@@ -96,8 +96,9 @@ func verify() -> void:
 		assert(combined.get_center().is_zero_approx())
 		drone.free()
 	for item in preview.objects:
-		assert(item["node"].get_meta("size_profile") == "small_multirotor")
-	print("PASS: drone display spans 0.6 m / 1.5 m and centered origins; paths remain unchanged")
+		var airframe = preview.display_profiles.airframes[item.node.get_meta("airframe_id")]
+		assert(item.node.get_meta("size_profile") == airframe.size_profile)
+	print("PASS: calibrated drone display spans and centered origins; paths remain unchanged")
 	var provenance = preview.read_json("res://third_party/realistic/provenance.json")
 	for entry in provenance.files:
 		if entry.path.ends_with(".md"):

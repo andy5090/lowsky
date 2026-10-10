@@ -63,11 +63,18 @@ func verify() -> void:
 	preview.set_drone_positions(false)
 	assert(not preview.objects[1].label.visible)
 	# The camera's close view must not change the physical model scale.
+	preview.objects[1].node.get_node("Visual").rotation = Vector3.ZERO
+	preview.pose_drone(preview.objects[1].node, Vector3.FORWARD, 0)
 	var bounds: Array = preview.collect_bounds(preview.objects[1].node, Transform3D.IDENTITY)
 	var combined: AABB = bounds[0]
 	for bound in bounds:
 		combined = combined.merge(bound)
 	assert(absf(maxf(combined.size.x, combined.size.z) - 0.6) < 0.001)
+	var small_distance: float = preview.camera.position.distance_to(preview.camera_target)
+	preview.select_drone(2)
+	assert(preview.objects[3].node.get_meta("airframe_id") == "geran_2")
+	assert(preview.camera.position.distance_to(preview.camera_target) > small_distance * 4)
+	assert(preview.selected_drone_label.text.contains("Geran-2"))
 	var saved_objects: Array = preview.objects.duplicate()
 	preview.objects.clear()
 	preview.select_drone(1)
