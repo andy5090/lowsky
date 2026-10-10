@@ -20,9 +20,18 @@ if not getattr(sys, 'frozen', False) and __package__ in (None, ''):
 
 from tools.env_config import load_agent_env
 from tools.monitor_server import Simulation, make_server
+from tools.desktop_controls import DesktopControls
 
 
-def create_server(data_dir, port=0):
+_stdout_lock = threading.Lock()
+
+
+def emit_native(message):
+    with _stdout_lock:
+        print(json.dumps(message, separators=(',', ':')), flush=True)
+
+
+def create_server(data_dir, port=0, emit=emit_native):
     """Bind without loading the source checkout's .env or writing bundle assets."""
     data_dir = Path(data_dir).expanduser().resolve()
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -32,7 +41,7 @@ def create_server(data_dir, port=0):
         decision_audit_path=data_dir / 'event-decisions.jsonl',
         dashboard_audit_path=data_dir / 'dashboard-decisions.jsonl',
     )
-    return make_server(port, simulation=simulation)
+    return make_server(port, simulation=simulation, desktop=DesktopControls(emit))
 
 
 def serve(data_dir, port=0):
@@ -68,8 +77,9 @@ def serve(data_dir, port=0):
     worker = threading.Thread(target=run_server, name='desktop-http', daemon=True)
     try:
         worker.start()
-        # This is the only stdout protocol message; bind/listen has succeeded.
-        print(json.dumps({'event': 'ready', 'port': server.server_port}, separators=(',', ':')), flush=True)
+        # Only the inherited native pipe receives the acknowledgement credential.
+        emit_native({'event': 'ready', 'port': server.server_port,
+                     'desktop_token': server.desktop.runtime_token})
         threading.Thread(target=watch_stdin, name='desktop-parent-pipe', daemon=True).start()
         stopped.wait()
     finally:

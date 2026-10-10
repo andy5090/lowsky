@@ -23,6 +23,7 @@ try:
     from .test_operator import TestOperator
     from . import exercise
     from .decision_dashboard import DecisionDashboard
+    from .desktop_controls import DesktopControls, DesktopBusy
     from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
@@ -37,6 +38,7 @@ except ImportError:
     from test_operator import TestOperator
     import exercise
     from decision_dashboard import DecisionDashboard
+    from desktop_controls import DesktopControls, DesktopBusy
     from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -382,7 +384,9 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(403, {'error': 'Local host only'})
             return
         path = urlsplit(self.path).path
-        if path == '/api/state':
+        if path == '/api/desktop':
+            self.respond(200, self.server.desktop.snapshot())
+        elif path == '/api/state':
             self.respond(200, self.server.simulation.state(
                 show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
         elif path == '/api/assessment':
@@ -434,6 +438,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/exercise.mjs': ('exercise.mjs', 'text/javascript; charset=utf-8'),
                       '/dashboard.mjs': ('dashboard.mjs', 'text/javascript; charset=utf-8'),
+                      '/desktop.mjs': ('desktop.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),
@@ -455,8 +460,12 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(403, {'error': 'Same-origin requests only'})
             return
         path = urlsplit(self.path).path
-        if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator'):
+        if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator', '/api/desktop', '/api/desktop/runtime'):
             self.respond(404, {'error': 'Not found'})
+            return
+        if path == '/api/desktop/runtime' and not self.server.desktop.authenticated(
+                self.headers.get('X-Low-Sky-Desktop-Token')):
+            self.respond(403, {'error': 'Native authentication required'})
             return
         if self.headers.get_content_type() != 'application/json':
             self.respond(415, {'error': 'JSON required'})
@@ -468,7 +477,11 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
                 raise ValueError('Expected an object')
-            if path == '/api/test-operator':
+            if path == '/api/desktop':
+                self.respond(202, self.server.desktop.command(body))
+            elif path == '/api/desktop/runtime':
+                self.respond(200, self.server.desktop.acknowledge(body))
+            elif path == '/api/test-operator':
                 self.respond(200, self.server.simulation.test_operator.command(body))
             elif path == '/api/decisions':
                 self.respond(202 if body.get('action') in ('assess_current', 'retry') else 200,
@@ -477,7 +490,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(202, self.server.simulation.start_assessment(body))
             else:
                 self.respond(200, self.server.simulation.control(body))
-        except (AssessmentBusy, DecisionBusy) as error:
+        except (AssessmentBusy, DecisionBusy, DesktopBusy) as error:
             self.respond(409, {'error': str(error)})
         except (ValueError, TypeError) as error:
             self.respond(400, {'error': str(error)})
@@ -498,9 +511,10 @@ class MonitorServer(ThreadingHTTPServer):
         super().server_close()
 
 
-def make_server(port=8765, simulation=None):
+def make_server(port=8765, simulation=None, desktop=None):
     server = MonitorServer(('127.0.0.1', port), Handler)
     server.simulation = simulation or Simulation()
+    server.desktop = desktop or DesktopControls()
     return server
 
 

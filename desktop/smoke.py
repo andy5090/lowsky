@@ -21,7 +21,7 @@ class SmokeError(RuntimeError):
 
 ASSETS = ('index.html', 'app.js', 'styles.css', 'logo.svg', 'logo-metal.png', 'geo.mjs',
           'decisions.mjs', 'test_runs.mjs', 'review.mjs', 'exercise.mjs', 'dashboard.mjs',
-          'radar.mjs', 'i18n.mjs', 'notifications.mjs', 'sw.js', 'manifest.webmanifest', 'pwa-icon.svg')
+          'radar.mjs', 'desktop.mjs', 'i18n.mjs', 'notifications.mjs', 'sw.js', 'manifest.webmanifest', 'pwa-icon.svg')
 DATA_FILES = ('site_layout.json', 'early_warning_demo.json', 'sensor_fleet_demo.json',
               'situation_review.json', 'radar_display.json', 'terrain/korea_site.json',
               'references/ukraine_observation_lessons.json', 'scenarios/v1/manifest.json',
@@ -127,7 +127,8 @@ def read_ready(process, timeout=60):
         ready = json.loads(line)
     except (ValueError, TypeError):
         raise SmokeError('Backend did not emit valid readiness JSON') from None
-    ensure(isinstance(ready, dict) and set(ready) == {'event', 'port'} and ready['event'] == 'ready'
+    ensure(isinstance(ready, dict) and set(ready) == {'event', 'port', 'desktop_token'}
+           and isinstance(ready['desktop_token'], str) and len(ready['desktop_token']) >= 32 and ready['event'] == 'ready'
            and type(ready['port']) is int and 0 < ready['port'] <= 65535,
            'Invalid backend readiness fields')
     return ready['port']

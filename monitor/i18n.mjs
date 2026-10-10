@@ -2,6 +2,13 @@
 export const STORAGE_KEY = 'lowsky.monitor.language';
 export const messages = {
   "en": {
+    "desktop.views": "Desktop views",
+    "desktop.open3d": "3D view",
+    "desktop.close3d": "Close 3D",
+    "desktop.enterFullscreen": "Fullscreen",
+    "desktop.exitFullscreen": "Exit fullscreen",
+    "desktop.pending": "Switching…",
+    "desktop.failed": "View control failed. Retry.",
     "priority.review": "Review updates",
     "priority.dismiss": "Dismiss notification",
     "priority.title": "Review needs your attention",
@@ -630,6 +637,13 @@ export const messages = {
     "brief.unavailable": "Scenario descriptions are unavailable. Replay remains available."
   },
   "ko": {
+    "desktop.views": "데스크톱 화면",
+    "desktop.open3d": "3D 보기",
+    "desktop.close3d": "3D 닫기",
+    "desktop.enterFullscreen": "전체화면",
+    "desktop.exitFullscreen": "전체화면 해제",
+    "desktop.pending": "전환 중…",
+    "desktop.failed": "화면 제어 실패. 다시 시도하세요.",
     "priority.review": "변경 확인",
     "priority.dismiss": "알림 닫기",
     "priority.title": "판단 확인 필요",

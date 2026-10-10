@@ -29,6 +29,14 @@ var materials: Dictionary = {}
 var display_profiles: Dictionary = {}
 var site_layout: Dictionary = {}
 var camera_target = Vector3.ZERO
+var desktop_mode = false
+var desktop_revision = -1
+var desktop_state: Dictionary = {}
+var desktop_poll_request: HTTPRequest
+var desktop_command_request: HTTPRequest
+var desktop_status: Label
+var desktop_monitor_button: Button
+var desktop_fullscreen_button: Button
 var monitor_mode = false
 var monitor_base_url = "http://127.0.0.1:8765"
 var monitor_connected = false
@@ -202,6 +210,7 @@ func _ready() -> void:
 			return
 	site_layout = read_json(data_root.path_join("../../site_layout.json"))
 	camera_target = vector(site_layout.camera.target)
+	desktop_mode = "--desktop" in OS.get_cmdline_user_args()
 	monitor_mode = "--monitor" in OS.get_cmdline_user_args()
 	for argument in OS.get_cmdline_user_args():
 		if argument.begins_with("--monitor-port="):
@@ -278,6 +287,8 @@ func _ready() -> void:
 	if monitor_mode:
 		show_overview()
 		start_monitor()
+	if desktop_mode:
+		start_desktop_controls()
 	if "--capture" in OS.get_cmdline_user_args():
 		playing = false
 		elapsed_ms = 65000
@@ -344,6 +355,8 @@ func build_ui() -> void:
 	title.text = "LOW SKY / 3D SIMULATION"
 	title.add_theme_font_size_override("font_size", 24)
 	column.add_child(title)
+	if desktop_mode:
+		build_desktop_controls(column)
 	var subtitle = Label.new()
 	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\n3D simulation · fictional facility" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
 	subtitle.modulate = Color("91b6b8")
@@ -656,6 +669,10 @@ func _notification(what: int) -> void:
 		drag_button = MOUSE_BUTTON_NONE
 
 func _input(event: InputEvent) -> void:
+	if desktop_mode and event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_F6, KEY_F11]:
+		desktop_command("show_monitor" if event.keycode == KEY_F6 else "toggle_3d_fullscreen")
+		get_viewport().set_input_as_handled()
+		return
 	# A drag starts only outside the UI, but continues/releases across UI bounds.
 	if drag_button == MOUSE_BUTTON_NONE:
 		return
@@ -898,3 +915,111 @@ func update_mission_vignettes() -> void:
 		if not present.has(id):
 			mission_nodes[id].queue_free()
 			mission_nodes.erase(id)
+
+
+func build_desktop_controls(column: VBoxContainer) -> void:
+	var row = HBoxContainer.new()
+	column.add_child(row)
+	desktop_monitor_button = Button.new()
+	desktop_monitor_button.text = "Monitoring / 모니터링"
+	desktop_monitor_button.tooltip_text = "Return to monitoring [F6]"
+	desktop_monitor_button.add_theme_font_size_override("font_size", 13)
+	desktop_monitor_button.disabled = true
+	desktop_monitor_button.pressed.connect(func(): desktop_command("show_monitor"))
+	row.add_child(desktop_monitor_button)
+	desktop_fullscreen_button = Button.new()
+	desktop_fullscreen_button.text = "Fullscreen / 전체 화면"
+	desktop_fullscreen_button.tooltip_text = "Toggle full screen [F11]"
+	desktop_fullscreen_button.add_theme_font_size_override("font_size", 13)
+	desktop_fullscreen_button.disabled = true
+	desktop_fullscreen_button.pressed.connect(func(): desktop_command("toggle_3d_fullscreen"))
+	row.add_child(desktop_fullscreen_button)
+	desktop_status = Label.new()
+	desktop_status.add_theme_font_size_override("font_size", 12)
+	desktop_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desktop_status.custom_minimum_size.x = 300
+	desktop_status.text = "Connecting window controls… / 창 제어 연결 중"
+	column.add_child(desktop_status)
+
+func start_desktop_controls() -> void:
+	desktop_poll_request = HTTPRequest.new()
+	desktop_poll_request.timeout = 1.0
+	desktop_poll_request.request_completed.connect(receive_desktop_state)
+	add_child(desktop_poll_request)
+	desktop_command_request = HTTPRequest.new()
+	desktop_command_request.timeout = 2.0
+	desktop_command_request.request_completed.connect(receive_desktop_state)
+	add_child(desktop_command_request)
+	var timer = Timer.new()
+	timer.wait_time = 0.4
+	timer.timeout.connect(poll_desktop_state)
+	add_child(timer)
+	timer.start()
+	poll_desktop_state()
+
+func poll_desktop_state() -> void:
+	if desktop_mode and desktop_poll_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
+		if desktop_poll_request.request(monitor_base_url + "/api/desktop") != OK:
+			set_desktop_error("Window controls unavailable / 창 제어 연결 실패")
+
+func desktop_command(action: String) -> void:
+	if not desktop_mode or not is_instance_valid(desktop_command_request):
+		return
+	if not desktop_state.get("available", false) or desktop_state.get("pending", false) or desktop_command_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		return
+	var error = desktop_command_request.request(monitor_base_url + "/api/desktop", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"action":action}))
+	if error != OK:
+		set_desktop_error("Window command failed / 창 제어 요청 실패")
+
+func set_desktop_error(message: String) -> void:
+	if is_instance_valid(desktop_status):
+		desktop_status.text = message.left(180)
+		desktop_status.modulate = Color("ffc778")
+
+func receive_desktop_state(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS:
+		set_desktop_error("Window controls disconnected; retrying / 창 제어 재연결 중")
+		return
+	var state = JSON.parse_string(body.get_string_from_utf8())
+	if response_code not in [200, 202]:
+		set_desktop_error("Window command rejected (%s) / 창 제어 요청 거절" % response_code)
+		return
+	if not state is Dictionary or not state.has_all(["available", "view", "fullscreen", "three_d_open", "pending", "error", "revision"]):
+		set_desktop_error("Invalid window state / 창 제어 응답 오류")
+		return
+	apply_desktop_state(state)
+
+func apply_desktop_state(state: Dictionary) -> Dictionary:
+	# This transport never reads or writes the simulation clock. Return the intended
+	# native actions so headless verification does not need OS focus or fullscreen.
+	if not desktop_mode or int(state.revision) < desktop_revision:
+		return {}
+	desktop_state = state.duplicate(true)
+	if is_instance_valid(desktop_status):
+		desktop_monitor_button.disabled = not state.available or state.pending
+		desktop_fullscreen_button.disabled = not state.available or state.pending
+		desktop_status.modulate = Color("91b6b8")
+		if not state.available:
+			desktop_status.text = "Window controls unavailable / 창 제어 사용 불가"
+		elif state.error != null and not str(state.error).is_empty():
+			set_desktop_error("Window control: " + str(state.error))
+		elif state.pending:
+			desktop_status.text = "Switching window… / 창 전환 중"
+		else:
+			desktop_status.text = "F6 · Monitoring / 모니터링    F11 · Fullscreen / 전체 화면"
+	if int(state.revision) == desktop_revision:
+		return {}
+	desktop_revision = int(state.revision)
+	if not state.available or state.pending or (state.error != null and not str(state.error).is_empty()):
+		return {}
+	var focus_3d = state.view == "3d"
+	# Even a background mode change can steal native focus or switch macOS Spaces.
+	# Keep the desired fullscreen value in desktop_state until 3D is requested.
+	var actions = {"fullscreen": bool(state.fullscreen) if focus_3d else null, "focus": focus_3d}
+	if actions.focus and DisplayServer.get_name() != "headless":
+		var native_fullscreen = get_window().mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN]
+		if actions.fullscreen != native_fullscreen:
+			get_window().mode = Window.MODE_FULLSCREEN if actions.fullscreen else Window.MODE_WINDOWED
+		get_window().grab_focus()
+		DisplayServer.window_move_to_foreground(get_window().get_window_id())
+	return actions

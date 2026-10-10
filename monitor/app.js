@@ -1,3 +1,4 @@
+import {desktopCommand, desktopShortcut, acceptDesktopState} from './desktop.mjs';
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
@@ -16,6 +17,7 @@ const localized = value => value?.[language] || value?.en || '';
 const qualityLabel = quality => t(`quality.${quality}`);
 const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
+let desktopState=null,desktopBusy=false,desktopConnected=false,desktopError=false,desktopRequestVersion=0;
 const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')}`;
 let briefings = [], briefingSignature = '';
 let situationSignature = '', situationRun = null, situationOptions = '', reviewPending = false;
@@ -53,6 +55,45 @@ async function api(path, body) {
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
 }
+function renderDesktop() {
+  $('desktop-controls').hidden=desktopState?.available!==true;
+  const options={busy:desktopBusy,connected:desktopConnected};
+  $('desktop-open-3d').disabled=!desktopCommand(desktopState,'open_3d',options);
+  $('desktop-close-3d').disabled=!desktopCommand(desktopState,'close_3d',options);
+  $('desktop-fullscreen').disabled=!desktopCommand(desktopState,'toggle_monitor_fullscreen',options);
+  $('desktop-fullscreen').textContent=t(desktopState?.fullscreen?'desktop.exitFullscreen':'desktop.enterFullscreen');
+  $('desktop-fullscreen').setAttribute('aria-pressed',String(Boolean(desktopState?.fullscreen)));
+  $('desktop-status').textContent=desktopBusy || desktopState?.pending?t('desktop.pending'):desktopError || desktopState?.error?t('desktop.failed'):'';
+}
+async function pollDesktop() {
+  const version=desktopRequestVersion;
+  if(!desktopBusy)try {
+    const result=await api('/api/desktop');
+    if(version===desktopRequestVersion){desktopState=acceptDesktopState(desktopState,result);desktopConnected=true;desktopError=false;renderDesktop();}
+  }catch{if(version===desktopRequestVersion){desktopConnected=false;desktopError=desktopState?.available===true;renderDesktop();}}
+  setTimeout(pollDesktop,1000);
+}
+async function desktopAction(action) {
+  const body=desktopCommand(desktopState,action,{busy:desktopBusy,connected:desktopConnected});
+  if(!body)return;
+  desktopBusy=true;desktopError=false;const version=++desktopRequestVersion;renderDesktop();
+  try {
+    const result=await api('/api/desktop',body);
+    if(version===desktopRequestVersion){desktopState=acceptDesktopState(desktopState,result);desktopConnected=true;}
+  }catch{desktopError=true;desktopConnected=false;}
+  finally{desktopBusy=false;renderDesktop();}
+}
+$('desktop-open-3d').onclick=()=>desktopAction('open_3d');
+$('desktop-close-3d').onclick=()=>desktopAction('close_3d');
+$('desktop-fullscreen').onclick=()=>desktopAction('toggle_monitor_fullscreen');
+document.addEventListener('keydown',event=>{
+  const body=desktopShortcut(event.key,desktopState,{busy:desktopBusy,connected:desktopConnected,
+    editing:Boolean(event.target.closest?.('input,textarea,select,[contenteditable="true"]')),
+    modal:Boolean(document.querySelector('dialog[open]')),repeat:event.repeat,
+    modifier:event.altKey || event.ctrlKey || event.metaKey || event.shiftKey});
+  if(body){event.preventDefault();desktopAction(body.action);}
+});
+
 function connection(ok, message='') {
   connected = ok; connectionMessage = message;
   $('connection-status').textContent = ok ? t('connected') : t('disconnected');
@@ -1208,6 +1249,7 @@ function applyLanguage(next, persist = false) {
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');
   renderNotificationSettings();
+  renderDesktop();
 }
 $('language-select').onchange = event => {applyLanguage(event.target.value, true);syncDecisionLanguage();};
 let notificationStorage;
@@ -1221,6 +1263,7 @@ if(new URLSearchParams(location.search).get('view')==='alerts')showView('alerts'
 window.addEventListener('focus',()=>renderNotificationSettings());
 window.addEventListener('storage',event=>{if(event.key===NOTIFICATION_STORAGE_KEY){notifier.setEnabled(event.newValue==='1');notificationMessage='';renderNotificationSettings();}});
 applyLanguage(language);
+pollDesktop();
 try{
   config=await api('/api/config');
   renderCases();

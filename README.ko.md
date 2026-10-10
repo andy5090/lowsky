@@ -49,7 +49,7 @@ API는 `POST /api/control`의 `{"action":"start_test","case_id":"case_003","seed
 
 ## 데스크톱 설치 패키지
 
-[Tauri 데스크톱 패키징 가이드](desktop/README.md)에 macOS DMG·Windows NSIS 빌드와 설치 방법을 정리했습니다. 하나의 설치 파일에 모니터링 앱·Python/Deep Agents 런타임·Godot 3D 앱·데이터를 포함합니다. 앱 실행 시 두 창과 공통 서버를 함께 관리하며, API 키와 검토 기록은 사용자별 앱 데이터 폴더에 보관합니다. `desktop/build.py`로 macOS에서는 DMG, Windows에서는 NSIS 설치 파일을 로컬 빌드합니다. GitHub Actions 설치 파일 빌드는 사용하지 않습니다.
+[Tauri 데스크톱 패키징 가이드](desktop/README.md)에 macOS DMG·Windows NSIS 빌드와 설치 방법을 정리했습니다. 하나의 설치 파일에 모니터링 앱·Python/Deep Agents 런타임·Godot 3D 앱·데이터를 포함합니다. 앱 실행 시 두 창과 공통 서버를 함께 관리하며, API 키와 검토 기록은 사용자별 앱 데이터 폴더에 보관합니다. `desktop/build.py`로 macOS에서는 DMG, Windows에서는 NSIS 설치 파일을 로컬 빌드합니다. GitHub Actions 설치 파일 빌드는 사용하지 않습니다. 모니터링 상단에서 **3D 보기·3D 닫기·전체 화면**을 제어합니다. **F6**으로 모니터링과 3D를 전환하고 **F11**로 전체 화면을 전환합니다. 3D를 닫거나 화면을 바꿔도 시뮬레이션은 계속 진행되며, 다시 열면 현재 상황에 연결됩니다.
 
 ## 실행
 

@@ -544,3 +544,13 @@ button:disabled{cursor:not-allowed}
 .workbench .decision-options button { display:flex; flex-direction:column; gap:7px; width:100%; height:100%; margin:0; padding:11px 9px; text-align:left; white-space:normal; line-height:1.4; }
 .decision-option-reasons { font-size:12px; line-height:1.5; }
 @media(max-width:520px) { .workbench .decision-options { grid-template-columns:1fr; } }
+.desktop-controls { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:6px; }
+.desktop-controls[hidden] { display:none; }
+.desktop-controls .button { padding:5px 9px; font-size:11px; }
+#desktop-status { font-size:11px; color:var(--ink-soft); }
+@media(max-width:520px) { .desktop-controls { justify-content:flex-start; } }
+/* Native window controls belong in the visible header, never the clipped page heading. */
+.app-header { gap:14px; flex-wrap:wrap; height:auto; min-height:54px; padding-top:6px; padding-bottom:6px; }
+.app-header .desktop-controls { flex:0 1 auto; }
+@media(max-width:1250px) { .app-header:has(.desktop-controls:not([hidden])) .header-context { display:none; } }
+@media(max-width:800px) { .app-header .desktop-controls { flex-basis:100%; justify-content:flex-end; padding-top:4px; border-top:1px solid var(--line); } }
