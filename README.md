@@ -48,6 +48,28 @@ python3 tools/monitor_server.py
 
 드론은 프로펠러 포함 최대 수평 폭 **0.6m**를 잠정 기준으로 표시한다. 설정은 `godot/assets/display_profiles.json`에 있으며, 객체별 `visual.size_profile`로 교체할 수 있다. 공통 로컬 좌표는 1단위=1m이며 활주로·울타리·지도 오버레이가 같은 배치를 사용한다. 건물과 항공기는 시각화용 샘플이다. 역할(폭탄 탑재·디코이 등), 통신 방식과 재밍·광섬유 관련 이벤트는 확장 문서에 정리한 설계 단계다.
 
+지도 **Radar overlay / 레이더 표시**는 채널 A/B의 수신 관측을 시각화한다. 재생 시 스캔이 회전하고 새 관측이 도착하는 00:00·00:30·01:00 등의 시점에 표식이 나타난다. 일시정지·시간 이동은 공유 시계를 따르며 중단된 채널은 스캔과 새 표식을 표시하지 않는다. [레이더 표시 설정](data/radar_display.json)의 12초 스캔 주기·1,000m 원·2.5초 표식은 시각화 가정이며 탐지 범위·물리 스캔 모델이 아니다. 표식은 공개 관측의 위치만 사용하며 제작자용 world 데이터나 추정 경로를 사용하지 않는다.
+
+## 민간 지역 조기 신호 데모
+
+모니터의 **Community early signals / 민간 지역 조기 신호**는 음향 센서와 시민 앱 제보를 별도 출처로 보여준다. [입력 데이터](data/early_warning_demo.json)는 기존 12개 품질 테스트 케이스와 같은 시계를 사용하는 독립 합성 피드다. 기존 object 트랙의 정체·레이더 탐지 여부와 자동 연결하지 않으며, 실제 주민·휴대폰·음성을 수집하지 않는다. 지도 A/B/C 구역은 실제 주거지 조사 결과가 아니라 가상의 제보 지역이다.
+
+- 00:10: A 구역 음향 후보 신호 → 단일 출처 경고.
+- 00:22: 00:18에 작성된 앱 제보 도착 → 복수 출처 신호.
+- 00:28: 음향 미보고와 앱 제보가 상충 → 상충 표시.
+- 00:42: 새 음향·앱 제보가 함께 유효 → 복수 출처 신호.
+- 00:45: B 구역 지연 제보 도착.
+- 01:13: A/B의 신호가 유효시간을 초과 → 과거 근거는 유지하고 현재 경고는 해제. 안전이 확인되었다는 뜻이 아니다.
+- 01:20: B 구역 제보 채널 중단. C 구역은 측정 불가와 음성(후보 미보고) 관측의 차이를 보여준다.
+
+카드의 **Locate area / 구역 보기**로 지도에 초점을 맞추고 **Reports & sensor status / 제보·센서 상태**에서 관측·수신 시각, 품질, 분류기 점수와 근거 ID를 확인한다. 점수는 합성 입력값이며 공격 확률이 아니다. 30초 유효시간, 지도 구역 크기와 모든 이벤트는 데모 가정이다. 경고 확인은 해당 근거에만 적용되며 새 근거 도착 시 다시 경고한다. 확인 시각은 현재 실행의 이벤트 기록에 표시하고 서버 메모리에 최대 1,000건 보관한다. 영구 감사 로그는 아니며 서버 재시작 시 사라진다.
+
+[민수용 참고 스펙](data/sensors/civilian_reference_specs.json)은 Infineon IM69D130 마이크와 Raspberry Pi Zero 2 W 처리 보드의 제조사 공개값을 보관한다. 마이크 SNR 69 dB(A)는 데이터시트 시험조건의 부품 특성이며 탐지 거리가 아니다. PDM 입력 변환·드라이버 등 연결 구성은 미선정·미검증이며 이 두 부품을 바로 연결할 수 있다는 의미가 아니다. 실제 드론 탐지 거리·정확도·오경보율은 미검증(null)으로 둔다. 데이터시트 URL·개정판·페이지·시험조건을 카탈로그에서 확인할 수 있다.
+
+우크라이나 [ePPO 개발자 앱 설명](https://play.google.com/store/apps/details?id=ua.quick.brpg.pathfinder)은 시민이 관측한 비행체·소리를 제보하는 방식이다. [미 육군의 음향 센서 사례 소개](https://www.lineofdeparture.army.mil/Journals/Air-Defense-Artillery/ADA-Archive/2024-E-Edition/Mobility-Matters/)에 나오는 Android 기기 포함 설치형 센서와 개인 휴대폰의 자동 감지를 같은 것으로 취급하지 않는다. 이 구현은 두 입력 유형의 합성 관측만 재생한다.
+
+로컬 Sensor Engineering Brief와 Technical Specifications의 관측 상태·시간·불확실성 원칙을 반영했다. 두 원본 DOCX는 수정하거나 공개 저장소에 포함하지 않았다. JSON 변경 후 서버를 재시작하면 입력과 평가가 바뀐다. 새 패키지는 필요 없다.
+
 ## 재생성
 
 ```sh
@@ -69,6 +91,7 @@ python3 tools/scenario_dataset.py validate
 python3 -m compileall -q tools tests
 node --check monitor/app.js
 node tests/monitor_geo.mjs
+node tests/monitor_radar.mjs
 node tests/test_monitor_i18n.mjs
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_preview.gd
 /Applications/Godot.app/Contents/MacOS/Godot --path godot --script res://tools/verify_preview.gd

@@ -254,6 +254,7 @@ class HTTPTests(SimulationFixture):
         (self.project / "monitor" / "private.txt").write_text("private file", encoding="utf-8")
         write_json(self.project / "data" / "site_layout.json", {"synthetic": True})
         write_json(self.project / "monitor" / "map_config.json", {"reference_only": True})
+        write_json(self.project / "data" / "radar_display.json", {"synthetic": True, "stations": []})
         project_patch = patch.object(monitor_server, "PROJECT", self.project)
         project_patch.start()
         self.addCleanup(project_patch.stop)

@@ -10,15 +10,19 @@ from urllib.parse import urlsplit
 
 try:
     from .scenario_dataset import ROOT, read_json, snapshot, information_state
+    from .early_warning import snapshot as early_snapshot
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
+    from early_warning import snapshot as early_snapshot
 
 PROJECT = Path(__file__).resolve().parents[1]
 
 
 class Simulation:
-    def __init__(self, root=ROOT, clock=time.monotonic):
+    def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None):
         self.root, self.clock = root, clock
+        self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
+        self.reviews = []
         self.lock = threading.RLock()
         self.cases = read_json(root / 'manifest.json')['cases']
         self.public = {entry['case_id']: read_json(root / 'cases' / entry['case_id'] / 'public.json') for entry in self.cases}
@@ -90,10 +94,14 @@ class Simulation:
                     alerts.append(dict(id=f"{channel['source_id']}:{channel['status']}", kind='channel',
                                        source_id=channel['source_id'], title='관측 채널 갱신 중단',
                                        evidence_ids=[row['id']] if row else []))
+            early_warning, early_alerts = early_snapshot(self.early_feed, clock['at_ms'])
+            alerts = early_alerts + alerts
             for alert in alerts:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
             return dict(**clock, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
-                        contexts=payload['contexts'], coordinate_system='fictional_local_meters')
+                        contexts=payload['contexts'], early_warning=early_warning,
+                        reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
+                        coordinate_system='fictional_local_meters')
 
     def control(self, command):
         with self.lock:
@@ -132,6 +140,10 @@ class Simulation:
                 alert_id = command.get('alert_id')
                 if alert_id not in {a['id'] for a in self.state()['alerts']}:
                     raise ValueError('Unknown current alert')
+                if alert_id not in self.acknowledged:
+                    self.reviews.append(dict(run_id=self.run_id, case_id=self.case_id, alert_id=alert_id,
+                                             at_ms=now_ms, reviewed_at_unix_ms=int(time.time() * 1000), action='acknowledged'))
+                    self.reviews = self.reviews[-1000:]
                 self.acknowledged.add(alert_id)
             else:
                 raise ValueError('Unknown action')
@@ -172,13 +184,16 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/config':
             self.respond(200, dict(site=read_json(PROJECT / 'data' / 'site_layout.json'),
                                    cases=[{'case_id': c['case_id'], 'variant': c['variant']} for c in self.server.simulation.cases],
-                                   regional_map=read_json(PROJECT / 'monitor' / 'map_config.json')))
+                                   regional_map=read_json(PROJECT / 'monitor' / 'map_config.json'),
+                                   radar_display=read_json(PROJECT / 'data' / 'radar_display.json')))
         elif path == '/health':
             self.respond(200, {'ok': True})
         else:
             assets = {'/': ('index.html', 'text/html; charset=utf-8'),
                       '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
+                      '/logo.svg': ('logo.svg', 'image/svg+xml'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
+                      '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/styles.css': ('styles.css', 'text/css; charset=utf-8')}
             if path not in assets:

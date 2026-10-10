@@ -6,12 +6,13 @@
   <meta name="theme-color" content="#090f14">
   <title>LOW SKY · Observation Monitor</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
   <header class="app-header">
     <a class="brand" href="/" aria-label="LOW SKY observation monitor home" data-i18n-aria-label="home">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <img class="brand-mark" src="/logo.svg" width="40" height="40" alt="">
       <span>LOW SKY<small data-i18n="brandSubtitle">OBSERVATION MONITOR</small></span>
     </a>
     <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">2D monitoring workspace</span></div>
@@ -37,15 +38,22 @@
     </section>
 
     <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
+      <section class="panel early-warning-panel" aria-labelledby="early-title">
+        <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Community early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
+        <p class="early-note" data-i18n="early.note">Independent demo feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
+        <div id="early-zones" class="early-zones"></div>
+      </section>
       <div class="monitor-grid">
         <div class="map-column">
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
-            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button></div><span data-i18n="mapNote">Facilities and tracks over the real map are synthetic.</span></div>
+            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button></div><span data-i18n="mapNote">Facilities and tracks over the real map are synthetic.</span></div>
             <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
               <div id="map-tiles" aria-hidden="true"></div>
               <svg id="map-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <svg id="radar-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
               <div id="map-markers"></div>
+              <div id="radar-status" class="radar-status" role="status"></div>
               <div class="map-label"><span class="live-dot" aria-hidden="true"></span><span data-i18n="syntheticSite">Synthetic site · Not a real facility location</span></div>
               <div class="map-controls" aria-label="Map controls" data-i18n-aria-label="mapControls">
                 <button id="zoom-in" type="button" aria-label="Zoom in" data-i18n-aria-label="zoomIn" title="Zoom in" data-i18n-title="zoomInTitle">+</button>

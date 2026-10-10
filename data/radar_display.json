@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "description": "Illustrative radar overlay using existing observation channels A/B. Sweep geometry is visual only; detection markers come exclusively from received public observations. Not a sensor performance or coverage model.",
+  "scan_period_ms": 12000,
+  "return_visible_ms": 2500,
+  "stations": [
+    {"id": "RADAR A", "source_id": "channel_a", "facility_id": "station_a", "display_radius_m": 1000, "phase_deg": 0},
+    {"id": "RADAR B", "source_id": "channel_b", "facility_id": "station_b", "display_radius_m": 1000, "phase_deg": 180}
+  ]
+}

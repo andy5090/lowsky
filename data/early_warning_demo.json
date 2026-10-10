@@ -1,0 +1,212 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "description": "Independent community early-signal overlay replayed with every quality-test case. No association with the existing object tracks or real residents. All times, scores and area radii are demo assumptions.",
+  "freshness_ms": 30000,
+  "zones": [
+    {
+      "id": "community_a",
+      "label": {
+        "en": "Community A",
+        "ko": "주거 구역 A"
+      },
+      "center": [
+        -2200,
+        0,
+        -1600
+      ],
+      "radius_m": 400
+    },
+    {
+      "id": "community_b",
+      "label": {
+        "en": "Community B",
+        "ko": "주거 구역 B"
+      },
+      "center": [
+        1900,
+        0,
+        1400
+      ],
+      "radius_m": 350
+    },
+    {
+      "id": "community_c",
+      "label": {
+        "en": "Community C",
+        "ko": "주거 구역 C"
+      },
+      "center": [
+        2200,
+        0,
+        -1600
+      ],
+      "radius_m": 350
+    }
+  ],
+  "observations": [
+    {
+      "id": "early_001",
+      "zone_id": "community_a",
+      "sensor_id": "acoustic_a",
+      "sensor_type": "acoustic",
+      "observed_at_ms": 10000,
+      "available_at_ms": 10000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": 0.72
+      },
+      "synthetic": true,
+      "sensor_spec_id": "civilian_acoustic_reference"
+    },
+    {
+      "id": "early_002",
+      "zone_id": "community_a",
+      "sensor_id": "report_a",
+      "sensor_type": "citizen_report",
+      "observed_at_ms": 18000,
+      "available_at_ms": 22000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "synthetic": true,
+      "sensor_spec_id": "citizen_report_reference"
+    },
+    {
+      "id": "early_003",
+      "zone_id": "community_a",
+      "sensor_id": "acoustic_a",
+      "sensor_type": "acoustic",
+      "observed_at_ms": 28000,
+      "available_at_ms": 28000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": 0.35
+      },
+      "synthetic": true,
+      "sensor_spec_id": "civilian_acoustic_reference"
+    },
+    {
+      "id": "early_004",
+      "zone_id": "community_a",
+      "sensor_id": "acoustic_a",
+      "sensor_type": "acoustic",
+      "observed_at_ms": 40000,
+      "available_at_ms": 40000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": 0.76
+      },
+      "synthetic": true,
+      "sensor_spec_id": "civilian_acoustic_reference"
+    },
+    {
+      "id": "early_005",
+      "zone_id": "community_a",
+      "sensor_id": "report_a",
+      "sensor_type": "citizen_report",
+      "observed_at_ms": 42000,
+      "available_at_ms": 42000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "synthetic": true,
+      "sensor_spec_id": "citizen_report_reference"
+    },
+    {
+      "id": "early_006",
+      "zone_id": "community_b",
+      "sensor_id": "report_b",
+      "sensor_type": "citizen_report",
+      "observed_at_ms": 30000,
+      "available_at_ms": 45000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": true
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "synthetic": true,
+      "sensor_spec_id": "citizen_report_reference"
+    },
+    {
+      "id": "early_007",
+      "zone_id": "community_b",
+      "sensor_id": "report_b",
+      "sensor_type": "citizen_report",
+      "observed_at_ms": 80000,
+      "available_at_ms": 80000,
+      "sensor_status": "offline",
+      "measurement_status": "unavailable",
+      "measurement": {
+        "object_present": null
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "synthetic": true,
+      "sensor_spec_id": "citizen_report_reference"
+    },
+    {
+      "id": "early_008",
+      "zone_id": "community_c",
+      "sensor_id": "acoustic_c",
+      "sensor_type": "acoustic",
+      "observed_at_ms": 20000,
+      "available_at_ms": 20000,
+      "sensor_status": "operational",
+      "measurement_status": "invalid",
+      "measurement": {
+        "object_present": null
+      },
+      "quality": {
+        "classifier_score": null
+      },
+      "synthetic": true,
+      "sensor_spec_id": "civilian_acoustic_reference"
+    },
+    {
+      "id": "early_009",
+      "zone_id": "community_c",
+      "sensor_id": "acoustic_c",
+      "sensor_type": "acoustic",
+      "observed_at_ms": 55000,
+      "available_at_ms": 55000,
+      "sensor_status": "operational",
+      "measurement_status": "valid",
+      "measurement": {
+        "object_present": false
+      },
+      "quality": {
+        "classifier_score": 0.12
+      },
+      "synthetic": true,
+      "sensor_spec_id": "civilian_acoustic_reference"
+    }
+  ],
+  "spec_catalog": "data/sensors/civilian_reference_specs.json"
+}

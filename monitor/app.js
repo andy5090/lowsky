@@ -1,4 +1,5 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
+import {radarFrame, replayTime} from './radar.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 const $ = id => document.getElementById(id);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,6 +12,7 @@ let connected = null, connectionMessage = '';
 const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Math.floor(ms / 1000) % 60).padStart(2,'0')}`;
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
+let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
 const tileImages = new Map();
@@ -31,7 +33,7 @@ function connection(ok, message='') {
   $('connection-status').classList.toggle('is-connected', ok);
   $('connection-status').classList.toggle('disconnected', !ok);
   for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
-  if (!ok) $('sim-status').textContent = t(message || 'retainView');
+  if (!ok) { $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
   controlChain = controlChain.then(async () => {
@@ -48,13 +50,13 @@ async function poll() {
   setTimeout(poll, 500);
 }
 function render(data) {
-  state = data; connection(true);
+  state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
-  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts]);
+  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
   if (signature !== dataSignature) {
     dataSignature = signature;
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
-    renderDetails(); drawMap();
+    renderDetails(); renderEarlyWarning(); drawMap();
   }
 }
 function renderPlayback(data) {
@@ -65,6 +67,7 @@ function renderPlayback(data) {
   $('time-label').textContent = `${fmt(data.at_ms)} / ${fmt(data.duration_ms)}`;
   if(document.activeElement !== $('timeline')) $('timeline').value = data.at_ms;
   $('speed-select').value = data.speed;
+  drawRadar(data.at_ms);
 }
 function select(id) { selected = id; renderDetails(); drawMap(); }
 function renderDetails() {
@@ -79,13 +82,41 @@ function renderDetails() {
   }
   const pending = state.alerts.filter(a=>!a.acknowledged).length;
   $('alert-count').textContent = pending;
-  const alertHTML = state.alerts.map(a=>`<li class="alert-item severity-warning ${a.acknowledged?'is-acknowledged':''}"><strong>${escape(t(['contradictory','not_comparable','stale','channel'].includes(a.kind)?`alert.${a.kind}`:'alert.unknown'))}</strong><p>${escape(a.object_id || a.source_id)} · ${t('evidence')} ${a.evidence_ids.map(escape).join(', ') || t('none')}</p><button class="button button-secondary" data-alert="${escape(a.id)}" ${a.acknowledged?'disabled':''}>${a.acknowledged?t('acknowledged'):t('acknowledge')}</button></li>`).join('') || `<li class="alert-item">${t('noAlerts')}</li>`;
+  const alertHTML = state.alerts.map(a=>{
+    const early = a.kind === 'early_warning';
+    const zone = state.early_warning?.zones.find(z=>z.id===a.zone_id);
+    const title = early ? t('early.review') : t(['contradictory','not_comparable','stale','channel'].includes(a.kind)?`alert.${a.kind}`:'alert.unknown');
+    const subject = early ? `${zoneLabel(zone)} · ${t(`early.${a.signal_status}`)}` : a.object_id || a.source_id;
+    return `<li class="alert-item severity-warning ${a.acknowledged?'is-acknowledged':''}"><strong>${escape(title)}</strong><p>${escape(subject)} · ${t('evidence')} ${a.evidence_ids.map(escape).join(', ') || t('none')}</p>${early?`<p class="early-alert-note">${t('early.radarUnknown')}</p>`:''}<button class="button button-secondary" data-alert="${escape(a.id)}" ${a.acknowledged?'disabled':''}>${a.acknowledged?t('acknowledged'):t('acknowledge')}</button></li>`;
+  }).join('') || `<li class="alert-item">${t('noAlerts')}</li>`;
   $('alert-list').innerHTML = alertHTML;
   $('active-alerts').innerHTML = alertHTML;
   document.querySelectorAll('[data-alert]').forEach(b=> b.onclick=()=>control({action:'ack',alert_id:b.dataset.alert,run_id:state.run_id}));
   $('source-status').textContent = state.sources.map(s=>`${s.source_id}: ${sourceLabel(s.status)}`).join(' · ');
   $('events-list').innerHTML = state.sources.map(s=>`<li class="event-item"><time>${s.evidence ? fmt(s.evidence.observed_at_ms) : '--:--'}</time>${escape(s.source_id)} · ${sourceLabel(s.status)}</li>`).join('') + state.contexts.map(c=>`<li class="event-item"><time>${t('published')} ${fmt(c.published_at_ms)}</time>${escape(['context_001','context_002'].includes(c.id)?t(`context.${c.id}`):c.text)}</li>`).join('');
+  $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
 }
+function zoneLabel(zone) { return zone?.label?.[language] || zone?.label?.en || zone?.id || t('early.unknown'); }
+function focusZone(id) {
+  const zone = state?.early_warning?.zones.find(z=>z.id===id);
+  if(!zone)return;
+  const [lat,lon]=localToGeo(zone.center[0],zone.center[2],config.regional_map.site_origin);
+  Object.assign(region,{lat,lon,zoom:14});setMode('region');
+}
+function renderEarlyWarning() {
+  const feed=state?.early_warning;
+  if(!feed)return;
+  $('early-count').textContent=feed.zones.filter(z=>z.positive_sources>0).length;
+  // Preserve expanded evidence while incoming data refreshes the cards.
+  const open=new Set([...$('early-zones').querySelectorAll('details[open]')].map(d=>d.dataset.zone));
+  $('early-zones').innerHTML=feed.zones.map(z=>`<article class="early-zone">
+    <header><h3>${escape(zoneLabel(z))}</h3><button class="button button-secondary" data-zone-focus="${escape(z.id)}">${t('early.focus')}</button></header>
+    <p><span class="early-status" data-status="${escape(z.status)}">${t(`early.${z.status}`)}</span> · ${t('early.sources',{count:z.positive_sources})}</p>
+    <details data-zone="${escape(z.id)}" ${open.has(z.id)?'open':''}><summary>${t('early.evidence')}</summary><ul>${z.evidence.map(e=>`<li><strong>${escape(e.sensor_id)}</strong> · ${t(`early.${e.sensor_type}`)}<br>${t(e.assessment==='unavailable'?'early.sourceUnavailable':`early.${e.assessment}`)} · ${t(e.object_present===true?'early.present':e.object_present===false?'early.negative':'early.unknown')}<small>${t('lastObservation')} ${e.observed_at_ms===null?'--:--':fmt(e.observed_at_ms)} · ${t('early.received')} ${fmt(e.available_at_ms)}</small><small>${e.classifier_score===null?t('early.noScore'):t('early.score',{score:e.classifier_score.toFixed(2)})}</small><small>${t('evidence')} ${escape(e.id)}</small></li>`).join('')||`<li>${t('early.empty')}</li>`}</ul></details>
+  </article>`).join('')+`<div class="early-footer">${t('early.ttl',{seconds:feed.freshness_ms/1000})} · ${t('early.areaNote')}</div>`;
+  $('early-zones').querySelectorAll('[data-zone-focus]').forEach(b=>b.onclick=()=>focusZone(b.dataset.zoneFocus));
+}
+
 function planScale() {
   if(mode==='region') return pixelsPerMeter(config.regional_map.site_origin.lat,region.zoom);
   const p = config.site.perimeter;
@@ -105,6 +136,11 @@ function drawSite() {
   let svg = '<defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="#48717a26" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="#0a151b"/><rect width="100%" height="100%" fill="url(#grid)"/>';
   if(mode==='region') svg='';
   const rect=(cx,cz,width,length,fill,stroke,extra='')=>{const [x,y]=point(cx-width/2,cz-length/2),[right,bottom]=point(cx+width/2,cz+length/2);return `<rect x="${x}" y="${y}" width="${right-x}" height="${bottom-y}" fill="${fill}" stroke="${stroke}" ${extra}/>`;};
+  for(const z of state?.early_warning?.zones || []){
+    const [cx,cy]=point(z.center[0],z.center[2]);
+    const active=z.positive_sources>0,color=active?'#dfb86a':'#8bc9cf';
+    svg+=`<circle cx="${cx}" cy="${cy}" r="${z.radius_m*s}" fill="${color}18" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 5"/>`;
+  }
   svg+=rect(0,0,site.perimeter.width_m,site.perimeter.length_m,mode==='region'?'#b3c38b1f':'#172b2e',mode==='region'?'#c4d39a':'#b3c38b','stroke-width="2.5" stroke-dasharray="6 4"');
   const [sx,sy]=point(-site.perimeter.width_m/2,-site.perimeter.length_m/2);
   svg+=`<text x="${sx+8}" y="${sy+17}" fill="#c4d39a" font-size="11" font-weight="600">${t('sitePlan')}</text>`;
@@ -126,6 +162,15 @@ function drawSite() {
   svg+=`<text x="20" y="${h-52}" fill="#acc2c8" font-size="10">${t('perimeter',{width:site.perimeter.width_m.toLocaleString(language),length:site.perimeter.length_m.toLocaleString(language)})}</text><text x="${w-28}" y="92" fill="#acc2c8" font-size="11">${t('north')}</text>`;
   overlay.innerHTML=svg;
   markers.replaceChildren();
+  for(const z of state?.early_warning?.zones || []){
+    const [x,y]=point(z.center[0],z.center[2]);
+    if(x<0||x>w||y<0||y>h)continue;
+    const marker=document.createElement('button');marker.className='area-marker';marker.dataset.status=z.status;
+    marker.style.left=`${x}px`;marker.style.top=`${y}px`;
+    marker.textContent=zoneLabel(z);marker.title=`${zoneLabel(z)} · ${t(`early.${z.status}`)}`;
+    marker.setAttribute('aria-label',`${zoneLabel(z)} · ${t(`early.${z.status}`)} · ${t('early.focus')}`);
+    marker.onclick=()=>focusZone(z.id);markers.append(marker);
+  }
   for(const t of state?.tracks || []){
     if(!t.position) continue;
     const [x,y]=point(t.position[0],t.position[2]);
@@ -162,7 +207,37 @@ function drawRegion() {
   }
   for(const [key,img] of tileImages) if(!needed.has(key)){img.remove();tileImages.delete(key);}
 }
-function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion();}
+function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion(); drawRadar(state?.at_ms || 0);}
+function drawRadar(atMs) {
+  if(!config || !state)return;
+  const layer=$('radar-overlay');layer.toggleAttribute('hidden',!radarVisible);$('radar-status').hidden=!radarVisible;
+  if(!radarVisible)return;
+  const frames=radarFrame(config.radar_display,config.site.facilities,state,atMs),s=planScale();
+  layer.setAttribute('viewBox',`0 0 ${map.clientWidth} ${map.clientHeight}`);
+  layer.innerHTML=frames.map(frame=>{
+    const [cx,cy]=point(frame.position[0],frame.position[2]),r=frame.radius*s;
+    const online=frame.health==='online'&&connected,color=online?'#8bc9cf':'#71858e';
+    const edge=angle=>[cx+Math.sin(angle)*r,cy-Math.cos(angle)*r];
+    const [ex,ey]=edge(frame.angle),[tx,ty]=edge(frame.angle-.45);
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-opacity=".45" stroke-width="1" stroke-dasharray="3 6"/>
+      <circle cx="${cx}" cy="${cy}" r="${r/2}" fill="none" stroke="${color}" stroke-opacity=".18"/>
+      ${online?`<path d="M${cx} ${cy} L${tx} ${ty} A${r} ${r} 0 0 1 ${ex} ${ey} Z" fill="${color}" fill-opacity=".09"/><path d="M${cx} ${cy}L${ex} ${ey}" stroke="${color}" stroke-opacity=".7"/>`:''}
+      <path d="M${cx-4} ${cy}h8 M${cx} ${cy-4}v8" stroke="${color}" stroke-width="2"/>
+      <text x="${cx-8}" y="${cy-10}" text-anchor="end" fill="${color}" font-size="9">${escape(frame.id)}${online?'':` · ${escape(connected?sourceLabel(frame.health):t('disconnected'))}`}</text>
+      ${online?frame.returns.map(hit=>{const [x,y]=point(hit.position[0],hit.position[2]);return `<circle cx="${x}" cy="${y}" r="${7+hit.progress*17}" fill="none" stroke="#b3eeb6" stroke-width="2" opacity="${1-hit.progress*.8}"/>`;}).join(''):''}`;
+  }).join('');
+  const count=frames.reduce((n,f)=>n+(connected?f.returns.length:0),0);
+  const status=`${t('radar.note')} · ${t(state.playing&&connected?'radar.live':'radar.paused')} · ${t('radar.returns',{count})}`;
+  if($('radar-status').textContent!==status)$('radar-status').textContent=status;
+}
+$('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
+function animateRadar(now) {
+  if(state?.playing && radarVisible && connected && !$('monitor-view').hidden)
+    drawRadar(replayTime(state,clockReceivedAt,now,connected));
+  requestAnimationFrame(animateRadar);
+}
+requestAnimationFrame(animateRadar);
+
 function setMode(next){
   mode=next;
   map.dataset.mode=mode;
@@ -215,7 +290,7 @@ function applyLanguage(next, persist = false) {
   }
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
-  if (state) { renderPlayback(state); renderDetails(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');

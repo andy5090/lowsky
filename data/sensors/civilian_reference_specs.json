@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "reviewed_on": "2026-10-10",
+  "purpose": "Civilian component reference specifications for a synthetic observation demo; no procurement decision, tested assembly or validated drone detector.",
+  "hardware_selected": false,
+  "profiles": [
+    {
+      "id": "civilian_acoustic_reference",
+      "input_type": "acoustic",
+      "microphone": {
+        "manufacturer": "Infineon",
+        "model": "IM69D130",
+        "interface": "digital PDM",
+        "published_specs": {
+          "snr_typical_dba": 69,
+          "sensitivity_typical_dbfs": -36,
+          "acoustic_overload_point_dbspl": 130
+        },
+        "conditions": {
+          "snr": "A-weighted, PDM clock 3.072 MHz; datasheet common conditions VDD 1.8 V, 25 C, audio bandwidth 20 Hz to 20 kHz.",
+          "sensitivity": "1 kHz, 94 dB SPL; specified tolerance +/-1 dB.",
+          "acoustic_overload_point": "THD = 10%; microphone overload is not a detection range."
+        },
+        "source": {
+          "url": "https://www.infineon.com/assets/row/public/documents/24/49/infineon-im69d130-datasheet-en.pdf",
+          "revision": "1.0",
+          "published_on": "2017-12-19",
+          "pages": [
+            1,
+            5
+          ]
+        }
+      },
+      "processing_board_reference": {
+        "manufacturer": "Raspberry Pi",
+        "model": "Zero 2 W",
+        "published_specs": {
+          "cpu": "quad-core 64-bit Arm Cortex-A53",
+          "cpu_clock_ghz": 1,
+          "ram_mb": 512,
+          "wireless": "2.4 GHz 802.11 b/g/n wireless LAN"
+        },
+        "source": {
+          "url": "https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/"
+        }
+      },
+      "integration_status": "Reference components only. PDM capture/bridge, drivers, electrical compatibility, enclosure and end-to-end audio path have not been selected or tested. Not a wiring or assembly specification.",
+      "detector_performance": {
+        "detection_range_m": null,
+        "classification_accuracy": null,
+        "false_alarm_rate": null,
+        "environmental_operating_envelope": null
+      },
+      "simulation_use": "Metadata only; no acoustic model or score is inferred from microphone SNR or board CPU."
+    },
+    {
+      "id": "citizen_report_reference",
+      "input_type": "citizen_report",
+      "hardware_model": null,
+      "interaction": "Explicit user-submitted sighting or sound report, represented by an anonymous synthetic source. Not automatic background phone sensing.",
+      "source": {
+        "title": "ePPO developer listing",
+        "url": "https://play.google.com/store/apps/details?id=ua.quick.brpg.pathfinder"
+      },
+      "published_specs": null,
+      "detector_performance": {
+        "detection_range_m": null,
+        "classification_accuracy": null
+      },
+      "simulation_use": "Presence report with null classifier confidence. No identities, real phone locations or recordings."
+    }
+  ],
+  "simulation_contract": {
+    "file": "data/early_warning_demo.json",
+    "freshness_ms": 30000,
+    "freshness_basis": "Demo assumption, not hardware update-rate or real detection performance.",
+    "classifier_score": "Synthetic optional value in [0,1], not attack probability, calibrated confidence or datasheet performance.",
+    "reporting_zone_radius": "Fictional map annotation; not sensor range or measured positional accuracy.",
+    "clock": "observed_at_ms and available_at_ms are offsets from shared replay start, preserving observation vs receipt time.",
+    "radar_association": "unknown; community reports are not automatically linked to existing tracks.",
+    "raw_audio_collected": false
+  }
+}
