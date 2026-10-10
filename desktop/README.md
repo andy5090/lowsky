@@ -35,7 +35,7 @@ python -m pip install -r requirements-agent.txt -r requirements-desktop.txt
 python desktop/build.py
 ```
 
-Use the virtual environment's Python for both commands (or activate it first). The build script installs pinned Node dependencies, freezes the backend, downloads checksum-pinned Godot 4.5 templates/editor when needed, exports 3D, generates icons, and runs Tauri bundling. The first Godot template download is approximately 1.36 GB; subsequent builds reuse the verified local cache. To use an existing editor and installed templates, pass `--godot /path/to/Godot`.
+Use the virtual environment's Python for both commands (or activate it first). The build script installs pinned Node dependencies, freezes the backend, downloads checksum-pinned Godot 4.5 templates/editor when needed, exports 3D, and runs Tauri bundling with the checked-in native icons. The first Godot template download is approximately 1.36 GB; subsequent builds reuse the verified local cache. To use an existing editor and installed templates, pass `--godot /path/to/Godot`.
 
 Outputs are copied to `dist/` with `.sha256` checksum files. Unpacked resources live in ignored `desktop/src-tauri/payload/`. Runtime assets are copied from `data/` and `monitor/` only; the Python freezer includes only imported modules/dependencies.
 

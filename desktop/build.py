@@ -102,10 +102,6 @@ def main():
         if not npm:
             raise RuntimeError('Node.js / npm is required to build Tauri')
         run(npm, 'ci', cwd=DESKTOP)
-        # Native icons are generated from the existing project logo, without an image service.
-        run(npm, 'exec', '--', 'tauri', 'icon', str(ROOT / 'monitor/logo-metal.png'), '--output', 'src-tauri/icons', cwd=DESKTOP)
-        for mobile in ('android', 'ios'):
-            shutil.rmtree(DESKTOP / 'src-tauri/icons' / mobile, ignore_errors=True)
         bundles = 'app,dmg' if sys.platform == 'darwin' else 'nsis'
         # Keep packaging non-interactive, including DMG creation without Finder automation.
         run(npm, 'run', 'build', '--', '--bundles', bundles, cwd=DESKTOP, env={**os.environ, 'CI': 'true'})
