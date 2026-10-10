@@ -35,7 +35,21 @@ static func elevation(data: Dictionary, x: float, z: float, layout: Dictionary) 
 	var relative_height = lerpf(north, south, row - z0) - float(data.reference_elevation_m)
 	return lerpf(-0.02, relative_height, smoothstep(0.0, float(layout.terrain_grading.blend_m), outside_site))
 
-static func make(data: Dictionary, grass: StandardMaterial3D, layout: Dictionary) -> Node3D:
+static func surface_height(vertices: PackedVector3Array, grid_size: int, spacing: float, x: float, z: float) -> float:
+	# Interpolate the actual triangle, including grading, rather than the bilinear DEM.
+	var half = (grid_size - 1) * spacing * 0.5
+	var column = clampf((x + half) / spacing, 0, grid_size - 1)
+	var row = clampf((z + half) / spacing, 0, grid_size - 1)
+	var ix = mini(floori(column), grid_size - 2)
+	var iz = mini(floori(row), grid_size - 2)
+	var u = column - ix
+	var v = row - iz
+	var corner = iz * grid_size + ix
+	if u + v <= 1.0:
+		return vertices[corner].y * (1.0 - u - v) + vertices[corner + 1].y * u + vertices[corner + grid_size].y * v
+	return vertices[corner + 1].y * (1.0 - v) + vertices[corner + grid_size].y * (1.0 - u) + vertices[corner + grid_size + 1].y * (u + v - 1.0)
+
+static func make(data: Dictionary, grass: StandardMaterial3D, layout: Dictionary, context: Dictionary = {}) -> Node3D:
 	var grid_size = int(data.grid_size)
 	var spacing = float(data.spacing_m)
 	var extent = float(data.extent_m)
@@ -63,6 +77,8 @@ static func make(data: Dictionary, grass: StandardMaterial3D, layout: Dictionary
 		var z = row * spacing - extent * 0.5
 		for column in range(grid_size):
 			var x = column * spacing - extent * 0.5
+			var site_mask = 1.0 - smoothstep(0.0, 100.0, grading_distance(x, z, layout))
+			surface.set_color(Color(site_mask, 0, 0, 1))
 			surface.set_uv(Vector2(x, z))
 			surface.add_vertex(Vector3(x, elevation(data, x, z, layout), z))
 	for row in range(grid_size - 1):
@@ -75,5 +91,18 @@ static func make(data: Dictionary, grass: StandardMaterial3D, layout: Dictionary
 	mesh.name = "ElevationSurface"
 	mesh.mesh = surface.commit()
 	mesh.material_override = grass
+	if not context.is_empty():
+		var mapped = ShaderMaterial.new()
+		mapped.shader = load("res://geographic_ground.gdshader")
+		mapped.set_shader_parameter("satellite", load("res://assets/terrain/korea_satellite.png"))
+		mapped.set_shader_parameter("grass_detail", grass.albedo_texture)
+		mapped.set_shader_parameter("extent_m", extent)
+		mesh.material_override = mapped
 	root.add_child(mesh)
+	if not context.is_empty():
+		assert(context.origin == data.origin and float(context.extent_m) == extent, "Terrain context must share the DEM origin and extent")
+		var cover = (load("res://assets/terrain/korea_landcover.png") as Texture2D).get_image()
+		var vertices: PackedVector3Array = mesh.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var height_at = func(x: float, z: float) -> float: return surface_height(vertices, grid_size, spacing, x, z)
+		root.add_child(load("res://geographic_context.gd").make(context, cover, height_at, layout))
 	return root
