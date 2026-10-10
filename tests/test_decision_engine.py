@@ -37,6 +37,7 @@ class DecisionEngineTests(unittest.TestCase):
             return report(state, event, language)
         self.sim = Simulation(clock=self.clock, decision_evaluator=evaluator,
                               assessment_configuration=lambda: {'mode': 'rules', 'configured': False})
+        self.sim.control({'action': 'case', 'case_id': 'case_003'})
         self.engine = self.sim.decisions
 
     def wait(self):
@@ -53,6 +54,134 @@ class DecisionEngineTests(unittest.TestCase):
         return dict(action='confirm', run_id=self.sim.run_id, event_id=event['id'],
                     evidence_version=event['evidence_version'], option_id=option,
                     reviewer='reviewer', reason='Evidence needs human attention', confirm=True)
+
+    def paced_early_fixture(self):
+        template = self.sim.state()
+        template.update(tracks=[], sources=[], sensor_fleet={'sensors': []}, dashboard={'cards': []},
+                        training_timing={'paced': True, 'early_review_ms': 120000, 'received_review_ms': 90000})
+        template['early_warning'] = dict(freshness_ms=180000, zones=[dict(id='early_zone', evidence=[dict(
+            id='indirect_1', sensor_id='phone_a', observed_at_ms=10000, available_at_ms=10000,
+            assessment='current', object_present=True)])])
+        self.sim.public[self.sim.case_id]['duration_ms'] = 600000
+        self.sim.public[self.sim.case_id]['training_timing'] = template['training_timing']
+        def current():
+            return {**copy.deepcopy(template), **self.sim._clock_state()}
+        override = patch.object(self.sim, 'state', side_effect=current)
+        override.start()
+        self.addCleanup(override.stop)
+        return template
+
+    def test_early_choices_exist_without_tracks_with_two_minute_window_and_no_pause(self):
+        self.paced_early_fixture()
+        self.sim.control({'action': 'play'})
+        self.clock.advance(10)
+        self.engine.tick(); self.wait()
+        event = self.engine.snapshot()['events'][0]
+        self.assertEqual(event['stage'], 'early_indication')
+        self.assertEqual(event['review_window_ms'], 120000)
+        self.assertEqual(event['expires_at_ms'], 130000)
+        self.assertEqual(len(event['choice_report']['decision_options']), 3)
+        self.assertEqual(self.calls[0][0]['tracks'], [])
+        self.assertIn('independent', event['choice_report']['uncertain'][-1]['text'])
+        self.clock.advance(60)
+        self.assertEqual(self.engine.snapshot()['events'][0]['status'], 'ready')
+        self.assertFalse(self.engine.snapshot()['events'][0]['new_evidence_available'])
+        self.engine.command(self.confirmation(event, 'hold_review'))
+        self.assertTrue(self.sim.playing)
+        self.assertEqual(self.sim._time(), 70000)
+        self.assertEqual(self.engine.audit.records[-1]['snapshot']['evidence']['observations']['total'], 0)
+
+    def test_new_indirect_receipt_stays_discoverable_without_invalidating_choice(self):
+        template = self.paced_early_fixture()
+        self.sim.control({'action': 'play'})
+        self.clock.advance(10)
+        self.engine.tick(); self.wait()
+        event = self.engine.snapshot()['events'][0]
+        self.clock.advance(40)
+        template['early_warning']['zones'][0]['evidence'][0].update(
+            id='indirect_renewed', observed_at_ms=50000, available_at_ms=50000)
+        self.engine.tick()
+        current = self.engine.snapshot()['events'][0]
+        self.assertEqual(current['id'], event['id'])
+        self.assertEqual(current['status'], 'ready')
+        self.assertTrue(current['new_evidence_available'])
+        self.assertEqual(current['latest_evidence_at_ms'], 50000)
+        self.assertEqual(len(self.calls), 1)
+        self.engine.command(self.confirmation(event))
+        saved = self.engine.audit.records[-1]['snapshot']
+        self.assertEqual(saved['evidence']['early_signals'][0]['reports'][0]['id'], 'indirect_1')
+        self.assertEqual(saved['current_evidence']['early_signals'][0]['reports'][0]['id'], 'indirect_renewed')
+
+    def test_first_direct_observation_closes_pretrack_choices_and_opens_90_second_window(self):
+        template = self.paced_early_fixture()
+        self.sim.control({'action': 'play'})
+        self.clock.advance(10)
+        self.engine.tick(); self.wait()
+        early = self.engine.snapshot()['events'][0]
+        self.clock.advance(70)
+        template['sources'] = [dict(source_id='A', evidence=dict(
+            id='health_direct', status='online', observed_at_ms=80000, available_at_ms=80000))]
+        template['tracks'] = [dict(object_id='received_object', evidence_version='test', records=[dict(
+            id='direct_receipt', source_id='A', observed_at_ms=80000, available_at_ms=80000, marker_label='unknown')])]
+        self.engine.tick(); self.wait()
+        events = self.engine.snapshot()['events']
+        self.assertEqual(events[0]['stage'], 'received_observation')
+        self.assertEqual(events[0]['review_window_ms'], 90000)
+        self.assertEqual(events[0]['expires_at_ms'], 170000)
+        old = next(event for event in events if event['id'] == early['id'])
+        self.assertEqual(old['status'], 'expired')
+        self.assertEqual(old['expiration_reason'], 'situation_changed')
+        with self.assertRaises(ValueError):
+            self.engine.command(self.confirmation(early))
+        self.assertTrue(self.sim.playing)
+
+    def test_paced_early_deadline_expires_at_120_seconds_without_clock_control(self):
+        self.paced_early_fixture()
+        self.sim.control({'action': 'play'})
+        self.clock.advance(10)
+        self.engine.tick(); self.wait()
+        event = self.engine.snapshot()['events'][0]
+        self.clock.advance(119)
+        self.assertEqual(self.engine.snapshot()['events'][0]['status'], 'ready')
+        self.clock.advance(1)
+        with self.assertRaises(ValueError):
+            self.engine.command(self.confirmation(event))
+        self.assertEqual(self.engine.snapshot()['events'][0]['expiration_reason'], 'deadline')
+        self.assertTrue(self.sim.playing)
+
+    def test_paced_scenario_opens_early_review_and_keeps_renewed_question_open(self):
+        self.sim.control({'action': 'case', 'case_id': 'case_001'})
+        self.sim.control({'action': 'play'})
+        self.clock.advance(30)
+        self.engine.tick(); self.wait()
+        early = self.engine.snapshot()['events'][0]
+        self.assertEqual(self.sim.state()['tracks'], [])
+        self.assertEqual(early['stage'], 'early_indication')
+        self.assertEqual(early['expires_at_ms'], 150000)
+        for seconds in (50, 50):
+            self.clock.advance(seconds)
+            self.engine.tick(); self.wait()
+            renewed = next(event for event in self.engine.snapshot()['events'] if event['id'] == early['id'])
+            self.assertEqual(renewed['status'], 'ready')
+            self.assertTrue(renewed['new_evidence_available'])
+            self.assertEqual(self.sim.state()['tracks'], [])
+        self.engine.command(self.confirmation(early, 'continue_monitoring'))
+        self.assertEqual(self.sim._time(), 130000)
+        self.assertTrue(self.sim.playing)
+        self.clock.advance(95)
+        self.engine.tick(); self.wait()
+        pretrack = self.engine.snapshot()['events'][0]
+        self.assertEqual(pretrack['stage'], 'early_indication')
+        self.assertEqual(self.sim.state()['tracks'], [])
+        self.clock.advance(45)
+        self.engine.tick(); self.wait()
+        direct = self.engine.snapshot()['events'][0]
+        self.assertEqual(direct['stage'], 'received_observation')
+        self.assertEqual(direct['review_window_ms'], 90000)
+        self.assertTrue(self.sim.state()['tracks'])
+        previous = next(event for event in self.engine.snapshot()['events'] if event['id'] == pretrack['id'])
+        self.assertEqual(previous['status'], 'expired')
+        self.assertTrue(self.sim.playing)
 
     def test_first_received_outage_triggers_but_initial_online_does_not(self):
         from tools.decision_engine import transitions

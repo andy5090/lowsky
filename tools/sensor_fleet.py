@@ -19,7 +19,8 @@ def snapshot(case_id, at_ms, feed=None):
         feed = json.loads(FIXTURE.read_text(encoding="utf-8"))
     if case_id not in ("case_001", "case_002", "case_003"):
         raise ValueError("Unknown fleet case")
-    if type(at_ms) is not int or not 0 <= at_ms <= feed["duration_ms"]:
+    duration = feed.get("case_duration_ms", {}).get(case_id, feed["duration_ms"])
+    if type(at_ms) is not int or not 0 <= at_ms <= duration:
         raise ValueError("Invalid fleet snapshot time")
     counts = dict.fromkeys(STATUSES, 0)
     groups, sensors = [], []

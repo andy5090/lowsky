@@ -91,10 +91,18 @@ class Simulation:
         duration = self.public[self.case_id]['duration_ms']
         return dict(case_id=self.case_id, run_id=self.run_id, revision=self.revision,
                     at_ms=at_ms, duration_ms=duration, playing=self.playing and at_ms < duration, speed=self.speed,
-                    test_run=copy.deepcopy(self.test_run))
+                    test_run=copy.deepcopy(self.test_run),
+                    training_timing=copy.deepcopy(self._public_input().get('training_timing', {})))
 
     def _public_input(self):
         return self.test_public if self.test_public is not None else self.public[self.case_id]
+
+    def _early_input(self, case_id=None):
+        # Case-specific authored receipt schedules share the same zone definitions.
+        # Select before seeded jitter; never mix another case's evidence into a run.
+        case_id = case_id or self.case_id
+        feed = {key: value for key, value in self.early_feed.items() if key != 'case_overrides'}
+        return {**feed, **self.early_feed.get('case_overrides', {}).get(case_id, {})}
 
     def _exercise_frames(self):
         if self.case_id not in self.world_frames:
@@ -163,7 +171,7 @@ class Simulation:
                     alerts.append(dict(id=f"{channel['source_id']}:{channel['status']}", kind='channel',
                                        source_id=channel['source_id'], title='관측 채널 갱신 중단',
                                        evidence_ids=[row['id']] if row else []))
-            early_warning, early_alerts = early_snapshot(self.test_early if self.test_early is not None else self.early_feed, clock['at_ms'])
+            early_warning, early_alerts = early_snapshot(self.test_early if self.test_early is not None else self._early_input(), clock['at_ms'])
             alerts = early_alerts + alerts
             for alert in alerts:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
@@ -179,7 +187,8 @@ class Simulation:
                                          for decision in ('noted', 'needs_review', 'dismissed')}),
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
-            result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'])
+            result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'],
+                                               clock['duration_ms'], bool(clock.get('training_timing', {}).get('paced')))
             result['dashboard'] = self.dashboard.view(result)
             if show_positions:
                 # Explicit author view: only positions at this response's replay time.
@@ -190,6 +199,8 @@ class Simulation:
                     positions.append(dict(object_id=obj['object_id'],position=exercise.sample(obj['keyframes'],
                         exercise.motion_time(self.exercise_selection,obj['object_id'],clock['at_ms']))))
                 result['simulation_positions'] = positions
+                result['simulation_missions'] = exercise.missions(None, self.exercise_selection, clock['at_ms'],
+                    clock['duration_ms'], bool(clock.get('training_timing', {}).get('paced')))
             return result
 
     def assessment_state(self):
@@ -269,7 +280,7 @@ class Simulation:
                     seed = secrets.randbelow(MAX_SEED if previous_seed is not None else MAX_SEED + 1)
                     if previous_seed is not None and seed >= previous_seed:
                         seed += 1  # A fresh random test never repeats the active seed.
-                inputs = generate_test(case_id, seed, self.public[case_id], self.early_feed, self.fleet_feed)
+                inputs = generate_test(case_id, seed, self.public[case_id], self._early_input(case_id), self.fleet_feed)
                 self.test_public, self.test_early, self.test_fleet, self.test_run = inputs
                 self.case_id, now_ms, self.playing = case_id, 0, True
                 self.run_id = uuid.uuid4().hex
@@ -301,7 +312,7 @@ class Simulation:
                 self.acknowledged.clear()
             elif action == 'speed':
                 speed = command.get('speed')
-                if type(speed) not in (int, float) or speed not in (1, 2, 4):
+                if type(speed) not in (int, float) or speed not in (0.5, 1, 2, 4):
                     raise ValueError('Invalid speed')
                 self.speed = speed
             elif action == 'exercise_branch':

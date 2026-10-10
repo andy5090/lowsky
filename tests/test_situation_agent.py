@@ -8,7 +8,7 @@ from unittest.mock import patch
 from tools.monitor_server import Simulation
 from tools.situation_agent import (_create_agent, _evidence_tools, build_bundle, configuration_status, deepagents_report,
                                    evaluate, evaluate_decision, rules_report, validate_report, validate_decision_report,
-                                   DECISION_EFFECTS)
+                                   DECISION_EFFECTS, standard_decision_report)
 
 
 class SituationAgentTests(unittest.TestCase):
@@ -23,6 +23,47 @@ class SituationAgentTests(unittest.TestCase):
         self.sim.control(dict(action='seek', at_ms=at_ms))
         return self.sim.state()
 
+    def test_early_only_assessment_reviews_reliability_before_direct_presence(self):
+        state = self.state(at_ms=10000)
+        state['tracks'] = []
+        bundle = build_bundle(state)
+        self.assertEqual(bundle['stage'], 'early_indication')
+        self.assertEqual(bundle['observations']['total'], 0)
+        positive = next(zone for zone in bundle['early_signals'] if zone['positive_sources'])
+        self.assertEqual(positive['independent_corroboration'], 'not_established')
+        self.assertTrue(positive['reports'])
+        for language in ('en', 'ko'):
+            report = standard_decision_report(bundle, language)
+            self.assertEqual(len(report['decision_options']), 3)
+            self.assertTrue(all(positive['id'] in option['evidence_ids'] for option in report['decision_options']))
+            validate_report({key: report[key] for key in ('summary', 'known', 'uncertain', 'review_items')}, bundle)
+        english = rules_report(bundle)
+        self.assertIn('no direct tracks', english['summary'])
+        self.assertTrue(any('independent corroboration' in item['text'] for item in english['uncertain']))
+        self.assertTrue(any('alternative explanations' in item['text'] for item in english['uncertain']))
+        self.assertTrue(any('duplicate reports' in item['text'] for item in english['review_items']))
+
+    def test_repeated_same_sensor_does_not_become_independent_corroboration(self):
+        state = self.state(at_ms=10000)
+        zone = next(zone for zone in state['early_warning']['zones'] if zone['positive_sources'])
+        positive = next(row for row in zone['evidence'] if row['object_present'] is True)
+        zone['evidence'].append(copy.deepcopy(positive))
+        zone['evidence'].append({**positive, 'id': 'future_indirect', 'observed_at_ms': 11000, 'available_at_ms': 12000})
+        bundle = build_bundle(state)
+        received = next(item for item in bundle['early_signals'] if item['zone_id'] == zone['id'])
+        self.assertEqual(received['positive_sources'], 1)
+        self.assertEqual(received['received_sources'], 1)
+        self.assertEqual(received['independent_corroboration'], 'not_established')
+        self.assertNotIn('future_indirect', json.dumps(bundle))
+        self.assertNotIn('classifier_score', json.dumps(received))
+
+    def test_direct_observations_do_not_confirm_identity_intent_or_signal_link(self):
+        bundle = build_bundle(self.state(at_ms=10000))
+        self.assertEqual(bundle['stage'], 'received_observation')
+        report = rules_report(bundle)
+        self.assertTrue(any('presence only' in item['text'] and 'hostile intent remain unconfirmed' in item['text']
+                            for item in report['uncertain']))
+
     def test_rules_are_explicit_and_change_with_received_evidence(self):
         empty = evaluate(self.state(at_ms=0))
         loss = evaluate(self.state())
@@ -33,6 +74,20 @@ class SituationAgentTests(unittest.TestCase):
         self.assertNotEqual(loss['summary'], recovered['summary'])
         self.assertTrue(any('cause is unknown' in item['text'] for item in loss['uncertain']))
         self.assertNotEqual(evaluate(self.state(), 'ko')['summary'], loss['summary'])
+
+    def test_overall_summary_combines_tracks_indications_and_health_gaps(self):
+        bundle = build_bundle(self.state(at_ms=90000))
+        # Derive expectations from the received snapshot, not authored future schedules.
+        report = rules_report(bundle)
+        self.assertIn('received tracks', report['summary'])
+        self.assertIn('not currently confirmed online', report['summary'])
+        self.assertIn('next review priority', report['summary'])
+        self.assertIn('identity and intent', report['summary'].lower())
+        validate_report(report, bundle)
+        korean = rules_report(bundle, 'ko')
+        self.assertIn('판단에 빈틈', korean['summary'])
+        self.assertIn('검토 우선순위', korean['summary'])
+        validate_report(korean, bundle)
 
     def test_bundle_has_complete_counts_and_bounded_examples(self):
         bundle = build_bundle(self.state())
@@ -91,7 +146,7 @@ class SituationAgentTests(unittest.TestCase):
         self.assertEqual(bundle['observations']['total'], 0)
 
     def test_mutation_outside_sample_changes_input_version(self):
-        state = self.state(case='case_001', at_ms=90000)
+        state = self.state(case='case_003', at_ms=35000)
         original = build_bundle(state)
         state['tracks'][-1]['records'][0]['marker_label'] = 'diamond'
         changed = build_bundle(state)

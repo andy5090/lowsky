@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from tools.early_warning import assess, snapshot
+from tools.build_early_warning import build
 from tools.monitor_server import Simulation
 
 
@@ -77,6 +78,7 @@ class EarlyWarningTests(unittest.TestCase):
 
     def test_ack_is_evidence_specific_and_records_a_review(self):
         sim = Simulation(early_feed=self.feed)
+        sim.control({"action": "case", "case_id": "case_003"})
         state = sim.control({'action': 'seek', 'at_ms': 10000})
         warning = next(a for a in state['alerts'] if a['kind'] == 'early_warning')
         acknowledged = sim.control({'action': 'ack', 'run_id': state['run_id'], 'alert_id': warning['id']})
@@ -91,6 +93,33 @@ class EarlyWarningTests(unittest.TestCase):
         reset = sim.control({'action': 'reset'})
         self.assertEqual(reset['reviews'], [])
         self.assertEqual(reset['early_warning']['zones'][0]['evidence'], [])
+
+    def test_paced_indications_leave_two_minutes_for_first_question(self):
+        for case in ('case_001', 'case_002'):
+            feed = {**self.feed, **self.feed['case_overrides'][case]}
+            for at_ms in (30000, 80000, 130000, 149999):
+                area = snapshot(feed, at_ms)[0]['zones'][0]
+                self.assertEqual(area['status'], 'single')
+                self.assertEqual(area['positive_sources'], 1)
+                self.assertEqual(area['radar_association'], 'unknown')
+            after = snapshot(feed, 150000)[0]['zones'][0]
+            self.assertEqual(after['status'], 'corroborated' if case == 'case_001' else 'conflicting')
+            self.assertEqual(next(z for z in snapshot(feed, 200000)[0]['zones'] if z['id'] == 'community_b')['status'], 'stale')
+            self.assertEqual(next(z for z in snapshot(feed, 120000)[0]['zones'] if z['id'] == 'community_c')['status'], 'no_signal')
+            self.assertEqual(next(z for z in snapshot(feed, 225000)[0]['zones'] if z['id'] == 'fixed_phone_pilot')['status'], 'corroborated')
+            if case == 'case_001':
+                self.assertEqual(snapshot(feed, 250000)[0]['zones'][0]['status'], 'conflicting')
+            for row in feed['observations']:
+                for forbidden in ('object_id', 'position', 'trajectory', 'ground_truth'):
+                    self.assertNotIn(forbidden, row)
+            state = snapshot(feed, 149999)[0]
+            self.assertTrue(all(row['available_at_ms'] <= 149999 for area in state['zones'] for row in area['evidence']))
+
+    def test_paced_profile_generation_is_repeatable_and_preserves_compact_feed(self):
+        generated = build(self.feed)
+        self.assertEqual(generated, self.feed)
+        self.assertEqual(build(generated), generated)
+        self.assertEqual(generated['observations'], self.feed['observations'])
 
     def test_fixed_phone_receipt_loss_and_recovery(self):
         self.assertEqual(self.area(89999, 3)['status'], 'stale')

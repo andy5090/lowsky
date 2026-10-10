@@ -13,8 +13,9 @@ class EvidenceReviewTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / 'audit.jsonl'
         self.sim = Simulation(clock=lambda: 0, audit_path=self.path)
+        self.sim.control(dict(action='case', case_id='case_003'))
 
-    def state(self, at_ms=60000, case_id='case_001'):
+    def state(self, at_ms=35000, case_id='case_003'):
         self.sim.control(dict(action='case', case_id=case_id))
         return self.sim.control(dict(action='seek', at_ms=at_ms))
 
@@ -65,7 +66,7 @@ class EvidenceReviewTests(unittest.TestCase):
         self.assertEqual(stale, self.sim.state()['tracks'][0]['evidence_version'])
 
     def test_review_persists_full_received_basis_and_survives_restart(self):
-        state = self.state(60000)
+        state = self.state(35000)
         command = self.command(state)
         reviewed = self.sim.control(command)
         self.assertEqual(reviewed['review_summary']['total_saved'], 1)
@@ -83,7 +84,7 @@ class EvidenceReviewTests(unittest.TestCase):
         exported = self.sim.audit.export()
         exported['records'][0]['reason'] = 'mutated'
         self.assertEqual(self.sim.audit.export()['records'][0], record)
-        self.sim.public['case_001']['observations'][0]['marker_label'] = 'modified later'
+        self.sim.public['case_003']['observations'][0]['marker_label'] = 'modified later'
         self.assertEqual(self.sim.audit.export()['records'][0], record)
 
     def test_stale_run_changed_evidence_and_invalid_review_rejected(self):

@@ -27,7 +27,7 @@ func verify() -> void:
 	# Run only against an isolated rules-mode server, never the user's active replay.
 	var status = await api("/api/assessment")
 	assert(status.mode == "rules", "Use LOW_SKY_AGENT_MODEL='' on the isolated test server")
-	var clock = await api("/api/control", {"action":"case", "case_id":"case_001"})
+	var clock = await api("/api/control", {"action":"case", "case_id":"case_003"})
 	await api("/api/decisions", {"action":"configure", "run_id":clock.run_id, "enabled":true, "language":"en"})
 	await api("/api/control", {"action":"speed", "speed":1})
 	var preview = (load("res://preview.tscn") as PackedScene).instantiate()

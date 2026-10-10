@@ -154,6 +154,7 @@ class DesktopRuntimeTests(unittest.TestCase):
         process, port = self.start(package_root=bundle)
         self.assertEqual(self.request(port, 'GET', '/api/assessment')[1]['mode'], 'rules')
         self.assertEqual(self.request(port, 'GET', '/')[1], (bundle / 'monitor' / 'index.html').read_bytes())
+        self.request(port, 'POST', '/api/control', {'action': 'case', 'case_id': 'case_003'})
         state = self.request(port, 'POST', '/api/control', {'action': 'seek', 'at_ms': 10000})[1]
         track = state['tracks'][0]
         status, _ = self.request(port, 'POST', '/api/control', dict(

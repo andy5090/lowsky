@@ -12,10 +12,10 @@ from pathlib import Path
 
 try:
     from .evidence_review import digest
-    from .situation_agent import build_bundle, standard_decision_report
+    from .situation_agent import build_bundle, standard_decision_report, evidence_stage
 except ImportError:
     from evidence_review import digest
-    from situation_agent import build_bundle, standard_decision_report
+    from situation_agent import build_bundle, standard_decision_report, evidence_stage
 
 OPTIONS = (
     {'id': 'continue_monitoring', 'effect': 'record_monitoring'},
@@ -109,6 +109,31 @@ def transitions(previous, current):
     return result
 
 
+def review_window(state, stage):
+    """Exercise pacing only; no operational response-time claim."""
+    timing = state.get('training_timing', {})
+    if timing.get('paced') is not True:
+        return DECISION_WINDOW_MS
+    key = 'received_review_ms' if stage == 'received_observation' else 'early_review_ms'
+    default = 90000 if stage == 'received_observation' else 120000
+    value = timing.get(key, default)
+    return value if type(value) is int and 30000 <= value <= 300000 else default
+
+
+def receipt_signature(bundle):
+    return digest(dict(observations=bundle['observations']['receipt_digest'],
+                       early=[(zone['zone_id'], zone['receipt_digest']) for zone in bundle['early_signals']],
+                       sources=[(source['source_id'], source['evidence_id']) for source in bundle['sources']]))
+
+
+def latest_receipt(bundle):
+    latest_track = bundle['observations'].get('latest_received_at_ms')
+    times = [latest_track] if latest_track is not None else []
+    times += [source['available_at_ms'] for source in bundle['sources'] if source['available_at_ms'] is not None]
+    times += [zone['latest_received_at_ms'] for zone in bundle['early_signals'] if zone.get('latest_received_at_ms') is not None]
+    return max(times, default=None)
+
+
 def relevant_changes(event, current):
     changes = transitions(semantic_state(build_bundle(event['_frozen'])), current)
     triggers = event['triggers']
@@ -118,6 +143,8 @@ def relevant_changes(event, current):
     track_kinds = {'first_tracks','track_conflict','track_stale'}
     if any(kind in track_kinds for kind, _ in subjects):
         subjects.update((kind,'received_tracks') for kind in track_kinds)
+    if event.get('stage') in ('early_indication', 'awaiting_evidence'):
+        subjects.add(('first_tracks', 'received_tracks'))
     return [change for change in changes if (change['kind'], change['subject']) in subjects]
 
 
@@ -142,6 +169,8 @@ class DecisionEngine:
         for event in self.events:
             if event['status'] not in ACTIVE:
                 continue
+            event['new_evidence_available'] = receipt_signature(bundle) != event['receipt_version']
+            event['latest_evidence_at_ms'] = latest_receipt(bundle)
             if event['run_id'] != bundle['run_id']:
                 event['status'] = 'superseded'
             elif (bundle['at_ms'] >= event['expires_at_ms']
@@ -216,8 +245,12 @@ class DecisionEngine:
         busy = bool(self.worker and self.worker.is_alive())
         if busy and not queue_if_busy:
             raise DecisionBusy('An event assessment is already running')
+        stage = evidence_stage(bundle)
+        window = review_window(state, stage)
         event = dict(id=uuid.uuid4().hex, run_id=state['run_id'], case_id=state['case_id'],
-                     at_ms=state['at_ms'], expires_at_ms=min(state['at_ms'] + DECISION_WINDOW_MS, state['duration_ms']),
+                     at_ms=state['at_ms'], expires_at_ms=min(state['at_ms'] + window, state['duration_ms']),
+                     stage=stage, review_window_ms=window, receipt_version=receipt_signature(bundle),
+                     new_evidence_available=False, latest_evidence_at_ms=latest_receipt(bundle),
                      evidence_version=bundle['input_version'],
                      triggers=copy.deepcopy(triggers), status='pending', language=language,
                      report=None, choice_report=standard_decision_report(bundle, language), error=None, decision=None,
@@ -328,7 +361,9 @@ class DecisionEngine:
         if not isinstance(reason, str) or len(reason.strip()) > 1000:
             raise ValueError('Additional comment must be text up to 1000 characters')
         frozen = {k: copy.deepcopy(v) for k, v in event.items() if k != '_frozen'}
-        snapshot = dict(event=frozen, evidence=build_bundle(event['_frozen']), report=copy.deepcopy(event['report'] or event['choice_report']))
+        snapshot = dict(event=frozen, evidence=build_bundle(event['_frozen']),
+                        current_evidence=build_bundle(self.sim.state()),
+                        report=copy.deepcopy(event['report'] or event['choice_report']))
         row = dict(schema_version=1, kind='event_decision', id=uuid.uuid4().hex,
                    actor=copy.deepcopy(actor or {'type': 'human'}),
                    run_id=event['run_id'], case_id=event['case_id'], event_id=event['id'],

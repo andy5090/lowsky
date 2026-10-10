@@ -15,6 +15,7 @@ class DashboardTests(unittest.TestCase):
     def setUp(self):
         self.now = 0.0
         self.sim = Simulation(clock=lambda: self.now, decision_evaluator=lambda *_: {})
+        self.sim.control(dict(action='case', case_id='case_003'))
         self.sim.control(dict(action='seek', at_ms=10000))
 
     def card(self):
@@ -113,8 +114,8 @@ class DashboardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'dashboard.jsonl'
             self.sim.dashboard = DecisionDashboard(path)
-            self.sim.control(dict(action='case', case_id='case_002'))
-            self.sim.control(dict(action='seek', at_ms=60000))
+            self.sim.control(dict(action='case', case_id='case_003'))
+            self.sim.control(dict(action='seek', at_ms=90000))
             card = next(c for c in self.sim.state()['dashboard']['cards'] if c['status']=='needs_review')
             self.sim.control(dict(action='dashboard_action', run_id=self.sim.run_id, object_id=card['object_id'],
                 card_version=card['version'], choice='notify_mock', confirm=True, comment='private-note', reviewer='private-alias'))

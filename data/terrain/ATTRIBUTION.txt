@@ -1,6 +1,6 @@
 Terrain Tiles accessed from the Registry of Open Data on AWS:
 https://registry.opendata.aws/terrain-tiles/
-Source tile: https://elevation-tiles-prod.s3.amazonaws.com/skadi/N36/N36E127.hgt.gz
+Source tile: https://elevation-tiles-prod.s3.amazonaws.com/skadi/N37/N37E127.hgt.gz
 Attribution and source licensing: https://github.com/tilezen/joerd/blob/master/docs/attribution.md
 Source selection: https://github.com/tilezen/joerd/blob/master/docs/data-sources.md
 
@@ -8,8 +8,18 @@ Mapzen Terrain Tiles. Global SRTM and GMTED2010 terrain data courtesy of the U.S
 USGS global elevation inputs are distributed as public-domain data; see source attribution for original distribution notices.
 
 Modifications: bilinear sampling onto a 50m local grid over 10km x 10km around
-36.23N, 127.08E. Godot subtracts the center reference elevation and flattens the
+37.90N, 127.20E. Godot subtracts the center reference elevation and flattens the
 fictional base, with a 350m transition to the surrounding DEM. Horizontal and
 vertical units are meters, with no vertical exaggeration. PBR ground materials
 are illustrative; no satellite imagery, real buildings or land-cover survey
 are included. These modifications are not endorsed by the source providers.
+
+Access date: 2026-10-11. Pinned compressed tile SHA-256:
+ef253d549196ce2239cb8c8c85f912b7f660855dc2cdf969dd174d2689b44a11
+
+The coordinate is an arbitrary Northern Gyeonggi visual reference, not an
+existing base or an assessed development site. Geographic terrain stops at the
+10km local grid. Distant departure space is schematic, not North Korean terrain
+or a representation of an actual cross-border route. Moving aerial markers
+receive a uniform display-only vertical offset above the terrain range; their
+authored coordinates and observation data remain unchanged.

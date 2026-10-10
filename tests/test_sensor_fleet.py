@@ -59,6 +59,14 @@ class SensorFleetTests(unittest.TestCase):
         self.assertEqual(observations["object_ids"], [])
         self.assertEqual(observations["observations"], [])
 
+    def test_paced_cases_keep_receiving_heartbeats_until_their_own_end(self):
+        for case in ('case_001', 'case_002'):
+            state = snapshot(case, 780000)
+            self.assertEqual(state['counts']['online'], 240)
+            self.assertTrue(all(row['available_at_ms'] <= 780000 for row in state['sensors']))
+            with self.assertRaises(ValueError):
+                snapshot(case, 780001)
+
     def test_payload_is_latest_only_and_time_valid(self):
         for at_ms in (0, 1000, 59999, 61000, 70001, 131000, 180000):
             state = snapshot("case_003", at_ms)

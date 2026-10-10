@@ -4,7 +4,7 @@ export const NOTIFICATION_STORAGE_KEY = 'lowsky.notifications.enabled';
 export function createNotificationController({registration, storage, getPermission = () => 'default',
   supported = true, formatMessage = alerts => ({title: 'LOW SKY · Simulation alert',
     body: `${alerts.length} unacknowledged monitoring alert(s). Open LOW SKY to review.`}),
-  onChange = () => {}, send = sendNotification} = {}) {
+  onChange = () => {}, send = sendNotification, alertFilter = () => true, alertKey = alert => alert.id} = {}) {
   let optedIn = false, error = '', runId = null, previousTime = null;
   let seen = new Set(), generation = 0;
   let queue = Promise.resolve();
@@ -24,8 +24,8 @@ export function createNotificationController({registration, storage, getPermissi
     return getState();
   };
   const receivedAlerts = state => [...new Map((state?.alerts || [])
-    .filter(alert => typeof alert.id === 'string' && !alert.acknowledged)
-    .map(alert => [alert.id, alert])).values()];
+    .filter(alert => typeof alert.id === 'string' && !alert.acknowledged && alertFilter(alert))
+    .map(alert => [alertKey(alert), alert])).values()];
   const deliver = async (alerts, state) => {
     if (!alerts.length) return {status: 'empty', count: 0};
     // Keep UI polling responsive, but serialize delivery and check opt-out again.
@@ -56,8 +56,8 @@ export function createNotificationController({registration, storage, getPermissi
     runId = state.run_id;
     previousTime = state.at_ms;
     if (baseline) { generation += 1; seen = new Set(); }
-    const fresh = alerts.filter(alert => !seen.has(alert.id));
-    for (const alert of state.alerts || []) seen.add(alert.id);
+    const fresh = alerts.filter(alert => !seen.has(alertKey(alert)));
+    for (const alert of state.alerts || []) seen.add(alertKey(alert));
     if (baseline) return {status: 'baseline', count: 0};
     if (!getState().enabled) return {status: 'disabled', count: 0};
     if (!state.playing) return {status: 'paused', count: 0};
@@ -111,4 +111,43 @@ export async function sendNotification(registration, message, timeoutMs = 5000) 
     try { registration.active.postMessage(message, [channel.port2]); }
     catch (error) { finish(reject, error); }
   });
+}
+
+
+// Importance describes human review needs, not a threat classification.
+export function priorityAlertKey(alert) {
+  if(['review_transition','review_expired'].includes(alert.kind))return alert.id;
+  if(alert.kind==='early_warning') {
+    return ['corroborated','conflicting'].includes(alert.signal_status) ? `area:${alert.zone_id}:${alert.signal_status}` : null;
+  }
+  return ['contradictory','not_comparable','stale','channel'].includes(alert.kind) ? `${alert.kind}:${alert.source_id || 'received-observations'}` : null;
+}
+export function createAlertPriorityPolicy() {
+  let run=null,previousTime=null,seen=new Set(),hadIndirect=false,directNotified=false;
+  return {observe(state,event,{expiredChoice=null}={}) {
+    if(!state)return {reset:false,medium:[],high:[]};
+    const baseline=run!==state.run_id || previousTime===null || state.at_ms<previousTime;
+    if(baseline){run=state.run_id;seen=new Set();hadIndirect=false;directNotified=Boolean(state.tracks?.length);}
+    previousTime=state.at_ms;
+    const hasPositive=(state.early_warning?.zones || []).some(zone=>zone.positive_sources>0);
+    if(!state.tracks?.length && hasPositive)hadIndirect=true;
+    const medium=[];
+    for(const alert of state.alerts || []) {
+      const key=priorityAlertKey(alert);
+      if(!key || seen.has(key))continue;
+      seen.add(key);
+      if(!baseline && !alert.acknowledged)medium.push({key,kind:alert.kind,subject:alert.zone_id || alert.source_id || null});
+    }
+    const high=[];
+    const report=event?.report || event?.choice_report;
+    const actionable=event?.run_id===state.run_id && ['pending','evaluating','ready','failed'].includes(event.status)
+      && event.expires_at_ms>state.at_ms && report?.decision_options?.length>0;
+    if(!baseline && !directNotified && hadIndirect && state.tracks?.length && actionable && event.stage==='received_observation') {
+      directNotified=true;high.push({key:`direct:${run}`,kind:'direct_transition',event_id:event.id,expires_at_ms:event.expires_at_ms});
+    }
+    if(expiredChoice && !baseline && !seen.has(`expired:${expiredChoice}`)) {
+      seen.add(`expired:${expiredChoice}`);high.push({key:`expired:${expiredChoice}`,kind:'choice_expired',event_id:expiredChoice,expires_at_ms:state.at_ms+30000});
+    }
+    return {reset:baseline,medium,high};
+  }};
 }

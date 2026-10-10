@@ -199,3 +199,50 @@ test('notification click only focuses alerts or opens fixed local URL, never ack
   assert.deepEqual(absent.opened, ['/?view=alerts']);
   assert.equal(absent.posted.length, 0);
 });
+
+test('priority policy suppresses routine reports and aggregates semantic bursts, not objects or new receipt IDs',async()=>{
+ const {createAlertPriorityPolicy}=await import('../monitor/notifications.mjs');
+ const policy=createAlertPriorityPolicy();
+ policy.observe(state([],{at_ms:0,tracks:[]}));
+ const single={id:'s',kind:'early_warning',zone_id:'area1',signal_status:'single'};
+ assert.deepEqual(policy.observe(state([single],{at_ms:1000,tracks:[]})).medium,[]);
+ const changes=[{...single,id:'a',signal_status:'corroborated'},...Array.from({length:48},(_,i)=>({id:`conflict${i}`,kind:'contradictory',object_id:`object${i}`}))];
+ const result=policy.observe(state(changes,{at_ms:2000,tracks:[]}));
+ assert.equal(result.medium.length,2);assert.equal(result.high.length,0);
+ assert.equal(policy.observe(state(changes.map(row=>({...row,id:`new-${row.id}`})),{at_ms:3000,tracks:[]})).medium.length,0);
+ assert.equal(policy.observe(state(changes,{run_id:'run2',at_ms:500,tracks:[]})).reset,true);
+ assert.equal(policy.observe(state(changes,{run_id:'run2',at_ms:400,tracks:[]})).medium.length,0);
+});
+test('highest review notice requires prior positive indirect evidence plus a current actionable checkpoint',async()=>{
+ const {createAlertPriorityPolicy}=await import('../monitor/notifications.mjs');
+ const event={id:'event1',run_id:'run-1',stage:'received_observation',status:'pending',expires_at_ms:100000,choice_report:{decision_options:[{id:'continue_monitoring'}]}};
+ const direct=state([],{at_ms:3000,tracks:[{object_id:'received'}]});
+ const policy=createAlertPriorityPolicy();
+ policy.observe(state([],{at_ms:0,tracks:[]}));
+ policy.observe(state([],{at_ms:1000,tracks:[],early_warning:{zones:[{positive_sources:1}]}}));
+ assert.equal(policy.observe(direct,null).high.length,0);
+ assert.equal(policy.observe({...direct,at_ms:4000},event).high[0].kind,'direct_transition');
+ assert.equal(policy.observe({...direct,at_ms:5000},{...event,id:'event2'}).high.length,0);
+ const ordinary=createAlertPriorityPolicy();ordinary.observe(state([],{at_ms:0,tracks:[]}));
+ assert.equal(ordinary.observe(direct,event).high.length,0);
+ const loaded=createAlertPriorityPolicy();assert.equal(loaded.observe(direct,event).high.length,0);
+});
+test('selection expiry only interrupts when an active human draft explicitly expired, once per draft',async()=>{
+ const {createAlertPriorityPolicy}=await import('../monitor/notifications.mjs');
+ const policy=createAlertPriorityPolicy();policy.observe(state([],{at_ms:0}));
+ assert.equal(policy.observe(state([],{at_ms:2000})).high.length,0);
+ const update=policy.observe(state([],{at_ms:3000}),null,{expiredChoice:'draft1'});
+ assert.equal(update.high[0].kind,'choice_expired');
+ assert.equal(policy.observe(state([],{at_ms:4000}),null,{expiredChoice:'draft1'}).high.length,0);
+});
+test('opted-in OS delivery uses the same low-priority suppression and semantic deduplication',async()=>{
+ const {priorityAlertKey}=await import('../monitor/notifications.mjs');
+ const {engine,calls}=controller({alertFilter:row=>Boolean(priorityAlertKey(row)),alertKey:priorityAlertKey});
+ engine.setEnabled(true);await engine.observe(state([],{at_ms:0}));
+ const low={id:'low',kind:'early_warning',zone_id:'area1',signal_status:'single'};
+ await engine.observe(state([low],{at_ms:1000}));assert.equal(calls.length,0);
+ const medium={...low,id:'medium',signal_status:'corroborated'};
+ await engine.observe(state([low,medium,{...medium,id:'another-receipt'}],{at_ms:2000}));
+ assert.equal(calls.length,1);assert.equal(calls[0].alertIds.length,1);
+ await engine.observe(state([{...medium,id:'third-receipt'}],{at_ms:3000}));assert.equal(calls.length,1);
+});

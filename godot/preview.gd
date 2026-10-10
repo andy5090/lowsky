@@ -40,6 +40,8 @@ var monitor_playing = false
 var monitor_test_run: Dictionary = {}
 var monitor_exercise: Dictionary = {}
 var exercise_marker: Label3D
+var simulation_missions: Array = []
+var mission_nodes: Dictionary = {}
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
@@ -249,12 +251,12 @@ func _ready() -> void:
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		camera.fov = 48
 		camera.position = vector(site_layout.camera.close)
-		camera.far = 18000
+		camera.far = 60000
 	else:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera.size = 5200
 		camera.position = vector(site_layout.camera.overview)
-		camera.far = 18000
+		camera.far = 60000
 	add_child(camera)
 	camera.look_at(camera_target)
 	for placement in read_json(data_root.path_join("scene.json"))["environment"]:
@@ -399,12 +401,22 @@ func build_ui() -> void:
 	if monitor_mode:
 		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nModel span 0.6 m · Camera selection is SIM context" % monitor_base_url
 	hint.modulate = Color("91b6b8")
+	if realistic:
+		hint.text += "\nIllustrative altitude / 표시용 고도\nBeyond local DEM: schematic space"
 	column.add_child(hint)
 
 func terrain_caption() -> String:
 	if geographic:
-		return "Terrain: Korea DEM / modified site  [T]"
+		return "Terrain: Northern Gyeonggi DEM / fictional site  [T]"
 	return "Terrain: Synthetic plains  [T]" if plains_test else "Terrain: Synthetic hills  [T]"
+
+func display_position(authored: Vector3) -> Vector3:
+	# Uniform illustrative lift, not terrain-following or flight planning. Keep
+	# authored XYZ, received evidence, and timing untouched. Labels inherit the
+	# marker node transform once; facilities and parked aircraft never call this.
+	if realistic and geographic:
+		return authored + Vector3(0, float(terrain_data.get("display_airspace_offset_m", 0)), 0)
+	return authored
 
 func terrain_surface_height(x: float, z: float) -> float:
 	if not realistic:
@@ -454,6 +466,10 @@ func toggle_terrain() -> void:
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
+	clear_mission_vignettes()
+	simulation_missions.clear()
+	monitor_exercise.clear()
+	update_exercise_marker()
 	stop_follow()
 	selected_drone_index = 0
 	detected_ids.clear()
@@ -465,7 +481,7 @@ func load_case(id: String) -> void:
 	public_data = read_json(data_root.path_join("cases/%s/public.json" % id))
 	for item in world_data["objects"]:
 		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""))
-		instance.position = vector(item["keyframes"][0]["position"])
+		instance.position = display_position(vector(item["keyframes"][0]["position"]))
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
@@ -539,7 +555,8 @@ func _process(delta: float) -> void:
 			index += 1
 		var interval = float(frames[index + 1].at_ms) - float(frames[index].at_ms)
 		var ratio = clampf((object_time - float(frames[index].at_ms)) / interval, 0, 1)
-		item["node"].position = vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio)
+		item["node"].position = display_position(vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio))
+	update_mission_vignettes()
 	if follow_drone:
 		update_follow_camera()
 	if time_label:
@@ -621,7 +638,7 @@ func pan_camera(relative: Vector2) -> void:
 	var movement = (-right * relative.x + back * relative.y / maxf(offset.normalized().y, 0.15)) * scale
 	var target = camera_target + movement
 	target.x = clampf(target.x, -6000, 6000)
-	target.z = clampf(target.z, -6000, 6000)
+	target.z = clampf(target.z, -25000, 6000)
 	camera.position += target - camera_target
 	camera_target = target
 
@@ -723,7 +740,7 @@ func start_monitor() -> void:
 
 func poll_monitor() -> void:
 	if monitor_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		monitor_request.request(monitor_base_url + "/api/state")
+		monitor_request.request(monitor_base_url + "/api/state?show_positions=1")
 
 func receive_monitor_clock(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
@@ -757,6 +774,8 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 	monitor_clock = float(state.at_ms)
 	monitor_test_run = state.get("test_run", {})
 	monitor_exercise = state.get("exercise", {})
+	# Physical author view only; labels still use received tracks above.
+	simulation_missions = state.get("simulation_missions", monitor_exercise.get("missions", []))
 	update_exercise_marker()
 	monitor_speed = float(state.speed)
 	monitor_playing = bool(state.playing)
@@ -794,3 +813,88 @@ func update_exercise_marker() -> void:
 			exercise_marker.modulate = Color(1.0, 0.7, 0.3) if asset.status != "available" else Color(0.5, 1.0, 0.7)
 			exercise_marker.visible = true
 			return
+
+
+func clear_mission_vignettes() -> void:
+	for node in mission_nodes.values():
+		node.queue_free()
+	mission_nodes.clear()
+
+func make_mission_vignette() -> Node3D:
+	var node = Node3D.new()
+	var payload = MeshInstance3D.new()
+	payload.name = "Payload"
+	var cube = BoxMesh.new()
+	cube.size = Vector3.ONE * 3.0
+	payload.mesh = cube
+	payload.material_override = solid_material(Color("ffc778"), 0.1)
+	node.add_child(payload)
+	var pulse = MeshInstance3D.new()
+	pulse.name = "Outcome"
+	var ring = TorusMesh.new()
+	ring.inner_radius = 18.0
+	ring.outer_radius = 21.0
+	pulse.mesh = ring
+	pulse.material_override = solid_material(Color("ffc778"))
+	node.add_child(pulse)
+	var label = Label3D.new()
+	label.name = "Label"
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 42
+	label.pixel_size = 0.12
+	node.add_child(label)
+	add_child(node)
+	return node
+
+func update_mission_vignettes() -> void:
+	# Fixed scene illustration only: no physics, targeting or effectiveness model.
+	var present: Dictionary = {}
+	for mission in simulation_missions:
+		var id = str(mission.id)
+		present[id] = true
+		if not mission_nodes.has(id):
+			mission_nodes[id] = make_mission_vignette()
+		var node: Node3D = mission_nodes[id]
+		var anchor = Vector3.ZERO
+		var found = false
+		for asset in monitor_exercise.get("assets", []):
+			if asset.id == mission.asset_id:
+				anchor = vector(asset.position) + Vector3(0, 35, 0)
+				found = true
+		var phase = str(mission.phase)
+		node.set_meta("phase", phase)
+		node.visible = found and phase != "approach"
+		var payload: MeshInstance3D = node.get_node("Payload")
+		var pulse: MeshInstance3D = node.get_node("Outcome")
+		var label: Label3D = node.get_node("Label")
+		payload.visible = false
+		pulse.visible = false
+		label.visible = (detected_ids.has(str(mission.object_id)) and (not monitor_mode or monitor_connected)) or show_drone_positions
+		label.position = anchor + Vector3(0, 35, 0)
+		label.text = "SCRIPTED / %s / %s" % [str(mission.kind).to_upper(), phase.to_upper()]
+		if not node.visible:
+			continue
+		var progress = clampf((elapsed_ms - float(mission.phase_start_ms)) / maxf(1, float(mission.phase_end_ms) - float(mission.phase_start_ms)), 0, 1)
+		var top = display_position(anchor + Vector3(0, 100, 0))
+		var is_drop = mission.kind == "drop_vignette"
+		var actor = objects.filter(func(item): return item.object_id == mission.object_id)
+		if phase == "finale":
+			if not actor.is_empty():
+				actor[0].node.position = top + Vector3(progress * 160, progress * 35, 0) if is_drop else top.lerp(anchor, progress)
+			payload.visible = is_drop
+			payload.position = top.lerp(anchor, progress)
+		elif phase == "complete":
+			if not actor.is_empty():
+				actor[0].node.position = top + Vector3(160 + minf(maxf(elapsed_ms - float(mission.phase_start_ms), 0) / 1000, 30) * 8, 35, 0) if is_drop else anchor
+		var terminal = phase in ["complete", "partial", "prevented"]
+		pulse.visible = terminal
+		pulse.position = anchor
+		var color = Color("79e8b0") if phase == "prevented" else (Color("ffc778") if phase == "partial" else Color("f09372"))
+		pulse.material_override.albedo_color = color
+		label.modulate = color
+		# A small shared-clock pulse is an outcome marker, not a blast radius.
+		pulse.scale = Vector3.ONE * (1.0 + 0.12 * sin(elapsed_ms / 240.0))
+	for id in mission_nodes.keys():
+		if not present.has(id):
+			mission_nodes[id].queue_free()
+			mission_nodes.erase(id)
