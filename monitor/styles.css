@@ -407,7 +407,7 @@ button:disabled{cursor:not-allowed}
 .test-operator .operator-bar summary { font-size:10px; }
 .decision-attention { right:18px; bottom:18px; max-width:min(600px,calc(100vw - 36px)); }
 @media(min-width:1100px) and (min-height:700px) {
-  .session-header { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(420px,1fr); gap:12px; margin-bottom:10px; }
+  .session-header { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(420px,1fr); gap:12px; align-items:start; margin-bottom:10px; }
   .session-header > .scenario-bar,.session-header > .playback-panel { margin:0; }
   .session-header > .playback-panel { align-content:center; }
   .session-header .scenario-help,.session-header #brief-meta { display:none; }
