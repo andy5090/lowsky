@@ -15,6 +15,7 @@ static func button_style(fill: Color, border: Color) -> StyleBoxFlat:
 
 static func make() -> Theme:
 	var theme = Theme.new()
+	theme.default_font_size = 24
 	theme.set_stylebox("normal", "Button", button_style(Color("243642"), Color("637b8b")))
 	theme.set_stylebox("hover", "Button", button_style(Color("344e60"), Color("a5d9ed")))
 	theme.set_stylebox("pressed", "Button", button_style(Color("174d59"), Color("7cdecf")))
@@ -26,5 +27,5 @@ static func make() -> Theme:
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		theme.set_color(state, "Button", Color("f1f6f8"))
 	theme.set_color("font_disabled_color", "Button", Color("7b8c97"))
-	theme.set_font_size("font_size", "Button", 15)
+	theme.set_font_size("font_size", "Button", 23)
 	return theme

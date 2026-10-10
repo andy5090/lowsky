@@ -1,6 +1,6 @@
 # Suggestion adoption
 
-The internal `LOW_SKY_Suggestion.docx` proposes a pitch expansion around a vendor-neutral decision layer and repeated decision rehearsal. This update implements received-evidence review capabilities in the existing simulation. It does not introduce weapons allocation, engagement recommendations, live sensor control or automatic policy learning.
+The internal `LOW_SKY_Suggestion.docx` proposes a pitch expansion around a vendor-neutral decision layer and repeated decision rehearsal. This update implements received-evidence review capabilities in the existing simulation. It does not introduce live sensor control or automatic policy learning. Weapons allocation and engagement recommendations were added later (2026-10-11) only as the rule-based training recommendation layer described in `docs/superpowers/specs/2026-10-11-tactics-layer-design.md`, which records human decisions without simulating engagements.
 
 ## Implemented
 

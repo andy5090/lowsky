@@ -8,6 +8,7 @@ const DroneOverlay = preload("res://drone_overlay.gd")
 const Plains = preload("res://plains_environment.gd")
 const DroneModels = preload("res://drone_models.gd")
 const SimulationUITheme = preload("res://simulation_ui_theme.gd")
+const ExerciseUnits = preload("res://exercise_units.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
 var objects: Array = []
@@ -55,9 +56,15 @@ var monitor_speed = 1.0
 var monitor_playing = false
 var monitor_test_run: Dictionary = {}
 var monitor_exercise: Dictionary = {}
+var monitor_tactics: Dictionary = {}
+var tactics_targets: Dictionary = {}
+var tactics_effector_labels: Dictionary = {}
 var exercise_marker: Label3D
 var simulation_missions: Array = []
 var mission_nodes: Dictionary = {}
+var facility_nodes: Dictionary = {}
+var visual_cast_signature = ""
+var exercise_units: Node3D
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
@@ -322,12 +329,18 @@ func _ready() -> void:
 		instance.position = vector(placement["position"])
 		instance.scale *= vector(placement.get("scale", [1, 1, 1]))
 		add_child(instance)
+		if placement.has("group"):
+			facility_nodes[str(placement.id)] = instance
 		if placement.get("ground_to_terrain", false):
 			instance.name = placement.id
 			field_installations[placement.id] = {"node": instance, "position": vector(placement.position)}
 		if placement["asset_id"] == "ground_tile":
 			terrain = instance
 	add_child(Site.make(site_layout, materials))
+	exercise_units = ExerciseUnits.new()
+	exercise_units.name = "ExerciseUnits"
+	exercise_units.materials = materials
+	add_child(exercise_units)
 	ground_field_installations()
 	if realistic:
 		add_realistic_details()
@@ -383,7 +396,7 @@ func add_realistic_details() -> void:
 	aircraft.position = vector(site_layout.aircraft_position) - Vector3(combined.get_center().x, combined.position.y, combined.get_center().z) * factor
 	add_child(aircraft)
 	var credit = Label.new()
-	credit.text = "FICTIONAL SITE · POLY HAVEN · CESIUM · DRONE: ED MACKEY / AGI, CC BY 4.0 · DEM: MAPZEN / USGS\n© OpenStreetMap contributors · © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
+	credit.text = "TRAINING SCENE / 훈련 장면 · POLY HAVEN · CESIUM · DRONE: ED MACKEY / AGI, CC BY 4.0 · DEM: MAPZEN / USGS\n© OpenStreetMap contributors · © ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium"
 	credit.add_theme_font_size_override("font_size", 12)
 	credit.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	credit.add_theme_constant_override("shadow_offset_x", 1)
@@ -424,8 +437,8 @@ func build_ui() -> void:
 	header.add_theme_constant_override("separation", 18)
 	contents.add_child(header)
 	ui_title = Label.new()
-	ui_title.text = "LOW SKY / 3D SIMULATION"
-	ui_title.add_theme_font_size_override("font_size", 24)
+	ui_title.text = "LOW SKY / 3D VIEW"
+	ui_title.add_theme_font_size_override("font_size", 36)
 	ui_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(ui_title)
 	ui_toggle = Button.new()
@@ -448,7 +461,7 @@ func build_ui() -> void:
 	if desktop_mode:
 		build_desktop_controls(column)
 	var subtitle = Label.new()
-	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\n3D simulation · fictional facility" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
+	subtitle.text = "AUTHOR VIEW / 전체 장면\nFull scene context" if realistic else "ASSET STUDY / AUTHOR VIEW\nBuilding samples + procedural placeholders"
 	subtitle.modulate = Color("91b6b8")
 	column.add_child(subtitle)
 	if realistic:
@@ -485,41 +498,46 @@ func build_ui() -> void:
 	next_drone_button.pressed.connect(func(): select_drone(1))
 	drone_selection.add_child(next_drone_button)
 	selected_drone_label = Label.new()
-	selected_drone_label.add_theme_font_size_override("font_size", 14)
+	selected_drone_label.add_theme_font_size_override("font_size", 21)
 	selected_drone_label.modulate = Color("edb0fb")
 	column.add_child(selected_drone_label)
 	update_follow_controls()
 	var aids = CheckButton.new()
-	aids.text = "Show drone positions (SIM)"
+	aids.text = "Show all drones (author view)"
 	aids.button_pressed = false
 	aids.toggled.connect(set_drone_positions)
 	column.add_child(aids)
 	time_label = Label.new()
 	column.add_child(time_label)
 	status_label = Label.new()
-	status_label.add_theme_font_size_override("font_size", 16)
+	status_label.add_theme_font_size_override("font_size", 24)
 	column.add_child(status_label)
 	var hint = Label.new()
 	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nAirframe models · Camera selection is SIM context" % monitor_base_url
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\nLabels: received detections / author view\n[ / ]: previous / next drone   F: follow / overview\nCamera selection: author view" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	if realistic:
 		hint.text += "\nIllustrative altitude / 표시용 고도\nBeyond local DEM: schematic space"
 	column.add_child(hint)
+	for label in column.find_children("*", "Label", true, false):
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	resize_ui_panel.call_deferred()
 
 func resize_ui_panel() -> void:
 	if not is_instance_valid(ui_scroll):
 		return
-	var available = get_viewport().get_visible_rect().size.y - ui_panel.position.y - 72 - 86
+	var viewport_size = get_viewport().get_visible_rect().size
+	ui_panel.custom_minimum_size.x = minf(580, viewport_size.x - 60)
+	ui_body.custom_minimum_size.x = ui_panel.custom_minimum_size.x - 64
+	var available = viewport_size.y - ui_panel.position.y - 72 - 98
 	ui_scroll.custom_minimum_size.y = minf(ui_body.get_combined_minimum_size().y, maxf(120, available)) if ui_body.visible else 0.0
 	ui_panel.reset_size.call_deferred()
 
 func toggle_ui_panel() -> void:
 	ui_body.visible = not ui_body.visible
 	ui_scroll.visible = ui_body.visible
-	ui_title.text = "LOW SKY / 3D SIMULATION" if ui_body.visible else "LOW SKY"
+	ui_title.text = "LOW SKY / 3D VIEW" if ui_body.visible else "LOW SKY"
 	ui_toggle.text = "−" if ui_body.visible else "+"
 	ui_toggle.tooltip_text = "Collapse controls / 패널 접기" if ui_body.visible else "Expand controls / 패널 펼치기"
 	# PanelContainer otherwise retains its previous rect after minimum size shrinks.
@@ -527,8 +545,8 @@ func toggle_ui_panel() -> void:
 
 func terrain_caption() -> String:
 	if geographic:
-		return "Terrain: Northern Gyeonggi DEM / fictional site  [T]"
-	return "Terrain: Synthetic plains  [T]" if plains_test else "Terrain: Synthetic hills  [T]"
+		return "Terrain: Gyeonggi DEM  [T]"
+	return "Terrain: Plains  [T]" if plains_test else "Terrain: Hills  [T]"
 
 func display_position(authored: Vector3) -> Vector3:
 	# Uniform illustrative lift, not terrain-following or flight planning. Keep
@@ -560,6 +578,8 @@ func terrain_surface_height(x: float, z: float) -> float:
 	return 0.0
 
 func ground_field_installations() -> void:
+	if is_instance_valid(exercise_units):
+		exercise_units.reground(terrain_surface_height)
 	for item in field_installations.values():
 		var position: Vector3 = item.position
 		item.node.position = position + Vector3(0, terrain_surface_height(position.x, position.z), 0)
@@ -586,9 +606,15 @@ func toggle_terrain() -> void:
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
+	visual_cast_signature = ""
 	clear_mission_vignettes()
 	simulation_missions.clear()
 	monitor_exercise.clear()
+	monitor_tactics.clear()
+	tactics_targets.clear()
+	tactics_effector_labels.clear()
+	if is_instance_valid(exercise_units):
+		exercise_units.sync([], terrain_surface_height)
 	update_exercise_marker()
 	stop_follow()
 	selected_drone_index = 0
@@ -616,6 +642,30 @@ func load_case(id: String) -> void:
 	update_drone_labels()
 	update_follow_controls()
 
+func apply_visual_cast(cast: Dictionary) -> void:
+	var signature = str(cast.get("signature", "fixture"))
+	if signature == visual_cast_signature:
+		return
+	var assigned: Dictionary = {}
+	for entry in cast.get("objects", []):
+		if str(entry.airframe_id) in display_profiles.airframes:
+			assigned[str(entry.object_id)] = str(entry.airframe_id)
+	for index in objects.size():
+		var item: Dictionary = objects[index]
+		var original: Dictionary = world_data.objects[index].visual
+		var airframe_id = str(assigned.get(item.object_id, original.get("airframe_id", display_profiles.default_airframe)))
+		if item.node.get_meta("airframe_id") == airframe_id:
+			continue
+		var replacement = drone_instance(airframe_id, "" if assigned.has(item.object_id) else original.get("size_profile", ""))
+		replacement.transform = item.node.transform
+		add_child(replacement)
+		item.label.reparent(replacement, false)
+		item.label.position.y = maxf(0.7, float(replacement.get_meta("horizontal_span_m")) * 0.45)
+		item.node.queue_free()
+		item.node = replacement
+	visual_cast_signature = signature
+	update_follow_controls()
+
 func set_drone_positions(enabled: bool) -> void:
 	show_drone_positions = enabled
 	update_drone_labels()
@@ -627,13 +677,48 @@ func update_drone_labels() -> void:
 		var detected = detected_ids.has(item.object_id) and (not monitor_mode or monitor_connected)
 		item.sim = show_drone_positions
 		item.label.visible = detected or show_drone_positions
-		item.label.text = ("SIM " if show_drone_positions else "DETECTED ") + item.object_id
+		item.label.text = ("AUTHOR " if show_drone_positions else "DETECTED ") + item.object_id
+		item.note = ""
+		if detected and not show_drone_positions and monitor_mode and monitor_connected:
+			var advice = tactics_label_lines(str(item.object_id))
+			item.label.text += advice
+			item.note = advice.strip_edges().replace("\n", " · ")
 		item.label.modulate = Color("edb0fb") if show_drone_positions else Color("78e4d2")
 		item.label.outline_modulate.a = 1.0
 		# The screen callout handles the selected drone at close range.
 		if follow_drone and item == objects[selected_drone_index]:
 			item.label.modulate.a = 0.0
 			item.label.outline_modulate.a = 0.0
+
+func index_tactics() -> void:
+	# Index once per received state so label updates stay linear in the track count.
+	tactics_targets.clear()
+	tactics_effector_labels.clear()
+	for target in monitor_tactics.get("targets", []):
+		if target is Dictionary and target.has("object_id"):
+			tactics_targets[str(target.object_id)] = target
+	for effector in monitor_tactics.get("effectors", []):
+		if effector is Dictionary and effector.has("id") and effector.get("label") is Dictionary:
+			tactics_effector_labels[str(effector.id)] = str(effector.label.get("en", effector.id))
+
+func tactics_label_lines(object_id: String) -> String:
+	# Rule-based training advice from the shared state; never altered by the scene.
+	var target = tactics_targets.get(object_id)
+	if target == null:
+		return ""
+	var lines = ""
+	var identification = target.get("identification", {})
+	if identification is Dictionary and identification.has("lean"):
+		lines += "\n" + str(identification.lean).replace("_", " ").to_upper()
+		var profile = str(identification.get("profile", "unclassified"))
+		if profile != "unclassified":
+			lines += " · " + profile.replace("_", " ").to_upper()
+	var response = target.get("response", {})
+	var allocation = response.get("allocation") if response is Dictionary else null
+	if allocation is Dictionary:
+		var effector_id = str(allocation.get("effector_id", ""))
+		lines += "\nALLOCATED: %s (training record)" % tactics_effector_labels.get(effector_id, effector_id)
+	return lines
 
 func standalone_detections() -> Dictionary:
 	# Only received, fresh observations from online sources grant label visibility.
@@ -728,7 +813,7 @@ func update_follow_controls() -> void:
 		next_drone_button.disabled = empty
 	if selected_drone_label:
 		# This is author-camera context, never a received detection or world label.
-		selected_drone_label.text = "CAMERA / SIM: No drones" if empty else "CAMERA / SIM: %s  (%d / %d)\n%s · %s m display span" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size(), display_profiles.airframes[objects[selected_drone_index].node.get_meta("airframe_id")].label, objects[selected_drone_index].node.get_meta("horizontal_span_m")]
+		selected_drone_label.text = "CAMERA: No drones" if empty else "CAMERA: %s  (%d / %d)\n%s · %s m display span" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size(), display_profiles.airframes[objects[selected_drone_index].node.get_meta("airframe_id")].label, objects[selected_drone_index].node.get_meta("horizontal_span_m")]
 
 func select_drone(offset: int) -> void:
 	if objects.is_empty():
@@ -900,6 +985,7 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 			update_drone_labels()
 			return
 		load_case(next_case)
+	apply_visual_cast(state.get("simulation_visuals", {}))
 	detected_ids.clear()
 	for track in state.tracks:
 		if track is Dictionary and track.has("object_id") and not track.get("last_known", true):
@@ -907,6 +993,10 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 	monitor_clock = float(state.at_ms)
 	monitor_test_run = state.get("test_run", {})
 	monitor_exercise = state.get("exercise", {})
+	exercise_units.sync(monitor_exercise.get("units", []), terrain_surface_height, monitor_exercise.get("unit_kinds", []))
+	var tactics = state.get("tactics", {})
+	monitor_tactics = tactics if tactics is Dictionary else {}
+	index_tactics()
 	# Physical author view only; labels still use received tracks above.
 	simulation_missions = state.get("simulation_missions", monitor_exercise.get("missions", []))
 	update_exercise_marker()
@@ -942,16 +1032,130 @@ func update_exercise_marker() -> void:
 	for asset in monitor_exercise.get("assets", []):
 		if asset.id == selection.asset_id:
 			exercise_marker.position = vector(asset.position) + Vector3(0, 45, 0)
-			exercise_marker.text = "SCRIPTED TRAINING / %s\n%s · %s" % [str(selection.status).to_upper(), asset.label.en, str(asset.status).to_upper()]
+			exercise_marker.text = "%s · %s\n%s" % [asset.label.en, str(asset.status).to_upper(), str(selection.status).to_upper()]
 			exercise_marker.modulate = Color(1.0, 0.7, 0.3) if asset.status != "available" else Color(0.5, 1.0, 0.7)
 			exercise_marker.visible = true
 			return
 
 
 func clear_mission_vignettes() -> void:
+	for facility in facility_nodes.values():
+		set_facility_charred(facility, false)
 	for node in mission_nodes.values():
 		node.queue_free()
 	mission_nodes.clear()
+
+func set_facility_charred(facility: Node3D, charred: bool) -> void:
+	if bool(facility.get_meta("charred", false)) == charred:
+		return
+	facility.set_meta("charred", charred)
+	for mesh in facility.find_children("*", "MeshInstance3D", true, false):
+		if charred:
+			mesh.set_meta("original_material", mesh.material_override)
+			mesh.material_override = solid_material(Color("292725"), 0.05, 1.0)
+		else:
+			mesh.material_override = mesh.get_meta("original_material", null)
+
+func make_result_effects(root: Node3D) -> void:
+	var effects = Node3D.new()
+	effects.name = "Damage"
+	root.add_child(effects)
+	var shader_base = """shader_type spatial;
+render_mode unshaded, cull_disabled, blend_mix, depth_draw_never;
+uniform float clock = 0.0;
+uniform float opacity = 1.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p), f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), f.x), f.y);
+}
+float turbulence(vec2 p) { return noise(p) * 0.57 + noise(p * 2.1) * 0.28 + noise(p * 4.3) * 0.15; }
+"""
+	var flame_shader = Shader.new()
+	flame_shader.code = shader_base + """
+void fragment() {
+	float height = 1.0 - UV.y;
+	float n = turbulence(UV * vec2(5.0, 4.0) + vec2(clock * 0.21, clock * 2.1));
+	float sway = sin(height * 5.0 - clock * 3.4) * height * 0.22 + (n - 0.5) * 0.3;
+	float width = pow(1.0 - height, 0.85) * 0.8 + 0.015;
+	float edge = abs(UV.x * 2.0 - 1.0 - sway);
+	float shape = (1.0 - smoothstep(width * 0.22, width, edge)) * smoothstep(0.0, 0.14, height);
+	float heat = clamp((1.0 - height) * 0.8 + (1.0 - edge / max(width, 0.01)) * 0.4, 0.0, 1.0);
+	ALBEDO = mix(vec3(0.95, 0.13, 0.01), vec3(1.0, 0.83, 0.21), heat);
+	EMISSION = ALBEDO * 0.65;
+	ALPHA = shape * smoothstep(0.16, 0.58, n + (1.0 - height) * 0.23) * opacity;
+}
+"""
+	var smoke_shader = Shader.new()
+	smoke_shader.code = shader_base + """
+void fragment() {
+	vec2 p = UV - vec2(0.5);
+	float n = turbulence(UV * 5.0 + vec2(clock * 0.08, -clock * 0.19));
+	float edge = length(p * vec2(1.0, 0.92)) + (n - 0.5) * 0.22;
+	float feather = 1.0 - smoothstep(0.08, 0.49, edge);
+	ALBEDO = mix(vec3(0.09, 0.095, 0.105), vec3(0.28, 0.29, 0.30), n);
+	ALPHA = feather * feather * (0.4 + n * 0.6) * opacity;
+}
+"""
+	for index in range(25):
+		var piece = MeshInstance3D.new()
+		var quad = QuadMesh.new()
+		quad.size = Vector2(2, 2)
+		piece.mesh = quad
+		var material = ShaderMaterial.new()
+		material.shader = flame_shader if index < 9 else smoke_shader
+		piece.material_override = material
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		piece.name = ("Flame" if index < 9 else "Smoke") + str(index)
+		effects.add_child(piece)
+	var debris = Node3D.new()
+	debris.name = "Debris"
+	effects.add_child(debris)
+	for index in range(16):
+		var angle = index * 2.39996
+		var radius = 17.0 + float(index % 4) * 5.0
+		var piece = Detailed.box(debris, Vector3(3.0 + index % 3, 1.8, 4.0), Vector3(cos(angle) * radius, -33.5, sin(angle) * radius), solid_material(Color("39332d")))
+		piece.rotation = Vector3(index * 0.13, angle, index * 0.27)
+	var flash = MeshInstance3D.new()
+	flash.name = "Flash"
+	var sphere = SphereMesh.new()
+	sphere.radius = 1
+	sphere.height = 2
+	flash.mesh = sphere
+	var glow = solid_material(Color("ffe6a6"))
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	flash.material_override = glow
+	root.add_child(flash)
+
+func pose_result_effects(node: Node3D, anchor: Vector3, phase: String, result_at_ms: float) -> void:
+	# Every pose comes from the shared clock: seek/reset never leave particles behind.
+	var damage: Node3D = node.get_node("Damage")
+	var flash: MeshInstance3D = node.get_node("Flash")
+	damage.visible = phase == "complete"
+	var age = maxf(0.0, elapsed_ms - result_at_ms) / 1000.0
+	flash.visible = phase == "complete" and age < 1.2
+	damage.position = anchor
+	flash.position = anchor
+	flash.scale = Vector3.ONE * (4.0 + minf(age, 1.2) * 25.0)
+	flash.material_override.albedo_color.a = maxf(0, 1.0 - age / 1.2)
+	if not damage.visible:
+		return
+	for index in range(25):
+		var piece: MeshInstance3D = damage.get_child(index)
+		var angle = index * 2.39996
+		piece.quaternion = camera.quaternion
+		piece.material_override.set_shader_parameter("clock", age + index * 0.31)
+		if index < 9:
+			var flicker = 0.7 + 0.3 * sin(age * 7.0 + index * 1.7)
+			piece.position = Vector3(cos(angle) * 9.0, -18.0 + flicker * 7.0, sin(angle) * 9.0)
+			piece.scale = Vector3(7.0, 12.0 + index % 3 * 3.0, 1.0) * flicker
+		else:
+			var rise = fmod(age * 0.16 + (index - 9) / 16.0, 1.0)
+			piece.position = Vector3(cos(angle) * (8 + rise * 16) + rise * 15, -8 + rise * 100, sin(angle) * (8 + rise * 16))
+			piece.scale = Vector3(1.0, 1.15, 1.0) * (15 + rise * 30)
+			piece.material_override.set_shader_parameter("opacity", (1.0 - rise) * 0.9)
 
 func make_mission_vignette() -> Node3D:
 	var node = Node3D.new()
@@ -962,14 +1166,7 @@ func make_mission_vignette() -> Node3D:
 	payload.mesh = cube
 	payload.material_override = solid_material(Color("ffc778"), 0.1)
 	node.add_child(payload)
-	var pulse = MeshInstance3D.new()
-	pulse.name = "Outcome"
-	var ring = TorusMesh.new()
-	ring.inner_radius = 18.0
-	ring.outer_radius = 21.0
-	pulse.mesh = ring
-	pulse.material_override = solid_material(Color("ffc778"))
-	node.add_child(pulse)
+	make_result_effects(node)
 	var label = Label3D.new()
 	label.name = "Label"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -982,6 +1179,7 @@ func make_mission_vignette() -> Node3D:
 func update_mission_vignettes() -> void:
 	# Fixed scene illustration only: no physics, targeting or effectiveness model.
 	var present: Dictionary = {}
+	var charred_facilities: Dictionary = {}
 	for mission in simulation_missions:
 		var id = str(mission.id)
 		present[id] = true
@@ -998,13 +1196,14 @@ func update_mission_vignettes() -> void:
 		node.set_meta("phase", phase)
 		node.visible = found and phase != "approach"
 		var payload: MeshInstance3D = node.get_node("Payload")
-		var pulse: MeshInstance3D = node.get_node("Outcome")
 		var label: Label3D = node.get_node("Label")
 		payload.visible = false
-		pulse.visible = false
 		label.visible = (detected_ids.has(str(mission.object_id)) and (not monitor_mode or monitor_connected)) or show_drone_positions
 		label.position = anchor + Vector3(0, 35, 0)
-		label.text = "SCRIPTED / %s / %s" % [str(mission.kind).to_upper(), phase.to_upper()]
+		label.text = {"finale": "DESCENT / 하강", "complete": "FACILITY DAMAGE / 시설 피해", "partial": "RESTRICTED / 제한 운영", "prevented": "FACILITY CLEAR / 시설 정상"}.get(phase, phase.to_upper())
+		pose_result_effects(node, anchor, phase if found else "approach", float(mission.get("result_at_ms", mission.phase_start_ms) if mission.get("result_at_ms") != null else mission.phase_start_ms))
+		if found and phase == "complete":
+			charred_facilities[str(mission.asset_id)] = true
 		if not node.visible:
 			continue
 		var progress = clampf((elapsed_ms - float(mission.phase_start_ms)) / maxf(1, float(mission.phase_end_ms) - float(mission.phase_start_ms)), 0, 1)
@@ -1019,14 +1218,10 @@ func update_mission_vignettes() -> void:
 		elif phase == "complete":
 			if not actor.is_empty():
 				actor[0].node.position = top + Vector3(160 + minf(maxf(elapsed_ms - float(mission.phase_start_ms), 0) / 1000, 30) * 8, 35, 0) if is_drop else anchor
-		var terminal = phase in ["complete", "partial", "prevented"]
-		pulse.visible = terminal
-		pulse.position = anchor
 		var color = Color("79e8b0") if phase == "prevented" else (Color("ffc778") if phase == "partial" else Color("f09372"))
-		pulse.material_override.albedo_color = color
 		label.modulate = color
-		# A small shared-clock pulse is an outcome marker, not a blast radius.
-		pulse.scale = Vector3.ONE * (1.0 + 0.12 * sin(elapsed_ms / 240.0))
+	for id in facility_nodes:
+		set_facility_charred(facility_nodes[id], charred_facilities.has(id))
 	for id in mission_nodes.keys():
 		if not present.has(id):
 			mission_nodes[id].queue_free()
@@ -1037,21 +1232,21 @@ func build_desktop_controls(column: VBoxContainer) -> void:
 	var row = HBoxContainer.new()
 	column.add_child(row)
 	desktop_monitor_button = Button.new()
-	desktop_monitor_button.text = "Monitoring / 모니터링"
+	desktop_monitor_button.text = "Monitoring [F6]"
 	desktop_monitor_button.tooltip_text = "Return to monitoring [F6]"
-	desktop_monitor_button.add_theme_font_size_override("font_size", 13)
+	desktop_monitor_button.add_theme_font_size_override("font_size", 20)
 	desktop_monitor_button.disabled = true
 	desktop_monitor_button.pressed.connect(func(): desktop_command("show_monitor"))
 	row.add_child(desktop_monitor_button)
 	desktop_fullscreen_button = Button.new()
-	desktop_fullscreen_button.text = "Fullscreen / 전체 화면"
+	desktop_fullscreen_button.text = "Fullscreen [F11]"
 	desktop_fullscreen_button.tooltip_text = "Toggle full screen [F11]"
-	desktop_fullscreen_button.add_theme_font_size_override("font_size", 13)
+	desktop_fullscreen_button.add_theme_font_size_override("font_size", 20)
 	desktop_fullscreen_button.disabled = true
 	desktop_fullscreen_button.pressed.connect(func(): desktop_command("toggle_3d_fullscreen"))
 	row.add_child(desktop_fullscreen_button)
 	desktop_status = Label.new()
-	desktop_status.add_theme_font_size_override("font_size", 12)
+	desktop_status.add_theme_font_size_override("font_size", 18)
 	desktop_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desktop_status.custom_minimum_size.x = 300
 	desktop_status.text = "Connecting window controls… / 창 제어 연결 중"

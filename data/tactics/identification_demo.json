@@ -1,0 +1,3753 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "generator": "identification-feed-v1",
+  "airframes": {
+    "fpv": {
+      "size_profile": "small_multirotor"
+    },
+    "garpiya": {
+      "size_profile": "delta_large"
+    },
+    "geran_2": {
+      "size_profile": "delta_large"
+    },
+    "geran_3": {
+      "size_profile": "delta_large"
+    },
+    "gerbera": {
+      "size_profile": "delta_compact"
+    },
+    "hexacopter": {
+      "size_profile": "medium_multirotor"
+    },
+    "lancet": {
+      "size_profile": "tandem_wing"
+    },
+    "molniya": {
+      "size_profile": "fixed_wing_compact"
+    },
+    "orlan_10": {
+      "size_profile": "fixed_wing_medium"
+    },
+    "orlan_30": {
+      "size_profile": "fixed_wing_medium"
+    },
+    "parodiya": {
+      "size_profile": "fixed_wing_compact"
+    },
+    "quadcopter": {
+      "size_profile": "small_multirotor"
+    },
+    "supercam": {
+      "size_profile": "fixed_wing_medium"
+    },
+    "zala": {
+      "size_profile": "fixed_wing_medium"
+    }
+  },
+  "purpose": "Synthetic classifier reports for the training identification layer. Derived offline from fixture appearance with omissions, delays and a few conflicts; not sensor performance.",
+  "sensor_types": [
+    "eo",
+    "acoustic",
+    "rf"
+  ],
+  "cases": {
+    "case_001": {
+      "report_count": 29,
+      "reports": [
+        {
+          "id": "ident_case_001_object_47_rf_022",
+          "object_id": "object_47",
+          "sensor_type": "rf",
+          "observed_at_ms": 285475,
+          "available_at_ms": 288000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_47_acoustic_021",
+          "object_id": "object_47",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 291215,
+          "available_at_ms": 296000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_29_acoustic_007",
+          "object_id": "object_29",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 292855,
+          "available_at_ms": 297000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_29_eo_006",
+          "object_id": "object_29",
+          "sensor_type": "eo",
+          "observed_at_ms": 293634,
+          "available_at_ms": 299000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_18_rf_001",
+          "object_id": "object_18",
+          "sensor_type": "rf",
+          "observed_at_ms": 314470,
+          "available_at_ms": 317000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_54_eo_027",
+          "object_id": "object_54",
+          "sensor_type": "eo",
+          "observed_at_ms": 318046,
+          "available_at_ms": 323000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_42_eo_016",
+          "object_id": "object_42",
+          "sensor_type": "eo",
+          "observed_at_ms": 326176,
+          "available_at_ms": 330000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_36_eo_012",
+          "object_id": "object_36",
+          "sensor_type": "eo",
+          "observed_at_ms": 331870,
+          "available_at_ms": 335000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_48_eo_023",
+          "object_id": "object_48",
+          "sensor_type": "eo",
+          "observed_at_ms": 339076,
+          "available_at_ms": 344000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_43_eo_017",
+          "object_id": "object_43",
+          "sensor_type": "eo",
+          "observed_at_ms": 344636,
+          "available_at_ms": 347000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_43_acoustic_018",
+          "object_id": "object_43",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 346232,
+          "available_at_ms": 350000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_49_rf_025",
+          "object_id": "object_49",
+          "sensor_type": "rf",
+          "observed_at_ms": 359320,
+          "available_at_ms": 362000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_49_eo_024",
+          "object_id": "object_49",
+          "sensor_type": "eo",
+          "observed_at_ms": 359701,
+          "available_at_ms": 363000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_26_rf_005",
+          "object_id": "object_26",
+          "sensor_type": "rf",
+          "observed_at_ms": 369723,
+          "available_at_ms": 373000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_001_object_32_eo_008",
+          "object_id": "object_32",
+          "sensor_type": "eo",
+          "observed_at_ms": 370368,
+          "available_at_ms": 376000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_50_eo_026",
+          "object_id": "object_50",
+          "sensor_type": "eo",
+          "observed_at_ms": 379481,
+          "available_at_ms": 383000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_20_rf_002",
+          "object_id": "object_20",
+          "sensor_type": "rf",
+          "observed_at_ms": 386146,
+          "available_at_ms": 391000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_38_eo_013",
+          "object_id": "object_38",
+          "sensor_type": "eo",
+          "observed_at_ms": 385564,
+          "available_at_ms": 391000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_45_acoustic_020",
+          "object_id": "object_45",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 394625,
+          "available_at_ms": 400000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_15_acoustic_000",
+          "object_id": "object_15",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 397605,
+          "available_at_ms": 402000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_44_eo_019",
+          "object_id": "object_44",
+          "sensor_type": "eo",
+          "observed_at_ms": 398829,
+          "available_at_ms": 403000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_21_rf_003",
+          "object_id": "object_21",
+          "sensor_type": "rf",
+          "observed_at_ms": 407591,
+          "available_at_ms": 413000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_57_acoustic_028",
+          "object_id": "object_57",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 410221,
+          "available_at_ms": 413000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_001_object_33_rf_009",
+          "object_id": "object_33",
+          "sensor_type": "rf",
+          "observed_at_ms": 411438,
+          "available_at_ms": 417000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_40_rf_015",
+          "object_id": "object_40",
+          "sensor_type": "rf",
+          "observed_at_ms": 427632,
+          "available_at_ms": 433000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_001_object_40_eo_014",
+          "object_id": "object_40",
+          "sensor_type": "eo",
+          "observed_at_ms": 434661,
+          "available_at_ms": 439000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_34_rf_011",
+          "object_id": "object_34",
+          "sensor_type": "rf",
+          "observed_at_ms": 435120,
+          "available_at_ms": 441000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_001_object_22_eo_004",
+          "object_id": "object_22",
+          "sensor_type": "eo",
+          "observed_at_ms": 451298,
+          "available_at_ms": 454000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_001_object_34_eo_010",
+          "object_id": "object_34",
+          "sensor_type": "eo",
+          "observed_at_ms": 455493,
+          "available_at_ms": 461000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        }
+      ],
+      "cast_signature": null
+    },
+    "case_002": {
+      "report_count": 84,
+      "reports": [
+        {
+          "id": "ident_case_002_object_101_acoustic_080",
+          "object_id": "object_101",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 287812,
+          "available_at_ms": 290000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_23_eo_007",
+          "object_id": "object_23",
+          "sensor_type": "eo",
+          "observed_at_ms": 289028,
+          "available_at_ms": 294000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_65_eo_048",
+          "object_id": "object_65",
+          "sensor_type": "eo",
+          "observed_at_ms": 288319,
+          "available_at_ms": 294000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_47_rf_031",
+          "object_id": "object_47",
+          "sensor_type": "rf",
+          "observed_at_ms": 290080,
+          "available_at_ms": 295000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_77_rf_060",
+          "object_id": "object_77",
+          "sensor_type": "rf",
+          "observed_at_ms": 293421,
+          "available_at_ms": 296000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_89_rf_072",
+          "object_id": "object_89",
+          "sensor_type": "rf",
+          "observed_at_ms": 292358,
+          "available_at_ms": 298000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_35_rf_021",
+          "object_id": "object_35",
+          "sensor_type": "rf",
+          "observed_at_ms": 295898,
+          "available_at_ms": 301000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_71_eo_050",
+          "object_id": "object_71",
+          "sensor_type": "eo",
+          "observed_at_ms": 299737,
+          "available_at_ms": 303000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_11_eo_000",
+          "object_id": "object_11",
+          "sensor_type": "eo",
+          "observed_at_ms": 304710,
+          "available_at_ms": 307000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_71_eo_051",
+          "object_id": "object_71",
+          "sensor_type": "eo",
+          "observed_at_ms": 311737,
+          "available_at_ms": 315000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_84_eo_064",
+          "object_id": "object_84",
+          "sensor_type": "eo",
+          "observed_at_ms": 309244,
+          "available_at_ms": 315000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_60_rf_045",
+          "object_id": "object_60",
+          "sensor_type": "rf",
+          "observed_at_ms": 310010,
+          "available_at_ms": 316000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_102_rf_081",
+          "object_id": "object_102",
+          "sensor_type": "rf",
+          "observed_at_ms": 315970,
+          "available_at_ms": 318000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_18_eo_004",
+          "object_id": "object_18",
+          "sensor_type": "eo",
+          "observed_at_ms": 314475,
+          "available_at_ms": 320000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_60_acoustic_044",
+          "object_id": "object_60",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 317888,
+          "available_at_ms": 320000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_30_eo_012",
+          "object_id": "object_30",
+          "sensor_type": "eo",
+          "observed_at_ms": 316975,
+          "available_at_ms": 322000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_48_rf_032",
+          "object_id": "object_48",
+          "sensor_type": "rf",
+          "observed_at_ms": 321249,
+          "available_at_ms": 327000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_96_rf_077",
+          "object_id": "object_96",
+          "sensor_type": "rf",
+          "observed_at_ms": 321880,
+          "available_at_ms": 327000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_002_object_84_acoustic_065",
+          "object_id": "object_84",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 323740,
+          "available_at_ms": 329000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_90_rf_073",
+          "object_id": "object_90",
+          "sensor_type": "rf",
+          "observed_at_ms": 325900,
+          "available_at_ms": 331000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_78_eo_061",
+          "object_id": "object_78",
+          "sensor_type": "eo",
+          "observed_at_ms": 330335,
+          "available_at_ms": 333000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_30_eo_013",
+          "object_id": "object_30",
+          "sensor_type": "eo",
+          "observed_at_ms": 328975,
+          "available_at_ms": 334000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_72_eo_052",
+          "object_id": "object_72",
+          "sensor_type": "eo",
+          "observed_at_ms": 331129,
+          "available_at_ms": 335000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_42_eo_026",
+          "object_id": "object_42",
+          "sensor_type": "eo",
+          "observed_at_ms": 332109,
+          "available_at_ms": 337000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_96_eo_075",
+          "object_id": "object_96",
+          "sensor_type": "eo",
+          "observed_at_ms": 336842,
+          "available_at_ms": 340000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_12_eo_001",
+          "object_id": "object_12",
+          "sensor_type": "eo",
+          "observed_at_ms": 338872,
+          "available_at_ms": 341000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_85_acoustic_067",
+          "object_id": "object_85",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 337172,
+          "available_at_ms": 341000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_103_rf_082",
+          "object_id": "object_103",
+          "sensor_type": "rf",
+          "observed_at_ms": 340807,
+          "available_at_ms": 345000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_78_eo_062",
+          "object_id": "object_78",
+          "sensor_type": "eo",
+          "observed_at_ms": 342335,
+          "available_at_ms": 345000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_72_eo_053",
+          "object_id": "object_72",
+          "sensor_type": "eo",
+          "observed_at_ms": 343129,
+          "available_at_ms": 347000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_85_eo_066",
+          "object_id": "object_85",
+          "sensor_type": "eo",
+          "observed_at_ms": 341485,
+          "available_at_ms": 347000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_49_acoustic_034",
+          "object_id": "object_49",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 346066,
+          "available_at_ms": 352000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_49_eo_033",
+          "object_id": "object_49",
+          "sensor_type": "eo",
+          "observed_at_ms": 347879,
+          "available_at_ms": 352000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_96_eo_076",
+          "object_id": "object_96",
+          "sensor_type": "eo",
+          "observed_at_ms": 348842,
+          "available_at_ms": 352000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_97_eo_078",
+          "object_id": "object_97",
+          "sensor_type": "eo",
+          "observed_at_ms": 349140,
+          "available_at_ms": 353000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_37_eo_022",
+          "object_id": "object_37",
+          "sensor_type": "eo",
+          "observed_at_ms": 354981,
+          "available_at_ms": 358000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_61_rf_046",
+          "object_id": "object_61",
+          "sensor_type": "rf",
+          "observed_at_ms": 354144,
+          "available_at_ms": 359000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_20_acoustic_006",
+          "object_id": "object_20",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 368584,
+          "available_at_ms": 373000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_104_rf_083",
+          "object_id": "object_104",
+          "sensor_type": "rf",
+          "observed_at_ms": 369297,
+          "available_at_ms": 374000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_68_rf_049",
+          "object_id": "object_68",
+          "sensor_type": "rf",
+          "observed_at_ms": 371263,
+          "available_at_ms": 374000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_002_object_32_acoustic_016",
+          "object_id": "object_32",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 371172,
+          "available_at_ms": 376000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_56_acoustic_040",
+          "object_id": "object_56",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 372393,
+          "available_at_ms": 376000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_80_eo_063",
+          "object_id": "object_80",
+          "sensor_type": "eo",
+          "observed_at_ms": 371120,
+          "available_at_ms": 377000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_74_acoustic_055",
+          "object_id": "object_74",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 375570,
+          "available_at_ms": 380000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_26_rf_009",
+          "object_id": "object_26",
+          "sensor_type": "rf",
+          "observed_at_ms": 381516,
+          "available_at_ms": 385000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_002_object_32_eo_014",
+          "object_id": "object_32",
+          "sensor_type": "eo",
+          "observed_at_ms": 380317,
+          "available_at_ms": 385000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_74_rf_056",
+          "object_id": "object_74",
+          "sensor_type": "rf",
+          "observed_at_ms": 382555,
+          "available_at_ms": 385000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_98_acoustic_079",
+          "object_id": "object_98",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 379827,
+          "available_at_ms": 385000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_32_rf_017",
+          "object_id": "object_32",
+          "sensor_type": "rf",
+          "observed_at_ms": 383163,
+          "available_at_ms": 386000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_20_eo_005",
+          "object_id": "object_20",
+          "sensor_type": "eo",
+          "observed_at_ms": 389248,
+          "available_at_ms": 392000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_26_eo_008",
+          "object_id": "object_26",
+          "sensor_type": "eo",
+          "observed_at_ms": 391271,
+          "available_at_ms": 395000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_32_eo_015",
+          "object_id": "object_32",
+          "sensor_type": "eo",
+          "observed_at_ms": 392317,
+          "available_at_ms": 397000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_74_eo_054",
+          "object_id": "object_74",
+          "sensor_type": "eo",
+          "observed_at_ms": 394282,
+          "available_at_ms": 398000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_38_eo_023",
+          "object_id": "object_38",
+          "sensor_type": "eo",
+          "observed_at_ms": 398503,
+          "available_at_ms": 402000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_56_eo_038",
+          "object_id": "object_56",
+          "sensor_type": "eo",
+          "observed_at_ms": 400725,
+          "available_at_ms": 403000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_57_acoustic_043",
+          "object_id": "object_57",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 398388,
+          "available_at_ms": 403000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_57_eo_041",
+          "object_id": "object_57",
+          "sensor_type": "eo",
+          "observed_at_ms": 400926,
+          "available_at_ms": 406000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_63_eo_047",
+          "object_id": "object_63",
+          "sensor_type": "eo",
+          "observed_at_ms": 405683,
+          "available_at_ms": 409000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_87_acoustic_069",
+          "object_id": "object_87",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 403436,
+          "available_at_ms": 409000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_15_acoustic_002",
+          "object_id": "object_15",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 406117,
+          "available_at_ms": 411000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_33_rf_018",
+          "object_id": "object_33",
+          "sensor_type": "rf",
+          "observed_at_ms": 405812,
+          "available_at_ms": 411000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_56_eo_039",
+          "object_id": "object_56",
+          "sensor_type": "eo",
+          "observed_at_ms": 412725,
+          "available_at_ms": 415000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_57_eo_042",
+          "object_id": "object_57",
+          "sensor_type": "eo",
+          "observed_at_ms": 412926,
+          "available_at_ms": 418000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_45_eo_027",
+          "object_id": "object_45",
+          "sensor_type": "eo",
+          "observed_at_ms": 416514,
+          "available_at_ms": 421000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_87_eo_068",
+          "object_id": "object_87",
+          "sensor_type": "eo",
+          "observed_at_ms": 420421,
+          "available_at_ms": 423000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_16_acoustic_003",
+          "object_id": "object_16",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 426664,
+          "available_at_ms": 431000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_75_eo_057",
+          "object_id": "object_75",
+          "sensor_type": "eo",
+          "observed_at_ms": 427896,
+          "available_at_ms": 431000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_45_eo_028",
+          "object_id": "object_45",
+          "sensor_type": "eo",
+          "observed_at_ms": 428514,
+          "available_at_ms": 433000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_51_eo_035",
+          "object_id": "object_51",
+          "sensor_type": "eo",
+          "observed_at_ms": 428966,
+          "available_at_ms": 433000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_93_eo_074",
+          "object_id": "object_93",
+          "sensor_type": "eo",
+          "observed_at_ms": 429354,
+          "available_at_ms": 434000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_46_rf_030",
+          "object_id": "object_46",
+          "sensor_type": "rf",
+          "observed_at_ms": 432292,
+          "available_at_ms": 435000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_76_rf_059",
+          "object_id": "object_76",
+          "sensor_type": "rf",
+          "observed_at_ms": 429561,
+          "available_at_ms": 435000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_28_eo_010",
+          "object_id": "object_28",
+          "sensor_type": "eo",
+          "observed_at_ms": 431289,
+          "available_at_ms": 436000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_34_rf_020",
+          "object_id": "object_34",
+          "sensor_type": "rf",
+          "observed_at_ms": 435371,
+          "available_at_ms": 438000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_52_eo_037",
+          "object_id": "object_52",
+          "sensor_type": "eo",
+          "observed_at_ms": 438041,
+          "available_at_ms": 441000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_28_acoustic_011",
+          "object_id": "object_28",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 438897,
+          "available_at_ms": 443000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_34_acoustic_019",
+          "object_id": "object_34",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 440511,
+          "available_at_ms": 443000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_002_object_75_eo_058",
+          "object_id": "object_75",
+          "sensor_type": "eo",
+          "observed_at_ms": 439896,
+          "available_at_ms": 443000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_51_eo_036",
+          "object_id": "object_51",
+          "sensor_type": "eo",
+          "observed_at_ms": 440966,
+          "available_at_ms": 445000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        },
+        {
+          "id": "ident_case_002_object_88_eo_070",
+          "object_id": "object_88",
+          "sensor_type": "eo",
+          "observed_at_ms": 445911,
+          "available_at_ms": 451000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_40_eo_024",
+          "object_id": "object_40",
+          "sensor_type": "eo",
+          "observed_at_ms": 453002,
+          "available_at_ms": 456000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_88_rf_071",
+          "object_id": "object_88",
+          "sensor_type": "rf",
+          "observed_at_ms": 453793,
+          "available_at_ms": 456000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_002_object_46_eo_029",
+          "object_id": "object_46",
+          "sensor_type": "eo",
+          "observed_at_ms": 452602,
+          "available_at_ms": 458000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_002_object_40_eo_025",
+          "object_id": "object_40",
+          "sensor_type": "eo",
+          "observed_at_ms": 465002,
+          "available_at_ms": 468000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Deliberately conflicting second EO report for the contradictory case."
+        }
+      ],
+      "cast_signature": null
+    },
+    "case_003": {
+      "report_count": 175,
+      "reports": [
+        {
+          "id": "ident_case_003_object_35_acoustic_023",
+          "object_id": "object_35",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 17878,
+          "available_at_ms": 20000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_197_acoustic_138",
+          "object_id": "object_197",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 15403,
+          "available_at_ms": 21000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_119_rf_083",
+          "object_id": "object_119",
+          "sensor_type": "rf",
+          "observed_at_ms": 19826,
+          "available_at_ms": 23000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_47_rf_034",
+          "object_id": "object_47",
+          "sensor_type": "rf",
+          "observed_at_ms": 19604,
+          "available_at_ms": 23000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_137_eo_096",
+          "object_id": "object_137",
+          "sensor_type": "eo",
+          "observed_at_ms": 19712,
+          "available_at_ms": 25000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_209_eo_147",
+          "object_id": "object_209",
+          "sensor_type": "eo",
+          "observed_at_ms": 20582,
+          "available_at_ms": 25000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_185_eo_129",
+          "object_id": "object_185",
+          "sensor_type": "eo",
+          "observed_at_ms": 21433,
+          "available_at_ms": 26000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_215_rf_152",
+          "object_id": "object_215",
+          "sensor_type": "rf",
+          "observed_at_ms": 20335,
+          "available_at_ms": 26000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_227_acoustic_158",
+          "object_id": "object_227",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 24621,
+          "available_at_ms": 28000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_173_rf_122",
+          "object_id": "object_173",
+          "sensor_type": "rf",
+          "observed_at_ms": 25991,
+          "available_at_ms": 29000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_161_rf_113",
+          "object_id": "object_161",
+          "sensor_type": "rf",
+          "observed_at_ms": 25941,
+          "available_at_ms": 30000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_35_eo_022",
+          "object_id": "object_35",
+          "sensor_type": "eo",
+          "observed_at_ms": 27305,
+          "available_at_ms": 30000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_144_acoustic_100",
+          "object_id": "object_144",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 27016,
+          "available_at_ms": 31000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_54_rf_041",
+          "object_id": "object_54",
+          "sensor_type": "rf",
+          "observed_at_ms": 26482,
+          "available_at_ms": 32000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_132_rf_094",
+          "object_id": "object_132",
+          "sensor_type": "rf",
+          "observed_at_ms": 29970,
+          "available_at_ms": 34000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_47_eo_032",
+          "object_id": "object_47",
+          "sensor_type": "eo",
+          "observed_at_ms": 30373,
+          "available_at_ms": 34000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_17_eo_004",
+          "object_id": "object_17",
+          "sensor_type": "eo",
+          "observed_at_ms": 32072,
+          "available_at_ms": 35000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_29_acoustic_013",
+          "object_id": "object_29",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 32357,
+          "available_at_ms": 35000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_29_eo_012",
+          "object_id": "object_29",
+          "sensor_type": "eo",
+          "observed_at_ms": 30244,
+          "available_at_ms": 35000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_30_acoustic_014",
+          "object_id": "object_30",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 31325,
+          "available_at_ms": 35000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_47_acoustic_033",
+          "object_id": "object_47",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 32303,
+          "available_at_ms": 35000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_143_acoustic_099",
+          "object_id": "object_143",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 32180,
+          "available_at_ms": 36000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_240_acoustic_167",
+          "object_id": "object_240",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 32731,
+          "available_at_ms": 36000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_53_eo_040",
+          "object_id": "object_53",
+          "sensor_type": "eo",
+          "observed_at_ms": 31580,
+          "available_at_ms": 36000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_78_eo_051",
+          "object_id": "object_78",
+          "sensor_type": "eo",
+          "observed_at_ms": 30503,
+          "available_at_ms": 36000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_155_acoustic_107",
+          "object_id": "object_155",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 32950,
+          "available_at_ms": 37000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_191_eo_136",
+          "object_id": "object_191",
+          "sensor_type": "eo",
+          "observed_at_ms": 32144,
+          "available_at_ms": 38000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_168_eo_116",
+          "object_id": "object_168",
+          "sensor_type": "eo",
+          "observed_at_ms": 34996,
+          "available_at_ms": 39000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_198_eo_139",
+          "object_id": "object_198",
+          "sensor_type": "eo",
+          "observed_at_ms": 36900,
+          "available_at_ms": 39000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_221_eo_154",
+          "object_id": "object_221",
+          "sensor_type": "eo",
+          "observed_at_ms": 34545,
+          "available_at_ms": 39000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_90_acoustic_062",
+          "object_id": "object_90",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 34452,
+          "available_at_ms": 40000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_131_rf_092",
+          "object_id": "object_131",
+          "sensor_type": "rf",
+          "observed_at_ms": 38991,
+          "available_at_ms": 41000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_233_eo_161",
+          "object_id": "object_233",
+          "sensor_type": "eo",
+          "observed_at_ms": 38830,
+          "available_at_ms": 41000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_150_eo_104",
+          "object_id": "object_150",
+          "sensor_type": "eo",
+          "observed_at_ms": 37230,
+          "available_at_ms": 43000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_103_rf_070",
+          "object_id": "object_103",
+          "sensor_type": "rf",
+          "observed_at_ms": 40754,
+          "available_at_ms": 44000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_132_eo_093",
+          "object_id": "object_132",
+          "sensor_type": "eo",
+          "observed_at_ms": 38423,
+          "available_at_ms": 44000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_227_eo_157",
+          "object_id": "object_227",
+          "sensor_type": "eo",
+          "observed_at_ms": 41905,
+          "available_at_ms": 44000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_49_eo_036",
+          "object_id": "object_49",
+          "sensor_type": "eo",
+          "observed_at_ms": 40099,
+          "available_at_ms": 45000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_89_rf_060",
+          "object_id": "object_89",
+          "sensor_type": "rf",
+          "observed_at_ms": 41333,
+          "available_at_ms": 45000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_127_acoustic_087",
+          "object_id": "object_127",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 41282,
+          "available_at_ms": 46000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_157_eo_109",
+          "object_id": "object_157",
+          "sensor_type": "eo",
+          "observed_at_ms": 42110,
+          "available_at_ms": 46000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_18_rf_005",
+          "object_id": "object_18",
+          "sensor_type": "rf",
+          "observed_at_ms": 43797,
+          "available_at_ms": 46000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_203_rf_145",
+          "object_id": "object_203",
+          "sensor_type": "rf",
+          "observed_at_ms": 41442,
+          "available_at_ms": 46000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_25_eo_009",
+          "object_id": "object_25",
+          "sensor_type": "eo",
+          "observed_at_ms": 42703,
+          "available_at_ms": 46000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_95_eo_066",
+          "object_id": "object_95",
+          "sensor_type": "eo",
+          "observed_at_ms": 40043,
+          "available_at_ms": 46000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_211_acoustic_148",
+          "object_id": "object_211",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 42685,
+          "available_at_ms": 47000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_217_acoustic_153",
+          "object_id": "object_217",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 43622,
+          "available_at_ms": 47000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_23_eo_008",
+          "object_id": "object_23",
+          "sensor_type": "eo",
+          "observed_at_ms": 43427,
+          "available_at_ms": 47000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_156_acoustic_108",
+          "object_id": "object_156",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 45252,
+          "available_at_ms": 48000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_239_eo_166",
+          "object_id": "object_239",
+          "sensor_type": "eo",
+          "observed_at_ms": 43775,
+          "available_at_ms": 48000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_131_eo_091",
+          "object_id": "object_131",
+          "sensor_type": "eo",
+          "observed_at_ms": 45866,
+          "available_at_ms": 49000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_173_eo_121",
+          "object_id": "object_173",
+          "sensor_type": "eo",
+          "observed_at_ms": 44179,
+          "available_at_ms": 49000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_36_eo_024",
+          "object_id": "object_36",
+          "sensor_type": "eo",
+          "observed_at_ms": 43246,
+          "available_at_ms": 49000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_43_acoustic_026",
+          "object_id": "object_43",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 45949,
+          "available_at_ms": 49000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_49_rf_037",
+          "object_id": "object_49",
+          "sensor_type": "rf",
+          "observed_at_ms": 44753,
+          "available_at_ms": 49000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_48_rf_035",
+          "object_id": "object_48",
+          "sensor_type": "rf",
+          "observed_at_ms": 46291,
+          "available_at_ms": 50000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_199_acoustic_140",
+          "object_id": "object_199",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 47462,
+          "available_at_ms": 51000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_245_eo_171",
+          "object_id": "object_245",
+          "sensor_type": "eo",
+          "observed_at_ms": 45252,
+          "available_at_ms": 51000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_236_rf_163",
+          "object_id": "object_236",
+          "sensor_type": "rf",
+          "observed_at_ms": 47168,
+          "available_at_ms": 52000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_31_acoustic_016",
+          "object_id": "object_31",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 48445,
+          "available_at_ms": 52000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_90_eo_061",
+          "object_id": "object_90",
+          "sensor_type": "eo",
+          "observed_at_ms": 49148,
+          "available_at_ms": 52000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_169_acoustic_117",
+          "object_id": "object_169",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 48714,
+          "available_at_ms": 53000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_200_acoustic_141",
+          "object_id": "object_200",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 47803,
+          "available_at_ms": 53000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_224_acoustic_155",
+          "object_id": "object_224",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 47869,
+          "available_at_ms": 53000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_31_eo_015",
+          "object_id": "object_31",
+          "sensor_type": "eo",
+          "observed_at_ms": 49078,
+          "available_at_ms": 53000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_91_acoustic_063",
+          "object_id": "object_91",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 48665,
+          "available_at_ms": 53000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_113_eo_077",
+          "object_id": "object_113",
+          "sensor_type": "eo",
+          "observed_at_ms": 50388,
+          "available_at_ms": 54000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_186_rf_130",
+          "object_id": "object_186",
+          "sensor_type": "rf",
+          "observed_at_ms": 51153,
+          "available_at_ms": 54000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_162_eo_114",
+          "object_id": "object_162",
+          "sensor_type": "eo",
+          "observed_at_ms": 51995,
+          "available_at_ms": 55000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_182_acoustic_126",
+          "object_id": "object_182",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 51223,
+          "available_at_ms": 55000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_187_rf_131",
+          "object_id": "object_187",
+          "sensor_type": "rf",
+          "observed_at_ms": 50061,
+          "available_at_ms": 55000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_200_rf_142",
+          "object_id": "object_200",
+          "sensor_type": "rf",
+          "observed_at_ms": 51769,
+          "available_at_ms": 55000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_116_acoustic_078",
+          "object_id": "object_116",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 50294,
+          "available_at_ms": 56000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_138_eo_097",
+          "object_id": "object_138",
+          "sensor_type": "eo",
+          "observed_at_ms": 50180,
+          "available_at_ms": 56000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_235_eo_162",
+          "object_id": "object_235",
+          "sensor_type": "eo",
+          "observed_at_ms": 54735,
+          "available_at_ms": 57000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_84_eo_055",
+          "object_id": "object_84",
+          "sensor_type": "eo",
+          "observed_at_ms": 53688,
+          "available_at_ms": 57000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_104_acoustic_072",
+          "object_id": "object_104",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 53140,
+          "available_at_ms": 58000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_66_eo_046",
+          "object_id": "object_66",
+          "sensor_type": "eo",
+          "observed_at_ms": 54177,
+          "available_at_ms": 58000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_73_acoustic_050",
+          "object_id": "object_73",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 52718,
+          "available_at_ms": 58000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_85_acoustic_056",
+          "object_id": "object_85",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 53166,
+          "available_at_ms": 58000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_91_rf_064",
+          "object_id": "object_91",
+          "sensor_type": "rf",
+          "observed_at_ms": 55875,
+          "available_at_ms": 58000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_182_eo_125",
+          "object_id": "object_182",
+          "sensor_type": "eo",
+          "observed_at_ms": 56053,
+          "available_at_ms": 59000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_26_rf_010",
+          "object_id": "object_26",
+          "sensor_type": "rf",
+          "observed_at_ms": 55330,
+          "available_at_ms": 60000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_68_rf_047",
+          "object_id": "object_68",
+          "sensor_type": "rf",
+          "observed_at_ms": 56576,
+          "available_at_ms": 60000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_181_eo_124",
+          "object_id": "object_181",
+          "sensor_type": "eo",
+          "observed_at_ms": 58251,
+          "available_at_ms": 61000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_241_eo_168",
+          "object_id": "object_241",
+          "sensor_type": "eo",
+          "observed_at_ms": 58157,
+          "available_at_ms": 61000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_128_eo_088",
+          "object_id": "object_128",
+          "sensor_type": "eo",
+          "observed_at_ms": 59150,
+          "available_at_ms": 62000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_12_eo_000",
+          "object_id": "object_12",
+          "sensor_type": "eo",
+          "observed_at_ms": 57627,
+          "available_at_ms": 62000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_188_acoustic_132",
+          "object_id": "object_188",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 57031,
+          "available_at_ms": 62000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_32_acoustic_018",
+          "object_id": "object_32",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 57011,
+          "available_at_ms": 62000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_103_eo_069",
+          "object_id": "object_103",
+          "sensor_type": "eo",
+          "observed_at_ms": 57118,
+          "available_at_ms": 63000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_120_eo_084",
+          "object_id": "object_120",
+          "sensor_type": "eo",
+          "observed_at_ms": 57093,
+          "available_at_ms": 63000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_175_rf_123",
+          "object_id": "object_175",
+          "sensor_type": "rf",
+          "observed_at_ms": 58129,
+          "available_at_ms": 63000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_229_rf_159",
+          "object_id": "object_229",
+          "sensor_type": "rf",
+          "observed_at_ms": 57207,
+          "available_at_ms": 63000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_33_rf_020",
+          "object_id": "object_33",
+          "sensor_type": "rf",
+          "observed_at_ms": 57200,
+          "available_at_ms": 63000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_122_eo_085",
+          "object_id": "object_122",
+          "sensor_type": "eo",
+          "observed_at_ms": 61147,
+          "available_at_ms": 64000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_146_eo_101",
+          "object_id": "object_146",
+          "sensor_type": "eo",
+          "observed_at_ms": 60387,
+          "available_at_ms": 66000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_146_rf_102",
+          "object_id": "object_146",
+          "sensor_type": "rf",
+          "observed_at_ms": 61741,
+          "available_at_ms": 66000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_44_acoustic_027",
+          "object_id": "object_44",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 63051,
+          "available_at_ms": 66000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_116_rf_079",
+          "object_id": "object_116",
+          "sensor_type": "rf",
+          "observed_at_ms": 62790,
+          "available_at_ms": 67000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_37_eo_025",
+          "object_id": "object_37",
+          "sensor_type": "eo",
+          "observed_at_ms": 62941,
+          "available_at_ms": 67000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_51_eo_038",
+          "object_id": "object_51",
+          "sensor_type": "eo",
+          "observed_at_ms": 63403,
+          "available_at_ms": 67000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_14_acoustic_002",
+          "object_id": "object_14",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 65709,
+          "available_at_ms": 68000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_189_acoustic_134",
+          "object_id": "object_189",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 63872,
+          "available_at_ms": 68000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_19_eo_006",
+          "object_id": "object_19",
+          "sensor_type": "eo",
+          "observed_at_ms": 63066,
+          "available_at_ms": 68000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_57_acoustic_043",
+          "object_id": "object_57",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 63356,
+          "available_at_ms": 68000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_117_rf_080",
+          "object_id": "object_117",
+          "sensor_type": "rf",
+          "observed_at_ms": 63741,
+          "available_at_ms": 69000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_45_eo_028",
+          "object_id": "object_45",
+          "sensor_type": "eo",
+          "observed_at_ms": 66291,
+          "available_at_ms": 69000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_57_eo_042",
+          "object_id": "object_57",
+          "sensor_type": "eo",
+          "observed_at_ms": 65530,
+          "available_at_ms": 69000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_69_eo_048",
+          "object_id": "object_69",
+          "sensor_type": "eo",
+          "observed_at_ms": 63397,
+          "available_at_ms": 69000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_238_acoustic_165",
+          "object_id": "object_238",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 65258,
+          "available_at_ms": 70000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_63_eo_045",
+          "object_id": "object_63",
+          "sensor_type": "eo",
+          "observed_at_ms": 67685,
+          "available_at_ms": 70000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_135_eo_095",
+          "object_id": "object_135",
+          "sensor_type": "eo",
+          "observed_at_ms": 66506,
+          "available_at_ms": 71000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_13_eo_001",
+          "object_id": "object_13",
+          "sensor_type": "eo",
+          "observed_at_ms": 68227,
+          "available_at_ms": 71000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_158_eo_110",
+          "object_id": "object_158",
+          "sensor_type": "eo",
+          "observed_at_ms": 66286,
+          "available_at_ms": 71000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_109_eo_074",
+          "object_id": "object_109",
+          "sensor_type": "eo",
+          "observed_at_ms": 67391,
+          "available_at_ms": 72000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_183_acoustic_128",
+          "object_id": "object_183",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 69569,
+          "available_at_ms": 72000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_111_eo_075",
+          "object_id": "object_111",
+          "sensor_type": "eo",
+          "observed_at_ms": 69609,
+          "available_at_ms": 73000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_172_acoustic_119",
+          "object_id": "object_172",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 68315,
+          "available_at_ms": 73000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_214_rf_151",
+          "object_id": "object_214",
+          "sensor_type": "rf",
+          "observed_at_ms": 70933,
+          "available_at_ms": 73000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_230_rf_160",
+          "object_id": "object_230",
+          "sensor_type": "rf",
+          "observed_at_ms": 70874,
+          "available_at_ms": 73000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_45_acoustic_029",
+          "object_id": "object_45",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 70203,
+          "available_at_ms": 73000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_87_eo_058",
+          "object_id": "object_87",
+          "sensor_type": "eo",
+          "observed_at_ms": 69597,
+          "available_at_ms": 73000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_158_rf_111",
+          "object_id": "object_158",
+          "sensor_type": "rf",
+          "observed_at_ms": 71074,
+          "available_at_ms": 74000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_80_eo_052",
+          "object_id": "object_80",
+          "sensor_type": "eo",
+          "observed_at_ms": 68719,
+          "available_at_ms": 74000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_86_eo_057",
+          "object_id": "object_86",
+          "sensor_type": "eo",
+          "observed_at_ms": 68362,
+          "available_at_ms": 74000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_129_acoustic_089",
+          "object_id": "object_129",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 71009,
+          "available_at_ms": 75000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_154_eo_105",
+          "object_id": "object_154",
+          "sensor_type": "eo",
+          "observed_at_ms": 71116,
+          "available_at_ms": 75000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_170_eo_118",
+          "object_id": "object_170",
+          "sensor_type": "eo",
+          "observed_at_ms": 71691,
+          "available_at_ms": 75000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_183_eo_127",
+          "object_id": "object_183",
+          "sensor_type": "eo",
+          "observed_at_ms": 69523,
+          "available_at_ms": 75000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_52_eo_039",
+          "object_id": "object_52",
+          "sensor_type": "eo",
+          "observed_at_ms": 69143,
+          "available_at_ms": 75000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_154_acoustic_106",
+          "object_id": "object_154",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 70837,
+          "available_at_ms": 76000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_21_acoustic_007",
+          "object_id": "object_21",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 72729,
+          "available_at_ms": 76000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_238_eo_164",
+          "object_id": "object_238",
+          "sensor_type": "eo",
+          "observed_at_ms": 70267,
+          "available_at_ms": 76000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_104_eo_071",
+          "object_id": "object_104",
+          "sensor_type": "eo",
+          "observed_at_ms": 74843,
+          "available_at_ms": 77000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_82_eo_053",
+          "object_id": "object_82",
+          "sensor_type": "eo",
+          "observed_at_ms": 71241,
+          "available_at_ms": 77000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_196_acoustic_137",
+          "object_id": "object_196",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 73169,
+          "available_at_ms": 78000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_201_eo_143",
+          "object_id": "object_201",
+          "sensor_type": "eo",
+          "observed_at_ms": 72880,
+          "available_at_ms": 78000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_225_acoustic_156",
+          "object_id": "object_225",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 74658,
+          "available_at_ms": 78000,
+          "fields": {
+            "signature": "jet"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_250_eo_173",
+          "object_id": "object_250",
+          "sensor_type": "eo",
+          "observed_at_ms": 72220,
+          "available_at_ms": 78000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_34_rf_021",
+          "object_id": "object_34",
+          "sensor_type": "rf",
+          "observed_at_ms": 75899,
+          "available_at_ms": 78000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_33_eo_019",
+          "object_id": "object_33",
+          "sensor_type": "eo",
+          "observed_at_ms": 73946,
+          "available_at_ms": 79000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_46_eo_030",
+          "object_id": "object_46",
+          "sensor_type": "eo",
+          "observed_at_ms": 75586,
+          "available_at_ms": 79000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_243_rf_169",
+          "object_id": "object_243",
+          "sensor_type": "rf",
+          "observed_at_ms": 77507,
+          "available_at_ms": 81000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_249_eo_172",
+          "object_id": "object_249",
+          "sensor_type": "eo",
+          "observed_at_ms": 78310,
+          "available_at_ms": 81000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_58_acoustic_044",
+          "object_id": "object_58",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 78624,
+          "available_at_ms": 81000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_98_eo_067",
+          "object_id": "object_98",
+          "sensor_type": "eo",
+          "observed_at_ms": 77184,
+          "available_at_ms": 81000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_213_eo_149",
+          "object_id": "object_213",
+          "sensor_type": "eo",
+          "observed_at_ms": 77771,
+          "available_at_ms": 83000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_32_eo_017",
+          "object_id": "object_32",
+          "sensor_type": "eo",
+          "observed_at_ms": 77979,
+          "available_at_ms": 83000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_92_eo_065",
+          "object_id": "object_92",
+          "sensor_type": "eo",
+          "observed_at_ms": 77377,
+          "available_at_ms": 83000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_124_rf_086",
+          "object_id": "object_124",
+          "sensor_type": "rf",
+          "observed_at_ms": 78183,
+          "available_at_ms": 84000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_189_rf_135",
+          "object_id": "object_189",
+          "sensor_type": "rf",
+          "observed_at_ms": 79215,
+          "available_at_ms": 84000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_82_rf_054",
+          "object_id": "object_82",
+          "sensor_type": "rf",
+          "observed_at_ms": 81930,
+          "available_at_ms": 84000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_16_eo_003",
+          "object_id": "object_16",
+          "sensor_type": "eo",
+          "observed_at_ms": 80229,
+          "available_at_ms": 85000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_250_rf_174",
+          "object_id": "object_250",
+          "sensor_type": "rf",
+          "observed_at_ms": 82721,
+          "available_at_ms": 86000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_112_acoustic_076",
+          "object_id": "object_112",
+          "sensor_type": "acoustic",
+          "observed_at_ms": 83113,
+          "available_at_ms": 87000,
+          "fields": {
+            "signature": "propeller"
+          },
+          "synthetic": true,
+          "note": "Synthetic acoustic signature classifier output."
+        },
+        {
+          "id": "ident_case_003_object_244_rf_170",
+          "object_id": "object_244",
+          "sensor_type": "rf",
+          "observed_at_ms": 82087,
+          "available_at_ms": 87000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_70_eo_049",
+          "object_id": "object_70",
+          "sensor_type": "eo",
+          "observed_at_ms": 84010,
+          "available_at_ms": 87000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_118_rf_082",
+          "object_id": "object_118",
+          "sensor_type": "rf",
+          "observed_at_ms": 83476,
+          "available_at_ms": 89000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_189_eo_133",
+          "object_id": "object_189",
+          "sensor_type": "eo",
+          "observed_at_ms": 83766,
+          "available_at_ms": 89000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_46_rf_031",
+          "object_id": "object_46",
+          "sensor_type": "rf",
+          "observed_at_ms": 85224,
+          "available_at_ms": 89000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_130_eo_090",
+          "object_id": "object_130",
+          "sensor_type": "eo",
+          "observed_at_ms": 87834,
+          "available_at_ms": 90000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_166_rf_115",
+          "object_id": "object_166",
+          "sensor_type": "rf",
+          "observed_at_ms": 88943,
+          "available_at_ms": 92000,
+          "fields": {
+            "rf_emission": false,
+            "band": null
+          },
+          "synthetic": true,
+          "note": "Synthetic negative RF report; absence of RF does not prove a fiber link."
+        },
+        {
+          "id": "ident_case_003_object_172_rf_120",
+          "object_id": "object_172",
+          "sensor_type": "rf",
+          "observed_at_ms": 86453,
+          "available_at_ms": 92000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_202_rf_144",
+          "object_id": "object_202",
+          "sensor_type": "rf",
+          "observed_at_ms": 87776,
+          "available_at_ms": 92000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_141_eo_098",
+          "object_id": "object_141",
+          "sensor_type": "eo",
+          "observed_at_ms": 88387,
+          "available_at_ms": 93000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_28_eo_011",
+          "object_id": "object_28",
+          "sensor_type": "eo",
+          "observed_at_ms": 89622,
+          "available_at_ms": 93000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_99_eo_068",
+          "object_id": "object_99",
+          "sensor_type": "eo",
+          "observed_at_ms": 88284,
+          "available_at_ms": 93000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_88_rf_059",
+          "object_id": "object_88",
+          "sensor_type": "rf",
+          "observed_at_ms": 89365,
+          "available_at_ms": 94000,
+          "fields": {
+            "rf_emission": true,
+            "band": "control_link"
+          },
+          "synthetic": true,
+          "note": "Synthetic RF receiver output; emission suggests a link, not identity or intent."
+        },
+        {
+          "id": "ident_case_003_object_160_eo_112",
+          "object_id": "object_160",
+          "sensor_type": "eo",
+          "observed_at_ms": 90556,
+          "available_at_ms": 95000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_118_eo_081",
+          "object_id": "object_118",
+          "sensor_type": "eo",
+          "observed_at_ms": 90122,
+          "available_at_ms": 96000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_148_eo_103",
+          "object_id": "object_148",
+          "sensor_type": "eo",
+          "observed_at_ms": 91085,
+          "available_at_ms": 96000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_106_eo_073",
+          "object_id": "object_106",
+          "sensor_type": "eo",
+          "observed_at_ms": 92652,
+          "available_at_ms": 98000,
+          "fields": {
+            "airframe_class": "light_airframe",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_214_eo_150",
+          "object_id": "object_214",
+          "sensor_type": "eo",
+          "observed_at_ms": 94702,
+          "available_at_ms": 99000,
+          "fields": {
+            "airframe_class": "fixed_wing",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        },
+        {
+          "id": "ident_case_003_object_208_eo_146",
+          "object_id": "object_208",
+          "sensor_type": "eo",
+          "observed_at_ms": 96504,
+          "available_at_ms": 101000,
+          "fields": {
+            "airframe_class": "multirotor",
+            "payload_visible": false
+          },
+          "synthetic": true,
+          "note": "Synthetic EO classifier output; payload is not visible at night."
+        }
+      ],
+      "cast_signature": null
+    }
+  }
+}

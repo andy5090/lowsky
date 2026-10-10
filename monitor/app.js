@@ -1,10 +1,12 @@
 import {enhanceSelects} from './custom_selects.mjs';
+import {CUSTOM_MODEL, modelOptions, initialDraft, draftProblem, saveCommand, removeKeyCommand, testCommand, keyStatus} from './agent_settings.mjs';
 import {desktopCommand, desktopShortcut, acceptDesktopState} from './desktop.mjs';
-import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
+import {localToGeo, mercator, unproject, pixelsPerMeter, mapToLocal} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
 import {indicationOverview, earlyIndicationSummary, decisionCopyKey, DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
-import {exerciseConfirmation, exerciseMissionRows} from './exercise.mjs';
+import {exerciseConfirmation, exerciseMissionRows, exerciseMapAssets, exerciseUnitCommand, unitBudget} from './exercise.mjs';
+import {TACTICS_SCOPE, UNIT_KINDS, tacticsTarget, allocationDraft, allocationDraftValid, allocationCommand, placementSummary, proposalPositions, formationRows} from './tactics.mjs';
 import {activeDecision, decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage, triggerValue, triggerSubject, localizedValue} from './i18n.mjs';
@@ -44,6 +46,8 @@ let rehearsals = null, rehearsalRecords = null, rehearsalBusy = false, rehearsal
 let dashboardChoice = null, dashboardBusy = false, dashboardNotice = '', dashboardContext = '';
 let exerciseExpired = false;
 let exerciseDraft = null, exerciseRun = null, exerciseAt = 0, exerciseBusy = false, exerciseError = false;
+let unitPlacement = null, unitBusy = false, unitNotice = '', unitRun = null, unitPendingAction = null;
+let tacticsChoice = null, tacticsBusy = false, tacticsNotice = '', tacticsContext = '';
 let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
 const selectedComments = {track:'',situation:''};
@@ -116,7 +120,7 @@ function connection(ok, message='') {
   updateTrackReviewAvailability();
   renderNotificationSettings();
   renderExercise();
-  if (!ok) { renderDashboard(); renderDecisions(); }
+  if (!ok) { renderDashboard(); renderDecisions(); renderTactics(); }
   if (!ok) { if (state) { delete state.simulation_positions; drawMap(); } $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
@@ -143,13 +147,14 @@ function render(data) {
   renderAssessment();
   renderDecisions();
   notifier?.observe(data);
-  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions]);
+  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions,exerciseMapAssets(data),data.exercise?.units,data.exercise?.unit_proposal,data.tactics]);
   if (signature !== dataSignature) {
     dataSignature = signature;
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
     renderDetails(); renderEarlyWarning(); drawMap();
   }
   renderDashboard();
+  renderTactics();
 }
 function renderPlayback(data) {
   syncSelects();
@@ -168,7 +173,7 @@ function renderPlayback(data) {
   $('speed-select').value = data.speed;
   drawRadar(data.at_ms);
 }
-function select(id) { selected = id; renderDetails(); drawMap(); renderDashboard(); }
+function select(id) { selected = id; renderDetails(); drawMap(); renderDashboard(); renderTactics(); }
 function renderDetails() {
   syncSelects();
   if(!state) return;
@@ -221,6 +226,7 @@ function renderAssessment() {
   if (decisions?.enabled) $('agent-auto').checked = false;
   let status = assessment?.running || assessmentBusy ? 'agent.running' : configurationError ? `agent.${configurationError}` : assessmentFailure || assessment?.error ? 'agent.failed' : assessment?.configured ? 'agent.ready' : 'agent.unconfigured';
   $('agent-status').textContent = `${t(status)}${assessment?.model ? ` (${assessment.model})` : ''}`;
+  $('agent-open-settings').hidden = !['missing_api_key','invalid_model','unsupported_provider'].includes(configurationError) && !assessmentFailure && !assessment?.error;
   const report = assessment?.latest?.run_id===state?.run_id ? assessment.latest : null;
   const stale = report && (report.at_ms!==state.at_ms || report.language!==language);
   const signature = JSON.stringify([language,report,Boolean(stale)]);
@@ -249,6 +255,106 @@ async function pollAssessment() {
   setTimeout(pollAssessment,1500);
 }
 $('agent-assess').onclick=runAssessment;
+
+// AI settings dialog: provider, model and a write-only API key kept on this computer by the server.
+let agentSettings=null, settingsDraft=null, settingsBusy=false, settingsNotice='', settingsNoticeValues={};
+function settingsLabel(row){
+  if(row.id===CUSTOM_MODEL)return t('settings.customOption');
+  return row.label?localized(row.label):row.id;
+}
+function readSettingsDraft(){
+  if(!settingsDraft)return;
+  settingsDraft.provider=document.querySelector('input[name="agent-provider"]:checked')?.value || settingsDraft.provider;
+  settingsDraft.model=$('agent-settings-model').value || settingsDraft.model;
+  settingsDraft.custom=$('agent-settings-custom').value;
+  settingsDraft.api_key=$('agent-settings-key').value;
+}
+function renderAgentSettings(){
+  syncSelects();
+  const dialog=$('agent-settings-dialog');
+  if(!dialog.open || !settingsDraft)return;
+  const draft=settingsDraft, llm=draft.provider!=='rules';
+  for(const input of document.querySelectorAll('input[name="agent-provider"]')){input.checked=input.value===draft.provider;input.disabled=settingsBusy;}
+  $('agent-settings-llm').hidden=!llm;
+  const options=llm?modelOptions(agentSettings,draft.provider):[];
+  const signature=JSON.stringify([language,draft.provider,options]);
+  if($('agent-settings-model').dataset.signature!==signature){
+    $('agent-settings-model').dataset.signature=signature;
+    $('agent-settings-model').innerHTML=options.map(row=>`<option value="${escape(row.id)}">${escape(settingsLabel(row))}</option>`).join('');
+  }
+  if(llm){
+    if(!options.some(row=>row.id===draft.model)){draft.custom=draft.model;draft.model=CUSTOM_MODEL;$('agent-settings-custom').value=draft.custom;}
+    $('agent-settings-model').value=draft.model;
+  }
+  $('agent-settings-custom-field').hidden=draft.model!==CUSTOM_MODEL;
+  $('agent-settings-key').placeholder=t(draft.provider==='anthropic'?'settings.keyPlaceholder.anthropic':'settings.keyPlaceholder.openai');
+  const status=keyStatus(agentSettings,draft.provider);
+  $('agent-settings-key-status').textContent=t(status.key,{hint:status.hint || ''});
+  $('agent-settings-load-error').hidden=agentSettings?.load_error!=='corrupt_settings_file';
+  for(const id of ['agent-settings-model','agent-settings-custom','agent-settings-key'])$(id).disabled=settingsBusy;
+  $('agent-settings-remove').hidden=!removeKeyCommand(agentSettings,draft);
+  $('agent-settings-remove').disabled=settingsBusy;
+  $('agent-settings-test').disabled=settingsBusy || !testCommand(agentSettings,draft);
+  $('agent-settings-save').disabled=settingsBusy || !saveCommand(agentSettings,draft);
+  const problem=draftProblem(agentSettings,draft);
+  $('agent-settings-status').textContent=settingsBusy?t('settings.working'):settingsNotice?t(settingsNotice,settingsNoticeValues):problem?t(problem):'';
+}
+async function openAgentSettings(){
+  const dialog=$('agent-settings-dialog');
+  settingsNotice='';settingsNoticeValues={};
+  try {agentSettings=await api('/api/agent-settings');}
+  catch {agentSettings=null;settingsNotice='settings.loadFailed';}
+  settingsDraft=initialDraft(agentSettings);
+  $('agent-settings-key').value='';$('agent-settings-custom').value='';
+  if(!dialog.open)dialog.showModal();
+  renderAgentSettings();
+  (document.querySelector('input[name="agent-provider"]:checked') || $('agent-settings-close')).focus();
+}
+function closeAgentSettings(){
+  // Clear the key field so a typed secret does not linger in the page.
+  $('agent-settings-key').value='';settingsDraft=null;
+  if($('agent-settings-dialog').open)$('agent-settings-dialog').close();
+}
+async function agentSettingsRequest(body,kind){
+  if(!body || settingsBusy)return;
+  settingsBusy=true;settingsNotice='';settingsNoticeValues={};renderAgentSettings();
+  try {
+    const result=await api('/api/agent-settings',body);
+    if(kind==='test'){
+      settingsNotice=`settings.test.${result.code}`;settingsNoticeValues={model:result.model || draftModel(settingsDraft),status:result.status ?? ''};
+    } else {
+      agentSettings=result;
+      const provider=settingsDraft.provider;
+      settingsDraft={...initialDraft(result),provider,
+        model:result.providers?.[provider]?.saved_model || result.providers?.[provider]?.default_model || settingsDraft.model};
+      $('agent-settings-key').value='';
+      settingsNotice=kind==='remove'?'settings.removed':'settings.saved';
+      assessment=await api('/api/assessment').catch(()=>assessment);renderAssessment();
+    }
+  } catch(error) {settingsNotice='settings.failed';settingsNoticeValues={detail:String(error.message || '').slice(0,200)};}
+  finally {settingsBusy=false;renderAgentSettings();}
+}
+function draftModel(draft){return draft?.model===CUSTOM_MODEL?draft.custom.trim():draft?.model;}
+$('agent-settings-open').onclick=openAgentSettings;
+$('agent-open-settings').onclick=openAgentSettings;
+$('agent-settings-close').onclick=closeAgentSettings;
+$('agent-settings-dialog').addEventListener('cancel',event=>{event.preventDefault();if(!settingsBusy)closeAgentSettings();});
+$('agent-settings-form').addEventListener('submit',event=>event.preventDefault());
+for(const input of document.querySelectorAll('input[name="agent-provider"]'))input.onchange=()=>{
+  readSettingsDraft();
+  const info=agentSettings?.providers?.[settingsDraft.provider];
+  settingsDraft.model=info?.saved_model || info?.default_model || '';settingsDraft.custom='';settingsDraft.clear_key=false;
+  $('agent-settings-key').value='';$('agent-settings-custom').value='';settingsDraft.api_key='';settingsNotice='';
+  renderAgentSettings();
+};
+$('agent-settings-model').onchange=()=>{readSettingsDraft();settingsNotice='';renderAgentSettings();if(settingsDraft.model===CUSTOM_MODEL)$('agent-settings-custom').focus();};
+for(const id of ['agent-settings-custom','agent-settings-key'])$(id).oninput=()=>{readSettingsDraft();settingsNotice='';renderAgentSettings();};
+$('agent-settings-save').onclick=()=>{readSettingsDraft();agentSettingsRequest(saveCommand(agentSettings,settingsDraft),'save');};
+$('agent-settings-test').onclick=()=>{readSettingsDraft();agentSettingsRequest(testCommand(agentSettings,settingsDraft),'test');};
+$('agent-settings-remove').onclick=()=>{readSettingsDraft();agentSettingsRequest(removeKeyCommand(agentSettings,settingsDraft),'remove');};
+// The desktop menu and links can open the dialog directly.
+window.addEventListener('lowsky:open-agent-settings',openAgentSettings);
+if(location.hash==='#agent-settings')queueMicrotask(openAgentSettings);
 $('agent-auto').onchange=()=>{if($('agent-auto').checked)runAssessment();};
 
 function decisionText(key) {
@@ -527,7 +633,7 @@ async function operatorCommand(action) {
 $('operator-start').onclick=()=>operatorCommand('start');
 $('operator-stop').onclick=()=>operatorCommand('stop');
 
-for (const [dialogId,attribute,fallback] of [['dashboard-dialog','data-dashboard-action','dashboard-object'],['decision-dialog','data-decision-option','decision-assess'],['exercise-dialog','data-exercise-branch','exercise-object']]) {
+for (const [dialogId,attribute,fallback] of [['tactics-dialog','data-tactics-allocate','tactics-object'],['dashboard-dialog','data-dashboard-action','dashboard-object'],['decision-dialog','data-decision-option','decision-assess'],['exercise-dialog','data-exercise-branch','exercise-object']]) {
   $(dialogId).addEventListener('close',()=>{
     const choice=$(dialogId).dataset.restoreChoice;
     const button=[...document.querySelectorAll(`[${attribute}]`)].find(item=>item.getAttribute(attribute)===choice && !item.disabled);
@@ -626,8 +732,249 @@ $('dashboard-form').onsubmit=event=>{
   });
 };
 
+const tacticsLabel = (group, value) => {
+  const key=`tactics.${group}.${value}`;
+  return t(key)!==key ? t(key) : String(value ?? '');
+};
+const effectorLabel = id => localized(state?.tactics?.effectors?.find(item=>item.id===id)?.label) || tacticsLabel('effector',id);
+const tacticsList = (items, empty) => items.length ? `<ul>${items.map(item=>`<li>${item}</li>`).join('')}</ul>` : `<p class="muted">${escape(empty)}</p>`;
+const evidenceText = ids => (ids || []).length ? `<small>${escape(t('tactics.evidence',{ids:`${ids.slice(0,6).join(', ')}${ids.length>6?', …':''}`}))}</small>` : '';
+function reportFields(fields = {}) {
+  const parts=[];
+  if(fields.airframe_class)parts.push(tacticsLabel('profile',fields.airframe_class));
+  if(typeof fields.payload_visible==='boolean')parts.push(t(fields.payload_visible?'tactics.field.payloadVisible':'tactics.field.payloadHidden'));
+  if(fields.signature)parts.push(tacticsLabel('field.signature',fields.signature));
+  if(fields.rf_emission===true)parts.push(t('tactics.field.rfEmission'));
+  if(fields.rf_emission===false)parts.push(t('tactics.field.rfNone'));
+  if(fields.band)parts.push(tacticsLabel('field.band',fields.band));
+  return parts.join(' · ');
+}
+function facilityLabel(id) {
+  if(id==='runway')return t('tactics.facility.runway');
+  return localized(config?.site?.facilities?.find(item=>item.id===id)?.label) || String(id ?? t('tactics.unknown'));
+}
+function tacticsCardHTML(target) {
+  const ident=target.identification, response=target.response, kin=ident.kinematics || {};
+  const value=(number,key)=>Number.isFinite(number)?t(key,{value:Math.round(number).toLocaleString(language)}):t('tactics.unknown');
+  const cues=(ident.cues || []).map(cue=>`${escape(tacticsLabel('cue',cue.id))} <small>${escape(Object.entries(cue.effect || {}).map(([score,amount])=>`${tacticsLabel('score',score)} ${amount>0?'+':''}${amount}`).join(' · '))}</small>${evidenceText(cue.evidence_ids)}`);
+  const uncertainty=(ident.uncertainty || []).map(id=>escape(tacticsLabel('uncertainty',id)));
+  const reports=(ident.reports || []).map(report=>`<strong>${escape(tacticsLabel('sensor',report.sensor_type))}</strong> · ${escape(reportFields(report.fields))}<small>${escape(t('tactics.reportTime',{observed:fmt(report.observed_at_ms),received:fmt(report.available_at_ms)}))} · ${escape(report.id)}</small>`);
+  const allocation=response.allocation;
+  const options=(response.options || []).map(option=>{
+    const draftable=Boolean(allocationDraft(state,target.object_id,option.effector_id,connected)) && !tacticsBusy;
+    const effector=state.tactics.effectors?.find(item=>item.id===option.effector_id);
+    const reasons=(option.reasons || []).map(reason=>tacticsLabel('reason',reason)).join('; ') || t('tactics.none');
+    return `<tr data-status="${escape(option.status)}"><td><strong>${escape(effectorLabel(option.effector_id))}</strong><small>${escape(t('tactics.col.reasons'))}: ${escape(reasons)}</small>${effector?.cost_note?`<small>${escape(localized(effector.cost_note))}</small>`:''}</td><td data-status="${escape(option.status)}">${escape(tacticsLabel('status',option.status))}</td><td>${Math.round((option.suitability || 0)*100)}%</td><td>${option.inventory_remaining===null || option.inventory_remaining===undefined?escape(t('tactics.unlimited')):escape(option.inventory_remaining)}</td><td>${option.status==='rejected' || allocation?'':`<button type="button" class="button button-secondary" data-tactics-allocate="${escape(option.effector_id)}" aria-pressed="${tacticsChoice?.effector_id===option.effector_id}" ${draftable?'':'disabled'}>${escape(t('tactics.allocate'))}</button>`}</td></tr>`;
+  }).join('');
+  return `<h3>${escape(target.object_id)} <span class="tactics-badge" data-value="${escape(ident.lean)}">${escape(tacticsLabel('lean',ident.lean))}</span><span class="tactics-badge" data-value="${escape(response.posture)}">${escape(tacticsLabel('posture',response.posture))}</span></h3>
+    <dl class="detail-grid"><dt>${escape(t('tactics.profileLabel'))}</dt><dd>${escape(tacticsLabel('profile',ident.profile))}</dd><dt>${escape(t('tactics.verificationLabel'))}</dt><dd>${escape(tacticsLabel('verification',ident.verification))}</dd><dt>${escape(t('tactics.group'))}</dt><dd data-kin="group">${escape(ident.group_size ?? t('tactics.unknown'))}</dd><dt>${escape(t('tactics.speed'))}</dt><dd data-kin="speed">${escape(value(kin.speed_kmh,'tactics.speedValue'))}</dd><dt>${escape(t('tactics.altitude'))}</dt><dd data-kin="altitude">${escape(value(kin.altitude_m,'tactics.metres'))}</dd><dt>${escape(t('tactics.sectorLabel'))}</dt><dd data-kin="sector">${escape(ident.sector || t('tactics.unknown'))}</dd><dt>${escape(t('tactics.nearest'))}</dt><dd data-kin="nearest">${escape(facilityLabel(kin.nearest_facility))} · ${escape(value(kin.facility_distance_m,'tactics.metres'))}</dd></dl>
+    <h4>${escape(t('tactics.cues'))}</h4>${tacticsList(cues,t('tactics.noCues'))}
+    <h4>${escape(t('tactics.uncertainty'))}</h4>${tacticsList(uncertainty,t('tactics.none'))}
+    <h4>${escape(t('tactics.reports'))}</h4>${tacticsList(reports,t('tactics.noReports'))}
+    <h4>${escape(t('tactics.constraints'))}</h4><p>${escape((response.constraints || []).map(id=>tacticsLabel('constraint',id)).join(' · ') || t('tactics.none'))}</p>
+    <h4>${escape(t('tactics.posture'))}</h4><p>${escape(tacticsLabel('posture',response.posture))} · ${escape(response.primary?t('tactics.primary',{effector:effectorLabel(response.primary)}):t('tactics.noPrimary'))} · ${escape(t('tactics.authority'))}</p>
+    ${allocation?`<p class="tactics-allocation">${escape(t('tactics.allocated',{effector:effectorLabel(allocation.effector_id),status:tacticsLabel('status',allocation.status_at_record),time:fmt(allocation.at_ms)}))}</p>`:''}
+    <h4>${escape(t('tactics.options'))}</h4><table class="tactics-options"><thead><tr><th>${escape(t('tactics.col.effector'))}</th><th>${escape(t('tactics.col.status'))}</th><th>${escape(t('tactics.col.suitability'))}</th><th>${escape(t('tactics.col.inventory'))}</th><th></th></tr></thead><tbody>${options}</tbody></table>`;
+}
+function renderTactics() {
+  syncSelects();
+  const tactics=state?.tactics?.scope===TACTICS_SCOPE?state.tactics:null;
+  const context=`${state?.run_id || ''}:${selected || ''}`;
+  if(tacticsContext!==context && !tacticsChoice)tacticsNotice='';
+  tacticsContext=context;
+  const target=tacticsTarget(state,selected);
+  if(tacticsChoice && (!allocationDraftValid(state,tacticsChoice,connected) || tacticsChoice.object_id!==selected)){tacticsChoice=null;tacticsNotice='tactics.expired';}
+  if(!tacticsChoice && $('tactics-dialog').open)$('tactics-dialog').close();
+  const targets=tactics?.targets || [];
+  $('tactics-count').textContent=targets.length;
+  $('tactics-summary').textContent=tactics?t('tactics.summary',{received:tactics.summary?.received ?? targets.length,reports:tactics.summary?.reports_received ?? 0}):t('tactics.unavailable');
+  const objectSelect=$('tactics-object');
+  const optionsSignature=JSON.stringify([language,targets.map(item=>[item.object_id,item.identification?.lean])]);
+  if(objectSelect.dataset.signature!==optionsSignature){
+    objectSelect.dataset.signature=optionsSignature;
+    objectSelect.innerHTML=targets.length?targets.map(item=>`<option value="${escape(item.object_id)}">${escape(item.object_id)} · ${escape(tacticsLabel('lean',item.identification?.lean))}</option>`).join(''):`<option value="">${escape(t('tactics.waiting'))}</option>`;
+  }
+  objectSelect.value=target?.object_id || '';
+  objectSelect.disabled=!targets.length || tacticsBusy;
+  const formation=tactics?.formation, rows=formationRows(state);
+  const formationSignature=JSON.stringify([language,formation?.posture,formation?.unit_count,rows]);
+  if($('tactics-teams').dataset.signature!==formationSignature){
+    $('tactics-teams').dataset.signature=formationSignature;
+    $('tactics-formation-posture').textContent=formation?t('tactics.formationPosture',{posture:tacticsLabel('formation',formation.posture),count:formation.unit_count ?? 0}):'';
+    const countLabel=key=>{for(const group of ['posture','lean']){const label=`tactics.${group}.${key}`;if(t(label)!==label)return t(label);}return key;};
+    $('tactics-teams').innerHTML=rows.map(row=>`<li><strong>${escape(unitSymbol(row.kind))} ${escape(t('tactics.team',{kind:unitKindLabel(row.kind),role:t(`units.role.${row.role}`),sector:row.sector==='site'?t('tactics.sector.site'):row.sector,count:row.unit_count}))}</strong><small>${escape(row.tasking_count?`${t('tactics.tasking',{count:row.tasking_count,objects:`${row.tasking.join(', ')}${row.tasking_count>row.tasking.length?', …':''}`})} · ${Object.entries(row.counts).map(([key,count])=>`${countLabel(key)} ${count}`).join(' · ')}`:t('tactics.taskingNone'))}</small></li>`).join('') || `<li class="muted">${escape(t('tactics.formationEmpty'))}</li>`;
+  }
+  // Kinematic numbers change every tick; only material changes (versions, allocation, choice) rebuild the card.
+  const cardSignature=JSON.stringify([language,connected,tacticsBusy,tacticsChoice?.effector_id,selected,Boolean(tactics),targets.length,
+    target?.identification?.version,target?.response?.version,target?.response?.allocation,tactics?.effectors]);
+  if($('tactics-card').dataset.signature!==cardSignature){
+    $('tactics-card').dataset.signature=cardSignature;
+    $('tactics-card').innerHTML=target?tacticsCardHTML(target):`<p class="empty-state">${escape(t(!tactics?'tactics.unavailable':targets.length?'tactics.noTarget':'tactics.waiting'))}</p>`;
+    $('tactics-card').querySelectorAll('[data-tactics-allocate]').forEach(button=>button.onclick=()=>{
+      tacticsChoice=allocationDraft(state,selected,button.dataset.tacticsAllocate,connected);tacticsNotice='';renderTactics();
+      if(tacticsChoice && !$('tactics-dialog').open){$('tactics-dialog').dataset.restoreChoice=tacticsChoice.effector_id;$('tactics-dialog').showModal();}
+    });
+  } else if(target){
+    const kin=target.identification.kinematics || {};
+    const value=(number,key)=>Number.isFinite(number)?t(key,{value:Math.round(number).toLocaleString(language)}):t('tactics.unknown');
+    const live={group:String(target.identification.group_size ?? t('tactics.unknown')),speed:value(kin.speed_kmh,'tactics.speedValue'),altitude:value(kin.altitude_m,'tactics.metres'),
+      sector:target.identification.sector || t('tactics.unknown'),nearest:`${facilityLabel(kin.nearest_facility)} · ${value(kin.facility_distance_m,'tactics.metres')}`};
+    for(const [key,text] of Object.entries(live)){const cell=$('tactics-card').querySelector(`[data-kin="${key}"]`);if(cell && cell.textContent!==text)cell.textContent=text;}
+  }
+  const allocations=tactics?.allocations || [];
+  $('tactics-history-title').textContent=t('tactics.history',{count:allocations.length});
+  const historySignature=JSON.stringify([language,allocations]);
+  if($('tactics-history').dataset.signature!==historySignature){
+    $('tactics-history').dataset.signature=historySignature;
+    $('tactics-history').innerHTML=allocations.slice(-20).reverse().map(record=>`<li>${fmt(record.at_ms)} · ${escape(record.object_id)} · ${escape(effectorLabel(record.effector_id))} · ${escape(tacticsLabel('status',record.status_at_record))}${record.reviewer?` · ${escape(record.reviewer)}`:''}${record.reason?`<p>${escape(record.reason)}</p>`:''}</li>`).join('') || `<li>${escape(t('tactics.none'))}</li>`;
+  }
+  $('tactics-status').textContent=t(tacticsBusy?'tactics.saving':!connected?'tactics.offline':tacticsNotice || 'tactics.ready');
+  $('tactics-form').hidden=!tacticsChoice;
+  if(tacticsChoice && target){
+    const option=target.response.options.find(row=>row.effector_id===tacticsChoice.effector_id);
+    $('tactics-modal-summary').textContent=t('tactics.modalSummary',{object:target.object_id,effector:effectorLabel(option.effector_id),status:tacticsLabel('status',option.status)});
+    $('tactics-modal-context').textContent=t('tactics.modalContext',{suitability:Math.round((option.suitability || 0)*100),time:fmt(state.at_ms),reasons:(option.reasons || []).map(reason=>tacticsLabel('reason',reason)).join('; ') || t('tactics.none')});
+  }
+  $('tactics-confirm').disabled=tacticsBusy || !allocationCommand(state,tacticsChoice,{connected,confirmed:true});
+  $('tactics-cancel').disabled=tacticsBusy;
+}
+$('tactics-dialog').addEventListener('cancel',()=>{tacticsChoice=null;tacticsNotice='';renderTactics();});
+$('tactics-object').onchange=event=>{if(event.target.value)select(event.target.value);};
+$('tactics-cancel').onclick=()=>{tacticsChoice=null;tacticsNotice='';renderTactics();};
+$('tactics-form').onsubmit=event=>{
+  event.preventDefault();
+  if(tacticsBusy)return;
+  const choice=tacticsChoice;
+  const extras={connected,confirmed:true,reviewer:$('tactics-reviewer').value,comment:$('tactics-comment').value};
+  if(!allocationCommand(state,choice,extras))return;
+  tacticsBusy=true;tacticsNotice='';renderTactics();
+  controlChain=controlChain.then(async()=>{
+    const body=allocationCommand(state,choice,{...extras,connected});
+    if(!body){tacticsBusy=false;tacticsChoice=null;tacticsNotice='tactics.expired';renderTactics();return;}
+    const version=++requestVersion;
+    try {
+      const data=await api('/api/control',body);
+      tacticsChoice=null;tacticsNotice='tactics.saved';$('tactics-comment').value='';
+      if(version===requestVersion)render(data);
+    } catch {tacticsChoice=null;tacticsNotice='tactics.failed';}
+    finally {tacticsBusy=false;renderTactics();}
+  });
+};
+
+const unitKindLabel = kind => {
+  const key=`units.kind.${kind}`;
+  return t(key)!==key ? t(key) : localized(state?.exercise?.unit_kinds?.find(item=>item.id===kind)?.label) || String(kind);
+};
+const unitSymbol = kind => ({radar:'◎',detection_phone:'☏',effector_team:'▲'})[kind] || '♟';
+function renderUnits() {
+  syncSelects();
+  const exercise=state?.exercise, proposal=exercise?.unit_proposal, units=exercise?.units || [];
+  if(unitRun!==state?.run_id){unitPlacement=null;unitNotice='';unitRun=state?.run_id;}
+  if(!connected || proposal?.status!=='manual' || (unitPlacement?.unit_id && !units.some(unit=>unit.id===unitPlacement.unit_id)))unitPlacement=null;
+  const available=connected && exercise?.scope==='scripted_training' && Boolean(proposal), manual=proposal?.status==='manual';
+  const summary=placementSummary(state);
+  const kinds=summary?.kinds || [];
+  const totalBudget=kinds.reduce((sum,kind)=>sum+(kind.budget || 0),0);
+  $('unit-count').textContent=t('units.count',{count:units.length,max:totalBudget || units.length});
+  $('unit-proposal-label').textContent=proposal?.status==='pending'?t('units.proposal',{count:proposalPositions(proposal).length}):t('units.current');
+  $('unit-threat-basis').textContent=['scenario_prior','received_picture'].includes(summary?.threat_basis)?t(`units.basis.${summary.threat_basis}`):'';
+  $('unit-proposal-basis').textContent=localized(proposal?.basis) || t('units.scope');
+  const coverageSignature=JSON.stringify([language,kinds,summary?.coverage]);
+  if($('unit-coverage').dataset.signature!==coverageSignature){
+    $('unit-coverage').dataset.signature=coverageSignature;
+    $('unit-coverage').innerHTML=kinds.map(kind=>{
+      const coverage=summary.coverage?.[kind.kind];
+      return `<li><strong>${escape(unitSymbol(kind.kind))} ${escape(unitKindLabel(kind.kind))}</strong><small>${escape(t('units.coverageRow',{proposed:kind.proposed,placed:kind.placed,budget:kind.budget ?? '–',coverage:Number.isFinite(coverage)?Math.round(coverage*100):'–'}))} · ${escape(kind.range_m>0?t('units.range',{range:(kind.range_m/1000).toLocaleString(language)}):t('units.noRange'))}</small></li>`;
+    }).join('');
+  }
+  if(unitPendingAction && (unitPendingAction.run_id!==state?.run_id || (unitPendingAction.unit_id && !units.some(unit=>unit.id===unitPendingAction.unit_id))))unitPendingAction=null;
+  $('unit-accept').hidden=proposal?.status!=='pending';$('unit-accept').disabled=!available || unitBusy;
+  $('unit-accept').textContent=t(unitPendingAction?.action==='replace'?'units.replaceConfirm':units.length?'units.replace':'units.accept');
+  $('unit-accept').setAttribute('aria-pressed',String(unitPendingAction?.action==='replace'));
+  $('unit-reoptimize').disabled=!available || unitBusy || manual;
+  $('unit-reoptimize').title=manual?t('units.reoptimizeManual'):'';
+  $('unit-manual').hidden=manual;$('unit-manual').disabled=!available || unitBusy;
+  $('unit-manual').textContent=t(proposal?.status==='accepted'?'units.changeManual':'units.manual');
+  const kindSelect=$('unit-kind');
+  const kindSignature=JSON.stringify([language,kinds.map(kind=>[kind.kind,kind.remaining])]);
+  if(kindSelect.dataset.signature!==kindSignature){
+    const previous=kindSelect.value;
+    kindSelect.dataset.signature=kindSignature;
+    kindSelect.innerHTML=(kinds.length?kinds:UNIT_KINDS.map(kind=>({kind,remaining:null}))).map(kind=>`<option value="${escape(kind.kind)}">${escape(kind.remaining===null?unitKindLabel(kind.kind):t('units.kindOption',{kind:unitKindLabel(kind.kind),remaining:kind.remaining}))}</option>`).join('');
+    if([...kindSelect.options].some(option=>option.value===previous))kindSelect.value=previous;
+  }
+  const chosenKind=unitPlacement?.kind || kindSelect.value || 'infantry';
+  const budget=unitBudget(state,chosenKind);
+  $('unit-place-controls').hidden=!manual;
+  kindSelect.disabled=!available || unitBusy || Boolean(unitPlacement?.unit_id);
+  $('unit-place').disabled=!available || unitBusy || !(budget?.remaining>0);
+  $('unit-cancel').hidden=!unitPlacement;$('unit-cancel').disabled=unitBusy;
+  const placingKind=unitPlacement?.unit_id?units.find(unit=>unit.id===unitPlacement.unit_id)?.kind:unitPlacement?.kind;
+  const message=unitBusy?t('units.saving'):unitNotice?t(unitNotice):!connected?t('exercise.disconnected'):unitPlacement?t('units.click',{kind:unitKindLabel(placingKind || 'infantry')}):manual?(budget?.remaining>0?t('units.ready'):t('units.limit',{kind:unitKindLabel(chosenKind),max:budget?.budget ?? 0})):proposal?.status==='pending'?t('units.pending'):t('units.applied');
+  $('unit-status').textContent=message;
+  $('unit-map-status').hidden=!unitPlacement;$('unit-map-status').textContent=message;
+  map.classList.toggle('is-placing-unit',Boolean(unitPlacement));
+  const signature=JSON.stringify([language,units,kinds,manual,available,unitBusy,unitPlacement?.unit_id,unitPendingAction]);
+  if($('unit-list').dataset.signature!==signature){
+    $('unit-list').dataset.signature=signature;
+    const disabled=manual && available && !unitBusy?'':'disabled';
+    const groups=(kinds.length?kinds.map(kind=>kind.kind):UNIT_KINDS).map(kind=>({kind,rows:units.filter(unit=>unit.kind===kind),budget:kinds.find(item=>item.kind===kind)?.budget}))
+      .filter(group=>group.rows.length);
+    $('unit-list').innerHTML=groups.map(group=>`<section><h3><span>${escape(unitSymbol(group.kind))} ${escape(unitKindLabel(group.kind))}</span><span>${escape(t('units.groupCount',{placed:group.rows.length,budget:group.budget ?? '–'}))}</span></h3><ul>${group.rows.map(unit=>`<li><span><strong>${escape(localized(unit.label) || unit.id)}</strong><small>${unit.role?`${escape(t(`units.role.${unit.role}`))} · `:''}${escape(t('units.position',{x:Math.round(unit.position[0]),z:Math.round(unit.position[2])}))}</small></span><button type="button" class="button button-secondary" data-unit-focus="${escape(unit.id)}">${escape(t('exercise.focus'))}</button><button type="button" class="button button-secondary" data-unit-move="${escape(unit.id)}" ${disabled}>${escape(t('units.move'))}</button><button type="button" class="button button-secondary" data-unit-remove="${escape(unit.id)}" aria-pressed="${unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id}" ${disabled}>${escape(t(unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id?'units.removeConfirm':'units.remove'))}</button></li>`).join('')}</ul></section>`).join('') || `<p class="muted">${escape(t('units.listEmpty'))}</p>`;
+    $('unit-list').querySelectorAll('[data-unit-focus]').forEach(button=>button.onclick=()=>{
+      const unit=state.exercise.units.find(item=>item.id===button.dataset.unitFocus);if(!unit)return;
+      plan.x=unit.position[0];plan.z=unit.position[2];plan.zoom=4;revealMap();setMode('site');
+    });
+    $('unit-list').querySelectorAll('[data-unit-move]').forEach(button=>button.onclick=()=>startUnitPlacement(button.dataset.unitMove));
+    $('unit-list').querySelectorAll('[data-unit-remove]').forEach(button=>button.onclick=()=>{
+      // Removal is a two-step choice: the first click arms the button, the second sends the command.
+      const unitId=button.dataset.unitRemove;
+      if(unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unitId){unitPendingAction=null;sendUnitCommand({action:'exercise_remove_unit',run_id:state.run_id,unit_id:unitId});return;}
+      unitPendingAction={action:'remove',unit_id:unitId,run_id:state.run_id};unitNotice='units.removeArmed';renderUnits();
+    });
+  }
+}
+function startUnitPlacement(unitId) {
+  if(!connected || unitBusy || state?.exercise?.unit_proposal?.status!=='manual')return;
+  unitPlacement={run_id:state.run_id,...(unitId?{unit_id:unitId}:{kind:$('unit-kind').value || 'infantry'})};unitNotice='';renderUnits();revealMap();map.focus({preventScroll:true});
+}
+function cancelUnitPlacement() {unitPlacement=null;unitNotice='';renderUnits();}
+function sendUnitCommand(draft) {
+  if(!connected || unitBusy)return;
+  if(!exerciseUnitCommand(state,draft,true)){unitNotice='units.invalid';renderUnits();return;}
+  unitBusy=true;unitNotice='';renderUnits();
+  controlChain=controlChain.then(async()=>{
+    const body=connected?exerciseUnitCommand(state,draft,true):null;
+    if(!body){unitBusy=false;unitPlacement=null;unitNotice='units.invalid';renderUnits();return;}
+    const version=++requestVersion;
+    try {
+      const data=await api('/api/control',body);
+      if(version===requestVersion)render(data);
+      if(state?.run_id===draft.run_id){unitPlacement=null;unitNotice=draft.action==='exercise_reoptimize_units'?'units.reoptimized':'units.saved';}
+    } catch {if(state?.run_id===draft.run_id)unitNotice='units.failed';}
+    finally {unitBusy=false;renderUnits();drawMap();}
+  });
+}
+$('unit-place').onclick=()=>startUnitPlacement();
+$('unit-cancel').onclick=cancelUnitPlacement;
+$('unit-kind').onchange=()=>{if(unitPlacement && !unitPlacement.unit_id)unitPlacement.kind=$('unit-kind').value;unitNotice='';renderUnits();};
+$('unit-manual').onclick=()=>{unitPendingAction=null;sendUnitCommand({action:'exercise_manual_units',run_id:state.run_id,proposal_id:state.exercise.unit_proposal.id});};
+$('unit-accept').onclick=()=>{
+  // Applying over already placed units replaces them; ask for a second click in that case.
+  const placed=(state?.exercise?.units || []).length>0;
+  if(placed && unitPendingAction?.action!=='replace'){unitPendingAction={action:'replace',run_id:state.run_id};unitNotice='units.replaceArmed';renderUnits();return;}
+  unitPendingAction=null;sendUnitCommand({action:'exercise_accept_units',run_id:state.run_id,proposal_id:state.exercise.unit_proposal.id});
+};
+$('unit-reoptimize').onclick=()=>sendUnitCommand({action:'exercise_reoptimize_units',run_id:state.run_id});
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape' || unitBusy || $('tactics-dialog').open)return;
+  if(unitPlacement){event.preventDefault();cancelUnitPlacement();}
+  else if(unitPendingAction){unitPendingAction=null;unitNotice='';renderUnits();}
+});
+
 function renderExercise() {
   syncSelects();
+  renderUnits();
   const exercise = state?.exercise;
   const available = exercise?.scope === 'scripted_training';
   if (exerciseRun !== state?.run_id || (state?.at_ms || 0) < exerciseAt) {
@@ -640,9 +987,10 @@ function renderExercise() {
   if(!exerciseDraft && $('exercise-dialog').open) $('exercise-dialog').close();
   const disabled = !connected || !available || exerciseBusy || Boolean(selectedBranch);
   const objects = exercise?.eligible_objects || [], assets = exercise?.assets || [], branches = exercise?.branches || [];
+  const displayedObjects = selectedBranch ? [...new Set([selectedBranch.object_id,...objects])] : objects;
   const missions=exerciseMissionRows(state);
   const selectedMission=missions.find(mission=>mission.object_id===$('exercise-object').value);
-  for (const [id, rows, label] of [['exercise-object',objects.map(id=>({id,label:id})),'exercise.chooseObject'],['exercise-asset',assets.map(asset=>({id:asset.id,label:localized(asset.label)})),'exercise.chooseAsset']]) {
+  for (const [id, rows, label] of [['exercise-object',displayedObjects.map(id=>({id,label:id})),'exercise.chooseObject'],['exercise-asset',assets.map(asset=>({id:asset.id,label:localized(asset.label)})),'exercise.chooseAsset']]) {
     const select = $(id), signature = JSON.stringify([language,rows]);
     if (select.dataset.signature !== signature) {
       const previous = select.value;
@@ -651,13 +999,20 @@ function renderExercise() {
       select.dataset.signature = signature;
     }
     if(id==='exercise-asset' && selectedMission)select.value=selectedMission.asset_id;
+    if(selectedBranch)select.value=id==='exercise-object'?selectedBranch.object_id:selectedBranch.asset_id;
     select.disabled = disabled || !objects.length || (id==='exercise-asset' && Boolean(selectedMission));
   }
   $('exercise-fixed-asset').hidden=!selectedMission;
-  const missionSignature=JSON.stringify([language,missions,assets.map(asset=>[asset.id,asset.label])]);
+  const missionSignature=JSON.stringify([language,missions,disabled,objects,assets.map(asset=>[asset.id,asset.label])]);
   if($('exercise-missions').dataset.signature!==missionSignature) {
     $('exercise-missions').dataset.signature=missionSignature;
-    $('exercise-missions').innerHTML=missions.map(mission=>`<article><strong>${escape(mission.object_id)} · ${escape(t(`exercise.kind.${mission.kind}`))}</strong><p>${escape(t(`exercise.phase.${mission.phase}`))} · ${escape(localized(assets.find(asset=>asset.id===mission.asset_id)?.label) || mission.asset_id)}</p><span>${escape(mission.outcome?t(`exercise.outcome.${mission.outcome}`):t('exercise.outcome.pending'))}${mission.result_at_ms===null?'':` · ${fmt(mission.result_at_ms)}`}</span></article>`).join('') || `<p class="muted">${escape(t('exercise.missionEmpty'))}</p>`;
+    $('exercise-missions').innerHTML=missions.map(mission=>`<article><strong>${escape(mission.object_id)} · ${escape(t(`exercise.kind.${mission.kind}`))}</strong><p>${escape(t(`exercise.phase.${mission.phase}`))} · ${escape(localized(assets.find(asset=>asset.id===mission.asset_id)?.label) || mission.asset_id)}</p><span>${escape(mission.outcome?t(`exercise.outcome.${mission.outcome}`):t('exercise.outcome.pending'))}${mission.result_at_ms===null?'':` · ${fmt(mission.result_at_ms)}`}</span><button type="button" class="button button-secondary" data-exercise-object="${escape(mission.object_id)}" ${disabled || !objects.includes(mission.object_id)?'disabled':''}>${escape(t('exercise.open'))}</button></article>`).join('') || `<p class="muted">${escape(t('exercise.missionEmpty'))}</p>`;
+    $('exercise-missions').querySelectorAll('[data-exercise-object]').forEach(button=>button.onclick=()=>{
+      $('exercise-object').value=button.dataset.exerciseObject;
+      exerciseDraft=null;exerciseError=false;exerciseExpired=false;renderExercise();
+      $('exercise-options').scrollIntoView({block:'nearest'});
+      $('exercise-options').querySelector('button:not(:disabled)')?.focus();
+    });
   }
   const assetSignature = JSON.stringify([language,assets]);
   if ($('exercise-assets').dataset.signature !== assetSignature) {
@@ -669,10 +1024,11 @@ function renderExercise() {
     });
   }
   const canChoose = !disabled && objects.includes($('exercise-object').value) && assets.some(asset=>asset.id===$('exercise-asset').value);
-  const optionsSignature = JSON.stringify([language,branches,canChoose,exerciseDraft?.branch_id,selectedMission?.id]);
+  const chosenBranch=selectedBranch?.branch_id || exerciseDraft?.branch_id;
+  const optionsSignature = JSON.stringify([language,branches,canChoose,chosenBranch,selectedMission?.id]);
   if ($('exercise-options').dataset.signature !== optionsSignature) {
     $('exercise-options').dataset.signature = optionsSignature;
-    $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t((selectedMission?branch.mission_result_timing:branch.result_timing)==='finale'?'exercise.finaleDelay':'exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${exerciseDraft?.branch_id===branch.id}" ${canChoose?'':'disabled'}>${escape(t(exerciseDraft?.branch_id===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
+    $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t((selectedMission?branch.mission_result_timing:branch.result_timing)==='finale'?'exercise.finaleDelay':'exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${chosenBranch===branch.id}" ${canChoose?'':'disabled'}>${escape(t(chosenBranch===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
     $('exercise-options').querySelectorAll('[data-exercise-branch]').forEach(button=>button.onclick=()=>{
       exerciseDraft = {run_id:state.run_id,object_id:$('exercise-object').value,asset_id:$('exercise-asset').value,branch_id:button.dataset.exerciseBranch};
       exerciseError=false;exerciseExpired=false;renderExercise();
@@ -982,7 +1338,9 @@ function drawSite() {
   for(const f of site.facilities){
     if(f.asset_id==='phone_sensor_pole')continue; // Installation symbols below stay legible at overview scale.
     const size=({hangar:[10,12],arched_hangar:[10.6,12.7],office_building:[6,8],service_building:[6,8],utility_building:[6,8],control_tower:[5.8,5.8],observation_station:[3,3]})[f.asset_id] || [8,8];
-    svg+=rect(f.position[0],f.position[2],size[0]*f.scale[0],size[1]*f.scale[2],'#617b74','#a3b6a4');
+    const asset=connected?exerciseMapAssets(state).find(asset=>asset.id===f.id):null;
+    const fill=asset?.status==='unavailable'?'#5b302c':asset?.status==='restricted'?'#85652c':'#617b74';
+    svg+=rect(f.position[0],f.position[2],size[0]*f.scale[0],size[1]*f.scale[2],fill,asset?.status==='unavailable'?'#ff8866':'#a3b6a4');
   }
   for(const zone of site.display_zones || []){
     if(s<0.3 || zone.id==='phone_pilot')continue;
@@ -997,6 +1355,15 @@ function drawSite() {
       svg+=`<g class="fixed-phone-point"><title>${escape(title)}</title><path d="M ${x} ${y+8} V ${y-4}" stroke="#d1c49b" stroke-width="2"/><rect x="${x-3}" y="${y-9}" width="6" height="9" fill="#172b2e" stroke="#d1c49b" stroke-width="1.5"/></g>`;
     }
   }
+  // Nominal rings for placed sensors and teams: display assumptions, drawn on the site plan only.
+  const ringKinds=new Map((state?.exercise?.unit_kinds || []).filter(kind=>Number.isFinite(kind.display_range_m) && kind.display_range_m>0).map(kind=>[kind.id,kind.display_range_m]));
+  const ringUnits=connected && mode==='site'?(state?.exercise?.units || []).filter(unit=>ringKinds.has(unit.kind) && Array.isArray(unit.position) && unit.position.every(Number.isFinite)):[];
+  for(const unit of ringUnits){
+    const [cx,cy]=point(unit.position[0],unit.position[2]);
+    const color=({radar:'#8bc9cf',detection_phone:'#dfb86a',effector_team:'#ef9281'})[unit.kind] || '#9fb4bd';
+    svg+=`<circle class="unit-range" cx="${cx}" cy="${cy}" r="${ringKinds.get(unit.kind)*s}" fill="${color}0d" stroke="${color}" stroke-opacity=".55" stroke-width="1" stroke-dasharray="5 6"/>`;
+  }
+  $('unit-range-legend').hidden=!ringUnits.length;
   for(const t of (state?.tracks || []).filter(track => connected && track.last_known === false)){
     if (state.tracks.length > 48 && t.object_id !== selected) continue;
     const coords=t.history.map(r=>point(r.position[0],r.position[2]).join(',')).join(' ');
@@ -1006,6 +1373,36 @@ function drawSite() {
   overlay.innerHTML=svg;
   markers.replaceChildren();
   markers.classList.toggle('dense-tracks',(state?.tracks.length || 0)>48);
+  if(connected){
+    const proposal=state?.exercise?.unit_proposal;
+    const units=state?.exercise?.units || [];
+    const proposed=proposal?.status==='pending'?proposalPositions(proposal).map((row,index)=>({...row,id:`proposal-${index}`,label:localized(row.label) || t('units.preview',{number:index+1}),preview:true})):[];
+    for(const unit of [...proposed,...units]){
+      if(!Array.isArray(unit.position) || !unit.position.every(Number.isFinite))continue;
+      const [x,y]=point(unit.position[0],unit.position[2]);if(x<0||x>w||y<0||y>h)continue;
+      const marker=document.createElement(unit.preview?'div':'button');
+      marker.className=`infantry-marker unit-marker${unit.preview?' is-preview':''}`;marker.dataset.unitId=unit.id;marker.dataset.kind=unit.kind || 'infantry';
+      marker.style.left=`${x}px`;marker.style.top=`${y}px`;
+      const label=unit.preview?unit.label:localized(unit.label) || unit.id;
+      const kind=unitKindLabel(unit.kind || 'infantry');
+      marker.innerHTML=`<i aria-hidden="true">${unitSymbol(unit.kind)}</i><span>${escape(label)}</span>`;
+      marker.title=`${kind} · ${unit.preview?`${t('units.proposed')} · ${localized(unit.basis) || t('units.pending')}`:t('units.positioned')}${ringKinds.has(unit.kind)?` · ${t('units.range',{range:(ringKinds.get(unit.kind)/1000).toLocaleString(language)})} · ${t('units.rangeLegend')}`:''}`;
+      if(!unit.preview){marker.type='button';marker.setAttribute('aria-label',`${label} · ${kind} · ${t('units.positioned')}`);marker.onclick=()=>{showPanel('decision');$('unit-panel').scrollIntoView({block:'nearest'});};}
+      markers.append(marker);
+    }
+  }
+  if(connected) for(const asset of exerciseMapAssets(state)){
+    const [x,y]=point(asset.position[0],asset.position[2]);
+    if(x<0||x>w||y<0||y>h)continue;
+    const marker=document.createElement('button');
+    marker.className='facility-result-marker';marker.dataset.status=asset.status;
+    marker.style.left=`${x}px`;marker.style.top=`${y}px`;
+    const status=asset.selection?.status==='pending'?t('exercise.mapPending',{time:fmt(asset.selection.effective_at_ms)}):t(`exercise.status.${asset.status}`);
+    marker.textContent=`${localized(asset.label)} · ${status}`;
+    marker.title=asset.branch?t('exercise.mapSelected',{branch:localized(asset.branch.label)}):status;
+    marker.onclick=()=>{showPanel('decision');$('exercise-panel').open=true;$('exercise-panel').scrollIntoView({block:'start'});};
+    markers.append(marker);
+  }
   for(const z of visibleSignalZones()){
     const [x,y]=point(z.center[0],z.center[2]);
     if(x<0||x>w||y<0||y>h)continue;
@@ -1121,13 +1518,27 @@ $('site-plan-button').onclick=()=>setMode('site');$('region-map-button').onclick
 $('zoom-in').onclick=()=>zoom(1);$('zoom-out').onclick=()=>zoom(-1);
 $('recenter').onclick=()=>{plan.x=plan.z=0;plan.zoom=1;Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});drawMap();};
 let drag=null;
-map.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('button,a'))return;drag={x:e.clientX,y:e.clientY};map.setPointerCapture(e.pointerId);});
-map.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag={x:e.clientX,y:e.clientY};
+map.addEventListener('pointerdown',e=>{if(drag){drag.cancelled=true;return;}if(e.button!==0||e.target.closest('button,a,input,select,textarea'))return;drag={x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,id:e.pointerId,moved:false,placement:unitPlacement};map.setPointerCapture(e.pointerId);});
+map.addEventListener('pointermove',e=>{if(!drag || e.pointerId!==drag.id)return;
+  drag.moved ||= Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>6;
+  if(!drag.moved)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
   if(mode==='site'){plan.x-=dx/planScale();plan.z-=dy/planScale();}
   else{const [x,y]=mercator(region.lat,region.lon,region.zoom);[region.lat,region.lon]=unproject(x-dx,y-dy,region.zoom);region.lat=Math.max(-85,Math.min(85,region.lat));region.lon=((region.lon+180)%360+360)%360-180;}
   drawMap();});
-map.addEventListener('pointerup',()=>drag=null);map.addEventListener('pointercancel',()=>drag=null);
-map.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1:-1);},{passive:false});
+map.addEventListener('pointerup',e=>{
+  if(!drag || e.pointerId!==drag.id)return;
+  const gesture=drag;drag=null;
+  if(!unitPlacement || unitPlacement!==gesture.placement || gesture.moved || gesture.cancelled || unitBusy
+      || Math.hypot(e.clientX-gesture.startX,e.clientY-gesture.startY)>6)return;
+  const bounds=map.getBoundingClientRect(),x=e.clientX-bounds.left,y=e.clientY-bounds.top;
+  if(x<0||x>map.clientWidth||y<0||y>map.clientHeight)return;
+  const position=mapToLocal(x,y,{mode,width:map.clientWidth,height:map.clientHeight,plan,scale:planScale(),region,origin:config.regional_map.site_origin});
+  sendUnitCommand({action:'exercise_place_unit',...unitPlacement,position});
+});
+map.addEventListener('pointercancel',()=>drag=null);
+map.addEventListener('lostpointercapture',()=>drag=null);
+map.addEventListener('wheel',e=>{e.preventDefault();if(drag)drag.cancelled=true;zoom(e.deltaY<0?1:-1);},{passive:false});
 map.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='=')zoom(1);else if(e.key==='-')zoom(-1);});
 new ResizeObserver(drawMap).observe(map);
 function runTestRequest(makeBody) {
@@ -1279,6 +1690,7 @@ function applyLanguage(next, persist = false) {
   if (persist) { try { saveLanguage(localStorage, language); } catch { /* Storage may be unavailable. */ } }
   document.documentElement.lang = language;
   document.title = t('title');
+  if (typeof renderAgentSettings === 'function') queueMicrotask(renderAgentSettings);
   $('language-select').value = language;
   for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
   for (const attribute of ['aria-label','title','placeholder']) {
@@ -1290,7 +1702,7 @@ function applyLanguage(next, persist = false) {
   renderCases();
   renderBriefing();
   renderRehearsalRuns($('rehearsal-run').value);renderRehearsals();
-  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); renderDashboard(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); renderDashboard(); renderTactics(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');

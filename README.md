@@ -1,6 +1,8 @@
-# LOW SKY — Fictional Airfield Simulation Test Lab
+# LOW SKY — Scenario Training Workspace
 
 [한국어](README.ko.md)
+
+Updated demos (2026-10-11): [Korean 3-minute edition with captions](dist/demo-videos/ko/LOW_SKY_Demo_KO_Annotated.mp4) covering placement optimization, target identification, response recommendation and formation alongside the scene choices · [English 1:56 edition with captions](dist/demo-videos/en/LOW_SKY_Demo_EN_Annotated.mp4) (earlier content, unchanged). The local `dist/demo-videos/` folder also contains clean edits, SRT subtitles, chapter metadata and per-edition production notes. All recordings are silent 1080p/30fps edits of the real local UI and Godot scene; video files are local artifacts excluded from Git, with capture provenance and verification recorded alongside them.
 
 <img src="monitor/logo-metal.png" alt="LOW SKY metallic aviation emblem" width="144" height="144">
 
@@ -76,7 +78,7 @@ The standard-library generator in [simulation_test.py](tools/simulation_test.py)
 | Community / fixed-phone reports | 3% probability of omitting each report; 0–4 seconds additional delay |
 | Virtual fleet health | Receipt delay of 0.5–2.5 seconds; existing load-case interruption boundaries vary by up to 5 seconds |
 
-These bounds are **demo assumptions**, not measured detection performance. Object counts, 3D paths, measurement timestamps and measured positions remain fixed. The three template themes remain, and only `case_003` is a load test. No physical flight, acoustic propagation or radar detection model is introduced. Template descriptions contain nominal milestones, not forecasts of the generated run; timestamp columns are hidden during seeded tests. Static context notices remain separate reference inputs.
+These bounds are **demo assumptions**, not measured detection performance. Object counts, 3D paths, measurement timestamps and measured positions remain fixed. A separate `visual-cast-v1` stream selects two or three existing airframe appearances and repeats each appearance in groups of six; it varies with the seed without assigning strategy, roles or performance. Its signature and object mapping are exposed only in the explicit author view as `simulation_visuals`, excluded from agent evidence. Reset and seek retain this cast; returning to a fixture restores the catalog appearances. The three template themes remain, and only `case_003` is a load test. No physical flight, acoustic propagation or radar detection model is introduced. Template descriptions contain nominal milestones, not forecasts of the generated run; timestamp columns are hidden during seeded tests. Static context notices remain separate reference inputs.
 
 `/api/state` and `/api/clock` expose `test_run` with the seed, generator version and input SHA-256 digest, but no future generated schedule. Godot uses the same received detections and displays the seed. Agent evidence exports and confirmed decision snapshots retain this provenance; track reviews also store it. Same template + seed + generator version + unchanged fixture files reproduces received inputs at the same simulation time, including after server restart. It does **not** guarantee identical LLM prose, wall-clock checkpoint sampling or human choices. New runs invalidate old decisions. Active runs are in memory; retain the seed/digest or exported journal before restarting the server.
 
@@ -100,17 +102,27 @@ The user’s agent-assessment requirement and the stakeholder mentor feedback ta
 
 The actual Deep Agents adapter consults four tools: observations, source/fleet health, early signals and pending reviews. Input contains complete counts plus at most 12 track examples; examples are explicitly sampled. It excludes hidden positions, routes, future receipts, expired context notices, reviewer aliases and free-text reasons. Each report item must cite a supplied observation or derived-summary ID. Citation validation is not a guarantee that model prose is factually correct. No result performs an operational action or acknowledges an alert.
 
-The selected provider is **OpenAI**, with `openai:gpt-6.1-sol` as the default for situation-assessment quality. Model choice remains configurable; smaller models can be compared separately. The model supports function calling and structured output ([official model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)). To enable the adapter:
+Two providers are supported: **OpenAI** (default model `openai:gpt-6.1-sol`) and **Anthropic Claude** (recommended model `claude-opus-5`; Claude Opus 5.5, Sonnet 5, Fable 5.1 and Haiku 4.5 are also listed, and any other model ID can be typed). Both run through the same Deep Agents graph, evidence tools, structured report schema and citation validation.
+
+### Choosing a model and entering your own API key
+
+Select **AI settings** in the header (desktop: **LOW SKY → AI model & API key…**). Choose OpenAI, Anthropic Claude or the offline rules-only overview, pick a model, paste your API key, select **Test connection**, then **Save**. New assessments use the saved setting immediately; no restart is needed. Each user brings their own key, and usage is billed to that user's provider account.
+
+- **Storage:** the key is saved only on that computer, in `agent-settings.json` with owner-only permissions. The desktop app keeps it in the per-user application data folder; a source checkout uses `.local/agent-settings.json` (`--agent-settings-path` overrides it). Keys for OpenAI and Anthropic are kept separately, so switching providers does not lose either key.
+- **Exposure:** the settings API is write-only for keys. Responses show only whether a key exists, where it came from and its last four characters. The key is passed directly to the model client for each request and is never placed in the process environment, logs, assessment exports or the Codex operator subprocess. The local service accepts settings changes only from its own loopback page.
+- **Connection test:** **Test connection** asks the provider to look up the selected model with the entered key, through the official OpenAI and Anthropic SDKs. It generates no tokens and reports invalid keys, missing model access, rate limits and network failures separately.
+- **Fallback:** without a saved setting, the earlier `.env` and environment variables still work: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, optional `OPENAI_BASE_URL` / `ANTHROPIC_BASE_URL`, and `LOW_SKY_AGENT_MODEL` (`openai:<model>`, `anthropic:<model>`, or empty for rules only). A key saved in the dialog takes priority over the environment.
 
 ```sh
 python3 -m venv .local/agent-venv
 .local/agent-venv/bin/pip install -r requirements-agent.txt
-export LOW_SKY_AGENT_MODEL=openai:gpt-6.1-sol
-# Set OPENAI_API_KEY in the project .env or this server shell.
 .local/agent-venv/bin/python tools/monitor_server.py
+# Open http://127.0.0.1:8765 → AI settings, or set keys in .env as before.
 ```
 
-See [.env.example](.env.example) and the [OpenAI environment-variable setup](https://developers.openai.com/api/docs/quickstart). Keep the key server-side; do not paste it into chat or browser storage. The server reads the project `.env` at startup for `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `LOW_SKY_AGENT_MODEL`; existing shell variables take precedence. Only single-line `KEY=value` values, optional `export`, quotes and comments are supported; no variable or command expansion occurs. Restart after changes. `.env` is ignored by Git; only the key-free `.env.example` is tracked. Missing `OPENAI_API_KEY` disables assessment and shows a setup message; presence is only a configuration check, not proof of valid credentials or model access. For the offline rules baseline, explicitly set `LOW_SKY_AGENT_MODEL=""`. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. Requests have a 60-second provider timeout, zero retries and a 180-second overall graph deadline. SDK tool calling and structured output are tested with local transport fixtures. A credentialed **GPT-6.1 Sol** assessment of the synthetic 240-track case was also verified in the browser on 2026-10-10, including all four evidence tools and valid evidence references. This is an integration smoke test, not a comparative model-quality benchmark. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
+**Claude specifics.** Claude models that support it run with adaptive thinking. LangChain normally forces a structured-output tool call, which Claude rejects while thinking is on (Opus 5.5 and Fable 5.1 reject forced tool calls entirely). The adapter therefore declares adaptive thinking explicitly so `langchain-anthropic` relaxes the choice to automatic, and the system prompt requires the final report tool call. A run that ends without that call fails validation instead of producing a result. Claude requests allow up to 16,000 output tokens, a 120-second per-request timeout, zero retries and a 300-second overall deadline; OpenAI keeps 60 and 180 seconds.
+
+Keep keys out of chat and browser storage. `.env` and `.local/` are ignored by Git; only the key-free `.env.example` is tracked. The `.env` loader supports single-line `KEY=value`, optional `export`, quotes and comments, with no variable or command expansion, and needs a restart. Key presence is only a configuration check; use **Test connection** to confirm access. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. SDK tool calling and structured output are tested offline with local fixtures for both providers, including a full Claude tool loop through the real `langchain-anthropic` client against a loopback Messages endpoint. A credentialed **GPT-6.1 Sol** assessment of the synthetic 240-track case was verified in the browser on 2026-10-10. No credentialed Claude run has been recorded in this repository. These are integration checks, not model-quality comparisons. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
 
 ## Event-driven decision checkpoints
 
@@ -142,11 +154,11 @@ The credentialed Sol integration was verified on an `case_003` source-loss event
 
 ## Notification priority
 
-Low-priority repeated reports stay in the event list. Meaningful area/source changes are deduplicated and grouped into one top-center toast. A transition from prior indirect indications to direct observations with an available review, or expiry of a choice the user was selecting, opens a central acknowledgement dialog. These levels describe review urgency, not real threat severity. Dialogs never pause time or confirm decisions; an existing dialog or text entry defers interruptions. Stale and previous-run notices are discarded. Opt-in PWA notifications use the same filtering; they require the app to remain open or minimized.
+Low-priority repeated reports stay in the event list. Meaningful area/source changes are deduplicated and grouped into one top-center toast. First direct observations with an available review, even without prior indirect indications, or expiry of a choice the user was selecting, opens a central acknowledgement dialog. These levels describe review urgency, not real threat severity. Dialogs never pause time or confirm decisions; an existing dialog or text entry defers interruptions. Stale and previous-run notices are discarded. Opt-in PWA notifications use the same filtering; they require the app to remain open or minimized.
 
-## Scripted training branches
+## Scene choices
 
-Expand **Scripted training branch** to choose and confirm a predetermined scene outcome for a currently observed aircraft. Normal cases include two fixed vignettes: an impact-style final approach (11:15–11:30, `object_11`) and an abstract payload drop/retreat (11:45–12:00, `object_12`). With no branch, each scene completes and its fixed facility becomes unavailable. The hold/return choices produce partial/prevented outcomes after five simulation seconds; continuing preserves the authored finale. Godot shows schematic motion, a dropped object and outcome rings; monitoring shows received-actor phases and resulting facility states. Choices after completion are rejected. Other objects retain the existing five-second scene branches. These are visual story events, not physical weapon or defense models.
+Use the expanded **Scene choices** panel at the top of **Decisions** to choose and confirm a predetermined scene outcome for a currently observed aircraft. Normal cases include two fixed vignettes: an impact-style final approach (11:15–11:30, `object_11`) and an abstract payload drop/retreat (11:45–12:00, `object_12`). With no branch, each scene completes and its fixed facility becomes unavailable. The hold/return choices produce partial/prevented outcomes after five simulation seconds; continuing preserves the authored finale. Godot shows motion, a dropped object, impact flash, debris, fire, smoke and charred facility surfaces. Effects follow the shared clock and clear on rewind/reset; partial and prevented outcomes have separate status labels without damage effects. The map marks the selected facility immediately, then shows its published status. Facility inventory remains expandable. Godot panel text is 1.5× larger, with wrapped labels and scrollable controls. Choices after completion are rejected. Other objects retain the existing five-second scene branches. These are visual story events, not physical weapon or defense models.
 
 The clock continues during selection and execution. One branch is allowed per run; seek, reset, case change, new run or server restart clears it. Branch selection is session-only, distinct from the durable review-decision journal. The situation agent receives the selected branch and facility status as a labeled exercise summary without hidden coordinates. These are explicit scene-authoring outcomes, not modeled interception, weapon damage, or measured defensive effectiveness. All facilities begin available as a scenario assumption.
 
@@ -161,6 +173,17 @@ The default limit is 3 decisions, adjustable from 1 to 10. A hold choice, decisi
 Automatic records carry `actor.type=automated_test`, provider, model and operator-session ID, and appear as **AUTOMATED TEST** in the UI and exported journal. They are never presented as human approvals. Codex receives only the displayed received-evidence report and the three local choices; hidden positions and future inputs are excluded. An evidence-review choice stops automation without stopping playback. Expired choices are never applied. Seed reproducibility covers generated inputs, not identical model decisions. The HTTP interface is `GET/POST /api/test-operator`; start requires `action: "start"`, the current `run_id`, `confirm: true` and optional `max_decisions`.
 
 The earlier seed-42 integration verified the actual Codex CLI and automated journaling. Its former pause-on-hold behavior has been replaced: automated selections now share the same expiry checks and never change playback. Current regression tests and the isolated Godot integration verify continuous playback; these checks do not require provider calls.
+
+## Target identification, response recommendation, formation and placement optimization
+
+The **Decisions** pane now carries a rule-based **training recommendation layer** (`tools/tactics.py`, catalog in [data/tactics/catalog.json](data/tactics/catalog.json)). It turns the local scenario documents' decoy-vs-attack rubric, effector allocation table, penalize-versus-reject constraint engine, counter-drone team pre-positioning and P1–P10 picket line into explicit, bilingual advice over **received evidence only**. Nothing in this layer changes aircraft motion, observations or facility status; confirming a recommendation records a human decision and simulates no interception, damage or detection performance. Scores are uncalibrated rubric points from the documents, shown as a lean with cues and uncertainty items rather than percentages.
+
+- **Target identification** (`state.tactics.targets[].identification`) derives speed, altitude, heading persistence, descent, group structure and the nearest facility from each received track's observation history, and merges arrived reports from a new synthetic classifier feed ([data/tactics/identification_demo.json](data/tactics/identification_demo.json): EO airframe class with payload not visible, acoustic jet/propeller signatures, RF emission or its absence). The result is a lean among decoy-leaning, attack-leaning, reconnaissance-leaning, indeterminate or insufficient data, a profile (jet, multirotor, fixed wing, light airframe, unclassified), a verification level that never exceeds *observed class*, the cue list with evidence IDs, and uncertainty items such as *payload not visible*, *EO reports conflict* or *absent RF is not proof of a fiber link*. The feed is built offline by `tools/build_identification_feed.py` from fixture appearance with deliberate omissions, delays and conflicts; the server never reads world truth for identification and seeded runs do not vary it.
+- **Weapon recommendation** (`response`) lists four effectors from the catalog — interceptor drone, laser, autocannon, RF jammer — each as *recommended*, *penalized* or *rejected* with reasons. Rejections: every effector while the aircraft is over the runway corridor; autocannon when debris would fall inside the fence or near fuel-like facilities; jammer within 1,500 m of the tower or stations, or after a negative RF report; interceptor when the 12-per-run inventory is spent. Penalties: interceptor against jet-speed targets and decoy-leaning groups (resource preservation), jammer without RF evidence, laser while another laser allocation is active, and any effector with no placed effector team in nominal range. The posture is *observe and preserve*, *hold* or *engage candidate*; **Record allocation** opens a confirm dialog with optional alias and comment, validates the card version and run, and appends to `.local/tactics-decisions.jsonl` (`--tactics-audit-path`, export at `/api/tactics/audit`). One allocation per aircraft per run; reset, seek and new runs start fresh while the journal is kept.
+- **Force & sensor placement** completes the earlier personnel scaffold with four unit kinds and budgets: 12 infantry, 2 military radars, 10 detection-phone posts and 4 effector teams. A deterministic greedy coverage heuristic over the site layout, the DEM and mapped OSM road centerlines proposes positions: radars on elevated fence-ring sites facing the heaviest sectors, phone posts on exterior road sides outside the fence (existing power and access as a proxy), effector teams on the fence ring outside the runway corridor, observation posts at remaining gaps, a quick-reaction group near the apron and an east-road patrol. The first proposal uses the documents' north-biased scenario prior; **Re-optimize from current picture** re-weights sectors from received tracks and positive area signals. **Apply proposal** places all units; **Choose manually** enables click placement, moving and removal per kind within budgets and ±5 km. Range rings on the site plan and in 3D are display assumptions, not propagation or detection modeling. Units reset with the run.
+- **Tactical formation** (`formation`) groups placed units into sector teams with roles (surveillance, picket, response, observation post, quick reaction, patrol) and lists the identified aircraft each sector currently faces, with an overall posture of ready, observe, respond or hold.
+
+Godot renders the four unit kinds with their rings and appends the lean, profile and any recorded allocation to detected drone labels; author-view labels are unchanged. The situation agent receives only counts (placed units by kind, allocations, targets by lean, postures) labeled as rule-based training advice; its instructions still forbid inventing weapon selection. See [the design note](docs/superpowers/specs/2026-10-11-tactics-layer-design.md) for assumptions.
 
 ## Decision rehearsal review
 
@@ -189,7 +212,7 @@ python3 tools/benchmark_monitor.py --iterations 30
 .local/agent-venv/bin/python -m unittest tests.test_situation_agent -v
 ```
 
-The [recorded local benchmark](artifacts/monitor-workload-benchmark.json) measured 240 received tracks plus 240 virtual endpoints over 30 iterations: median **33.82 ms**, maximum **37.20 ms**, serialized payload **1,272,819 bytes** on Python 3.12.11/macOS. It measures state generation plus JSON serialization only; it excludes HTTP, browser/Godot rendering and LLM latency, and establishes no real-world detection accuracy.
+The [recorded local benchmark](artifacts/monitor-workload-benchmark.json) measured 240 received tracks plus 240 virtual endpoints over 30 iterations: median **58.04 ms**, maximum **65.75 ms**, serialized payload **1,990,963 bytes** on Python 3.12.11/macOS (re-measured on 2026-10-11 with the tactics layer; the earlier observation-only run measured 33.82 ms and 1,272,819 bytes). It measures state generation plus JSON serialization only; it excludes HTTP, browser/Godot rendering and LLM latency, and establishes no real-world detection accuracy.
 
 ## PWA and current-alert notifications
 
@@ -243,7 +266,7 @@ Ukraine's [ePPO app description](https://play.google.com/store/apps/details?id=u
 
 ## Detailed scenario and human review
 
-[Situation events](data/situation_review.json) adapt indicators, delayed/conflicting reports, unknown link status, and revisiting earlier reviews from the local `LOW_SKY_Detailed_Scenario.docx`. Days and hours are compressed into a 180-second demonstration. The adaptation excludes attack sequencing, weapon selection, engagement recommendations, and unverified performance figures.
+[Situation events](data/situation_review.json) adapt indicators, delayed/conflicting reports, unknown link status, and revisiting earlier reviews from the local `LOW_SKY_Detailed_Scenario.docx`. Days and hours are compressed into a 180-second demonstration. The adaptation excludes attack sequencing and unverified performance figures; weapon selection and engagement recommendations exist only as the separate rule-based training layer described above, which records human decisions without simulating engagements.
 
 Expand **Situation & human review** to inspect received context and uncertainty, then record **noted**, **needs review**, or **dismissed** with an optional suggested comment or free text. Each record contains seven fields: event, evidence, assessment, uncertainty, decision, reason, and replay time. The 02:30 revisit links actual prior user records from the same run. Counts derive from recorded decisions; no accuracy score is calculated. Seek, reset, and case changes create a new run. Records are held in memory and disappear on server restart.
 
@@ -273,13 +296,14 @@ External originals remain unchanged; Godot adjusts material scale/color. Downloa
 
 The LOW SKY emblem combines brushed silver/gunmetal, angular wings, a low-altitude detection arch, and a horizon. It is fictional, not an official insignia. The [PNG](monitor/logo-metal.png) is used in the header/favicon; the [generation record](monitor/logo-metal.provenance.json) retains the image-generation prompt and method. The older [SVG](monitor/logo.svg) remains for comparison. `LOW SKY` stays HTML text for readability.
 
-`LOW_SKY_scenario_v2.docx`, `LOW_SKY_Detailed_Scenario.docx`, and other original planning sources remain local. References in those documents to `sim/raid.py` or `core/classify.py` are not existing modules in this repository. Full source-document scenarios and engagement logic are not implemented.
+`LOW_SKY_scenario_v2.docx`, `LOW_SKY_Detailed_Scenario.docx`, and other original planning sources remain local. References in those documents to `sim/raid.py` or `core/classify.py` are not existing modules in this repository. Full source-document scenarios are not implemented; the documents' classification rubric, allocation table and constraint engine are adapted as the rule-based training recommendation layer (no engagement simulation).
 
 ## Regenerate
 
 ```sh
 python3 tools/scenario_dataset.py build
 python3 tools/build_early_warning.py
+python3 tools/build_identification_feed.py
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/build_assets.gd
 python3 tools/fetch_asset_sample.py
 python3 tools/fetch_realistic_assets.py
@@ -293,6 +317,7 @@ python3 tools/build_korean_context.py
 
 ```sh
 python3 -m unittest discover -s tests -v
+python3 -m unittest tests.test_tactics -v
 python3 tools/scenario_dataset.py validate
 python3 -m compileall -q tools tests
 node --check monitor/app.js
@@ -303,6 +328,7 @@ node tests/monitor_radar.mjs
 node tests/test_monitor_i18n.mjs
 node --test tests/test_notifications.mjs
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_preview.gd
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_units.gd
 /Applications/Godot.app/Contents/MacOS/Godot --path godot --script res://tools/verify_preview.gd
 /Applications/Godot.app/Contents/MacOS/Godot --path godot -- --capture
 ```
@@ -326,3 +352,5 @@ Scenario selection, description, and expandable reference timeline share the top
 The **Decision dashboard** in the **Decisions** panel summarizes received evidence, remaining review time, available review actions, the cost of waiting, and the local decision maker for the selected object. Actions use explicit confirmation; comments are optional and dismissal requires a suggested reason. The simulation keeps moving while a confirmation is open, and changed or expired choices cannot be applied.
 
 **Continue observing** or **Request sensor review** schedules a clearly labeled, predetermined visual-review receipt after 30 simulation seconds. The 90-second per-object review window continues counting down. These are review deadlines and scripted receipts, not target arrival estimates or real EO measurements. Follow-up arrival also triggers the existing situation agent. The seven-field dashboard journal exports at `/api/dashboard/audit` and persists to `.local/dashboard-decisions.jsonl`; restart/reset starts a fresh active run without deleting saved records. See [decision dashboard adoption](docs/decision-dashboard-adoption.md) for state semantics, limitations, and the proposal mapping.
+
+High-priority audio uses three stronger triangle-wave pulses with a short sustain and bounded gain; browser user activation and the mute control still apply. Repeated events remain deduplicated. Actual volume depends on system and speaker settings.

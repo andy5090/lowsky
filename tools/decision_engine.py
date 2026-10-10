@@ -279,7 +279,9 @@ class DecisionEngine:
                     from .situation_agent import evaluate_decision
                 except ImportError:
                     from situation_agent import evaluate_decision
-                evaluator = evaluate_decision
+                settings = self.sim.agent_settings.resolve()
+                evaluator = lambda frozen_state, event_view, language: evaluate_decision(
+                    frozen_state, event_view, language, settings=settings)
             public_event = {k: copy.deepcopy(v) for k, v in event.items() if k != '_frozen'}
             result = evaluator(frozen, public_event, event['language'])
             if not isinstance(result, dict):

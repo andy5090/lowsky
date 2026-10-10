@@ -10,6 +10,7 @@ import random
 
 
 VERSION = 'observation-variation-v1'
+VISUAL_VERSION = 'visual-cast-v1'
 MAX_SEED = 2_147_483_647
 
 
@@ -49,3 +50,22 @@ def generate(case_id, seed, public, early_feed, fleet_feed):
 
 def fixture_metadata():
     return dict(mode='fixture', seed=None, generator_version=None, input_digest=None)
+
+
+def visual_cast(case_id, seed, objects):
+    """Seeded scenery casting only: no roles, strategy, routes or performance.
+
+    Reuse a small palette in repeated groups instead of cycling the full catalog.
+    A separate random stream leaves all received-input generation unchanged.
+    """
+    validate_seed(seed)
+    rng = random.Random(f'{VISUAL_VERSION}:{case_id}:{seed}')
+    palette = sorted({item['visual']['airframe_id'] for item in objects})
+    chosen = rng.sample(palette, min(len(palette), rng.randint(2, 3)))
+    rows = []
+    while len(rows) < len(objects):
+        airframe = chosen[len(rows) // 6] if len(rows) < len(chosen) * 6 else rng.choice(chosen)
+        for item in objects[len(rows):len(rows) + 6]:
+            rows.append(dict(object_id=item['object_id'], airframe_id=airframe))
+    signature = hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return dict(version=VISUAL_VERSION, signature=signature, objects=rows)

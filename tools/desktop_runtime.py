@@ -19,6 +19,7 @@ if not getattr(sys, 'frozen', False) and __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.env_config import load_agent_env
+from tools.agent_settings import AgentSettings
 from tools.monitor_server import Simulation, make_server
 from tools.desktop_controls import DesktopControls
 
@@ -37,6 +38,7 @@ def create_server(data_dir, port=0, emit=emit_native):
     data_dir.mkdir(parents=True, exist_ok=True)
     load_agent_env(data_dir / '.env')
     simulation = Simulation(
+        agent_settings=AgentSettings(data_dir / 'agent-settings.json'),
         audit_path=data_dir / 'track-reviews.jsonl',
         decision_audit_path=data_dir / 'event-decisions.jsonl',
         dashboard_audit_path=data_dir / 'dashboard-decisions.jsonl',

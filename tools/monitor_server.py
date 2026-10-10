@@ -16,12 +16,15 @@ try:
     from .sensor_fleet import snapshot as fleet_snapshot
     from .situation_agent import configuration_status, evaluate as evaluate_situation
     from .env_config import load_agent_env
+    from .agent_settings import AgentSettings, test_connection as test_agent_connection
     from .decision_engine import DecisionEngine, DecisionBusy
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
-    from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
+    from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, visual_cast, MAX_SEED
     from .test_operator import TestOperator
     from . import exercise
+    from . import tactics
+    from .build_identification_feed import case_reports as identification_reports
     from .decision_dashboard import DecisionDashboard
     from .desktop_controls import DesktopControls, DesktopBusy
     from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
@@ -31,12 +34,15 @@ except ImportError:
     from sensor_fleet import snapshot as fleet_snapshot
     from situation_agent import configuration_status, evaluate as evaluate_situation
     from env_config import load_agent_env
+    from agent_settings import AgentSettings, test_connection as test_agent_connection
     from decision_engine import DecisionEngine, DecisionBusy
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
-    from simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
+    from simulation_test import generate as generate_test, fixture_metadata, validate_seed, visual_cast, MAX_SEED
     from test_operator import TestOperator
     import exercise
+    import tactics
+    from build_identification_feed import case_reports as identification_reports
     from decision_dashboard import DecisionDashboard
     from desktop_controls import DesktopControls, DesktopBusy
     from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
@@ -52,12 +58,13 @@ class Simulation:
     def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None, audit_path=None,
                  assessment_evaluator=None, assessment_configuration=None,
                  decision_evaluator=None, decision_audit_path=None, operator_runner=None, operator_configuration=None,
-                 dashboard_audit_path=None):
+                 dashboard_audit_path=None, tactics_audit_path=None, agent_settings=None):
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
         self.fleet_feed = read_json(PROJECT / 'data' / 'sensor_fleet_demo.json')
         self.test_public = self.test_early = self.test_fleet = None
         self.test_run = fixture_metadata()
+        self.test_visuals = None
         self.audit = AuditLog(audit_path)
         self.dashboard = DecisionDashboard(dashboard_audit_path)
         self.reviews = []
@@ -68,6 +75,14 @@ class Simulation:
         self.public = {entry['case_id']: read_json(root / 'cases' / entry['case_id'] / 'public.json') for entry in self.cases}
         self.exercise_selection = None
         self.site_layout = read_json(PROJECT / 'data/site_layout.json')
+        # Rule-based training advice: catalog, synthetic classifier feed, DEM and mapped roads for placement.
+        self.tactics_catalog = tactics.load_catalog()
+        self.identification_feed = read_json(tactics.FEED_PATH)
+        self.test_identification = None
+        self.terrain = read_json(tactics.TERRAIN_PATH) if tactics.TERRAIN_PATH.exists() else None
+        self.context_roads = read_json(tactics.CONTEXT_PATH) if tactics.CONTEXT_PATH.exists() else {}
+        self.tactics_audit = AuditLog(tactics_audit_path)
+        self.units, self.unit_proposal, self._prior_proposal = [], None, None
         self.world_frames = {}
         self.case_id = self.cases[0]['case_id']
         self.anchor_ms, self.anchor_wall = 0, clock()
@@ -75,8 +90,12 @@ class Simulation:
         self.run_id = uuid.uuid4().hex
         self.revision = 0
         self.acknowledged = set()
-        self.assessment_evaluator = assessment_evaluator or evaluate_situation
-        self.assessment_configuration = assessment_configuration or configuration_status
+        # Provider/model/key settings; in-memory env-only unless a settings file is supplied.
+        self.agent_settings = agent_settings if agent_settings is not None else AgentSettings()
+        self.assessment_evaluator = assessment_evaluator or (
+            lambda frozen, language: evaluate_situation(frozen, language, settings=self.agent_settings.resolve()))
+        self.assessment_configuration = assessment_configuration or (
+            lambda: configuration_status(self.agent_settings.resolve()))
         self.assessment_job = None
         self.assessment_latest = None
         self.assessment_error = None
@@ -191,11 +210,21 @@ class Simulation:
                         coordinate_system='fictional_local_meters')
             result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'],
                                                clock['duration_ms'], bool(clock.get('training_timing', {}).get('paced')))
+            if self.unit_proposal is None:
+                self.unit_proposal = self._initial_proposal()
+            result['exercise'].update(units=copy.deepcopy(self.units), unit_proposal=copy.deepcopy(self.unit_proposal),
+                                      unit_kinds=copy.deepcopy(self.tactics_catalog['unit_kinds']))
+            feed = self.test_identification if self.test_identification is not None else self.identification_feed
+            reports = tactics.arrived_reports(feed, self.case_id, clock['at_ms'])
+            result['tactics'] = tactics.view(tracks, reports, self.tactics_audit.current(self.run_id), self.units,
+                                             self.site_layout, self.tactics_catalog, clock['at_ms'], early_warning)
             result['dashboard'] = self.dashboard.view(result)
             if show_positions:
                 # Explicit author view: only positions at this response's replay time.
                 # Never merge truth into observed tracks, alerts, or evidence.
                 world = read_json(self.root / 'cases' / self.case_id / 'world.json')
+                if self.test_visuals is not None:
+                    result['simulation_visuals'] = copy.deepcopy(self.test_visuals)
                 positions = []
                 for obj in world['objects']:
                     positions.append(dict(object_id=obj['object_id'],position=exercise.sample(obj['keyframes'],
@@ -204,6 +233,46 @@ class Simulation:
                 result['simulation_missions'] = exercise.missions(None, self.exercise_selection, clock['at_ms'],
                     clock['duration_ms'], bool(clock.get('training_timing', {}).get('paced')))
             return result
+
+    def _initial_proposal(self):
+        # The scenario-prior proposal does not depend on received inputs; compute once, re-issue per run.
+        if self._prior_proposal is None:
+            self._prior_proposal = tactics.propose_placement(self.site_layout, self.terrain, self.context_roads, [], None,
+                                                             self.tactics_catalog)
+        proposal = copy.deepcopy(self._prior_proposal)
+        proposal['id'] = uuid.uuid4().hex
+        return proposal
+
+    def _unit_command(self, command, state):
+        action = command.get('action')
+        if command.get('confirm') is not True or command.get('run_id') != self.run_id:
+            raise ValueError('Confirm a placement change for the current run')
+        proposal = state['exercise']['unit_proposal']
+        if action == 'exercise_reoptimize_units':
+            self.unit_proposal = tactics.propose_placement(self.site_layout, self.terrain, self.context_roads, state['tracks'],
+                                                           state['early_warning'], self.tactics_catalog, state['at_ms'])
+            return
+        if action in ('exercise_accept_units', 'exercise_manual_units'):
+            if command.get('proposal_id') != proposal['id']:
+                raise ValueError('Stale placement proposal')
+            if action == 'exercise_accept_units':
+                if proposal['status'] != 'pending':
+                    raise ValueError('Proposal already applied or replaced')
+                self.units = tactics.units_from_proposal(proposal)
+                self.unit_proposal['status'] = 'accepted'
+            else:
+                if proposal['status'] not in ('pending', 'accepted'):
+                    raise ValueError('Manual placement already active')
+                self.unit_proposal['status'] = 'manual'
+            return
+        if proposal['status'] != 'manual':
+            raise ValueError('Choose manual placement before placing or removing units')
+        if action == 'exercise_place_unit':
+            tactics.place_unit(command, self.units, self.tactics_catalog)
+        elif action == 'exercise_remove_unit':
+            if not any(unit['id'] == command.get('unit_id') for unit in self.units):
+                raise ValueError('Unknown unit')
+            self.units = [unit for unit in self.units if unit['id'] != command['unit_id']]
 
     def assessment_state(self):
         with self.lock:
@@ -283,7 +352,15 @@ class Simulation:
                     if previous_seed is not None and seed >= previous_seed:
                         seed += 1  # A fresh random test never repeats the active seed.
                 inputs = generate_test(case_id, seed, self.public[case_id], self._early_input(case_id), self.fleet_feed)
+                world = read_json(self.root / 'cases' / case_id / 'world.json')
+                visuals = visual_cast(case_id, seed, world['objects'])
                 self.test_public, self.test_early, self.test_fleet, self.test_run = inputs
+                self.test_visuals = visuals
+                # Synthetic classifier reports follow the seeded cast so appearance and reports stay consistent.
+                variant = next(entry['variant'] for entry in self.cases if entry['case_id'] == case_id)
+                self.test_identification = dict(cases={case_id: identification_reports(
+                    case_id, variant, {row['object_id']: row['airframe_id'] for row in visuals['objects']},
+                    self.test_public, self.identification_feed['airframes'], world['duration_ms'], visuals['signature'])})
                 self.case_id, now_ms, self.playing = case_id, 0, True
                 self.run_id = uuid.uuid4().hex
                 self.acknowledged.clear()
@@ -302,6 +379,8 @@ class Simulation:
                 if action == 'case' or case_id != self.case_id:
                     self.test_public = self.test_early = self.test_fleet = None
                     self.test_run = fixture_metadata()
+                    self.test_visuals = None
+                    self.test_identification = None
                 self.case_id, now_ms, self.playing = case_id, 0, False
                 self.run_id = uuid.uuid4().hex
                 self.acknowledged.clear()
@@ -319,6 +398,13 @@ class Simulation:
                 self.speed = speed
             elif action == 'exercise_branch':
                 self.exercise_selection = exercise.select(command, self.state())
+            elif action in ('exercise_accept_units', 'exercise_manual_units', 'exercise_place_unit',
+                            'exercise_remove_unit', 'exercise_reoptimize_units'):
+                self._unit_command(command, self.state())
+            elif action == 'tactics_allocate':
+                record = tactics.select_allocation(command, self.state(), self.tactics_catalog)
+                record['reviewed_at_unix_ms'] = int(time.time() * 1000)
+                self.tactics_audit.append(record)
             elif action == 'dashboard_action':
                 self.dashboard.confirm(command, self.state())
             elif action == 'review_track':
@@ -351,6 +437,7 @@ class Simulation:
                 raise ValueError('Unknown action')
             if self.run_id != previous_run:
                 self.exercise_selection = None
+                self.units, self.unit_proposal = [], None
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
             if not self.test_operator.applying and action in ('start_test', 'case', 'reset', 'seek', 'pause', 'play'):
@@ -391,6 +478,9 @@ class Handler(BaseHTTPRequestHandler):
                 show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
         elif path == '/api/assessment':
             self.respond(200, self.server.simulation.assessment_state())
+        elif path == '/api/agent-settings':
+            sim = self.server.simulation
+            self.respond(200, dict(**sim.agent_settings.public(), status=sim.assessment_configuration()))
         elif path == '/api/decisions':
             self.respond(200, self.server.simulation.decisions.snapshot())
         elif path == '/api/test-operator':
@@ -411,6 +501,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/dashboard/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.dashboard.export())
+        elif path == '/api/tactics/audit':
+            with self.server.simulation.lock:
+                self.respond(200, self.server.simulation.tactics_audit.export())
         elif path == '/api/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.audit.export())
@@ -437,6 +530,8 @@ class Handler(BaseHTTPRequestHandler):
                       '/test_runs.mjs': ('test_runs.mjs', 'text/javascript; charset=utf-8'),
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/exercise.mjs': ('exercise.mjs', 'text/javascript; charset=utf-8'),
+                      '/agent_settings.mjs': ('agent_settings.mjs', 'text/javascript; charset=utf-8'),
+                      '/tactics.mjs': ('tactics.mjs', 'text/javascript; charset=utf-8'),
                       '/dashboard.mjs': ('dashboard.mjs', 'text/javascript; charset=utf-8'),
                       '/desktop.mjs': ('desktop.mjs', 'text/javascript; charset=utf-8'),
                       '/custom_selects.mjs': ('custom_selects.mjs', 'text/javascript; charset=utf-8'),
@@ -462,7 +557,8 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(403, {'error': 'Same-origin requests only'})
             return
         path = urlsplit(self.path).path
-        if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator', '/api/desktop', '/api/desktop/runtime'):
+        if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator', '/api/desktop',
+                        '/api/desktop/runtime', '/api/agent-settings'):
             self.respond(404, {'error': 'Not found'})
             return
         if path == '/api/desktop/runtime' and not self.server.desktop.authenticated(
@@ -490,6 +586,19 @@ class Handler(BaseHTTPRequestHandler):
                              self.server.simulation.decisions.command(body))
             elif path == '/api/assessment':
                 self.respond(202, self.server.simulation.start_assessment(body))
+            elif path == '/api/agent-settings':
+                sim = self.server.simulation
+                if body.get('action') == 'save':
+                    sim.agent_settings.save(body)
+                    self.respond(200, dict(**sim.agent_settings.public(), status=sim.assessment_configuration()))
+                elif body.get('action') == 'remove_key':
+                    sim.agent_settings.remove_key(body)
+                    self.respond(200, dict(**sim.agent_settings.public(), status=sim.assessment_configuration()))
+                elif body.get('action') == 'test':
+                    # Runs outside the simulation lock; checks key and model access without generating tokens.
+                    self.respond(200, test_agent_connection(sim.agent_settings.candidate(body)))
+                else:
+                    raise ValueError('Unknown settings action')
             else:
                 self.respond(200, self.server.simulation.control(body))
         except (AssessmentBusy, DecisionBusy, DesktopBusy) as error:
@@ -526,10 +635,15 @@ def main():
     parser.add_argument('--audit-path', type=Path, default=PROJECT / '.local' / 'track-reviews.jsonl')
     parser.add_argument('--decision-audit-path', type=Path, default=PROJECT / '.local' / 'event-decisions.jsonl')
     parser.add_argument('--dashboard-audit-path', type=Path, default=PROJECT / '.local' / 'dashboard-decisions.jsonl')
+    parser.add_argument('--tactics-audit-path', type=Path, default=PROJECT / '.local' / 'tactics-decisions.jsonl')
+    parser.add_argument('--agent-settings-path', type=Path, default=PROJECT / '.local' / 'agent-settings.json',
+                        help='Per-user provider/model/API-key settings saved from the Settings dialog')
     args = parser.parse_args()
     load_agent_env(PROJECT / '.env')
     server = make_server(args.port, Simulation(audit_path=args.audit_path, decision_audit_path=args.decision_audit_path,
-                                             dashboard_audit_path=args.dashboard_audit_path))
+                                             dashboard_audit_path=args.dashboard_audit_path,
+                                             tactics_audit_path=args.tactics_audit_path,
+                                             agent_settings=AgentSettings(args.agent_settings_path)))
     print(f'LOW SKY monitor: http://127.0.0.1:{server.server_port}', flush=True)
     try:
         server.serve_forever()

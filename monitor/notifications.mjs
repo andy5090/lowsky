@@ -2,7 +2,7 @@ export const NOTIFICATION_STORAGE_KEY = 'lowsky.notifications.enabled';
 
 // Permissions are requested by the UI's user gesture, never by this controller.
 export function createNotificationController({registration, storage, getPermission = () => 'default',
-  supported = true, formatMessage = alerts => ({title: 'LOW SKY · Simulation alert',
+  supported = true, formatMessage = alerts => ({title: 'LOW SKY · Training alert',
     body: `${alerts.length} unacknowledged monitoring alert(s). Open LOW SKY to review.`}),
   onChange = () => {}, send = sendNotification, alertFilter = () => true, alertKey = alert => alert.id} = {}) {
   let optedIn = false, error = '', runId = null, previousTime = null;
@@ -123,14 +123,12 @@ export function priorityAlertKey(alert) {
   return ['contradictory','not_comparable','stale','channel'].includes(alert.kind) ? `${alert.kind}:${alert.source_id || 'received-observations'}` : null;
 }
 export function createAlertPriorityPolicy() {
-  let run=null,previousTime=null,seen=new Set(),hadIndirect=false,directNotified=false;
+  let run=null,previousTime=null,seen=new Set(),directNotified=false;
   return {observe(state,event,{expiredChoice=null}={}) {
     if(!state)return {reset:false,medium:[],high:[]};
     const baseline=run!==state.run_id || previousTime===null || state.at_ms<previousTime;
-    if(baseline){run=state.run_id;seen=new Set();hadIndirect=false;directNotified=Boolean(state.tracks?.length);}
+    if(baseline){run=state.run_id;seen=new Set();directNotified=Boolean(state.tracks?.length);}
     previousTime=state.at_ms;
-    const hasPositive=(state.early_warning?.zones || []).some(zone=>zone.positive_sources>0);
-    if(!state.tracks?.length && hasPositive)hadIndirect=true;
     const medium=[];
     for(const alert of state.alerts || []) {
       const key=priorityAlertKey(alert);
@@ -142,7 +140,7 @@ export function createAlertPriorityPolicy() {
     const report=event?.report || event?.choice_report;
     const actionable=event?.run_id===state.run_id && ['pending','evaluating','ready','failed'].includes(event.status)
       && event.expires_at_ms>state.at_ms && report?.decision_options?.length>0;
-    if(!baseline && !directNotified && hadIndirect && state.tracks?.length && actionable && event.stage==='received_observation') {
+    if(!baseline && !directNotified && state.tracks?.length && actionable && event.stage==='received_observation') {
       directNotified=true;high.push({key:`direct:${run}`,kind:'direct_transition',event_id:event.id,expires_at_ms:event.expires_at_ms});
     }
     if(expiredChoice && !baseline && !seen.has(`expired:${expiredChoice}`)) {

@@ -19,10 +19,36 @@
     </a>
     <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">Decision making workspace</span></div>
     <div class="system-status"><span class="status-label" data-i18n="dataConnection">Data connection</span><span id="connection-status" class="status-pill" role="status" data-i18n="connecting">Waiting for connection</span></div>
+    <button id="agent-settings-open" class="button button-secondary settings-button" type="button" data-i18n="settings.open" aria-haspopup="dialog">AI settings</button>
     <div class="language-field"><label class="sr-only" for="language-select" data-i18n="language">Language</label><select id="language-select" aria-label="Language" data-i18n-aria-label="language"><option value="en" lang="en">EN</option><option value="ko" lang="ko">한국어</option></select></div>
     <div id="desktop-controls" class="desktop-controls" hidden role="group" aria-label="Desktop views" data-i18n-aria-label="desktop.views"><button id="desktop-open-3d" class="button button-secondary" type="button" data-i18n="desktop.open3d" title="F6">3D view</button><button id="desktop-close-3d" class="button button-secondary" type="button" data-i18n="desktop.close3d">Close 3D</button><button id="desktop-fullscreen" class="button button-secondary" type="button" data-i18n="desktop.enterFullscreen" title="F11">Fullscreen</button><span id="desktop-status" role="status" aria-live="polite"></span></div>
   </header>
 
+
+  <dialog id="agent-settings-dialog" class="review-dialog settings-dialog" aria-labelledby="agent-settings-title">
+    <form id="agent-settings-form" class="decision-form" method="dialog" novalidate>
+      <h2 id="agent-settings-title" data-i18n="settings.title">AI agent settings</h2>
+      <p class="muted" data-i18n="settings.intro">Choose the model used for situation assessment and decision checkpoints. Use your own API key; it is billed to your provider account.</p>
+      <fieldset class="settings-providers"><legend data-i18n="settings.provider">Provider</legend>
+        <label><input type="radio" name="agent-provider" value="openai"> <span data-i18n="settings.provider.openai">OpenAI</span></label>
+        <label><input type="radio" name="agent-provider" value="anthropic"> <span data-i18n="settings.provider.anthropic">Anthropic Claude</span></label>
+        <label><input type="radio" name="agent-provider" value="rules"> <span data-i18n="settings.provider.rules">Rules only (offline, no API key)</span></label>
+      </fieldset>
+      <div id="agent-settings-llm">
+        <label for="agent-settings-model" data-i18n="settings.model">Model</label>
+        <select id="agent-settings-model"></select>
+        <div id="agent-settings-custom-field" hidden><label for="agent-settings-custom" data-i18n="settings.customModel">Custom model ID</label><input id="agent-settings-custom" autocomplete="off" spellcheck="false" maxlength="120"></div>
+        <label for="agent-settings-key" data-i18n="settings.key">API key</label>
+        <input id="agent-settings-key" type="password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore spellcheck="false" maxlength="400">
+        <p id="agent-settings-key-status" class="muted"></p>
+        <div class="settings-row"><button id="agent-settings-test" type="button" class="button button-secondary" data-i18n="settings.test">Test connection</button><button id="agent-settings-remove" type="button" class="button button-secondary" data-i18n="settings.removeKey">Remove saved key</button></div>
+        <p class="muted settings-note" data-i18n="settings.storage">The key is stored only on this computer, in the LOW SKY settings file with owner-only access. It is never shown again or sent anywhere except to the selected provider.</p>
+      </div>
+      <p id="agent-settings-load-error" class="settings-warning" role="alert" hidden data-i18n="settings.corrupt">The saved settings file was damaged and has been set aside. Choose a provider and enter your key again.</p>
+      <p id="agent-settings-status" role="status" aria-live="polite"></p>
+      <div class="decision-form-actions"><button id="agent-settings-save" type="button" class="button button-primary" data-i18n="settings.save">Save</button><button id="agent-settings-close" type="button" class="button button-secondary" data-i18n="settings.close">Close</button></div>
+    </form>
+  </dialog>
   <div class="demo-banner"><span class="demo-badge" data-i18n="simulation">SIMULATION</span><span data-i18n="syntheticBanner">Synthetic scenario · Not real facility or flight information</span><span class="banner-note" data-i18n="bannerNote">Explore changes in observations and data quality.</span></div>
 
   <main id="main" class="workspace">
@@ -98,6 +124,7 @@
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
             <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="map-indication-overview" data-i18n="indication.overview">Indication overview</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button><button type="button" id="positions-toggle" aria-pressed="false" data-i18n="positions.toggle">Show drone positions</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
+            <div id="unit-map-status" class="unit-map-status" role="status" hidden></div>
             <div id="positions-status" class="positions-status" hidden data-i18n="positions.warning">SIM ground truth · Includes undetected drones · Not sensor evidence</div>
             <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
               <div id="map-tiles" aria-hidden="true"></div>
@@ -111,7 +138,7 @@
                 <button id="zoom-out" type="button" aria-label="Zoom out" data-i18n-aria-label="zoomOut" title="Zoom out" data-i18n-title="zoomOutTitle">−</button>
                 <button id="recenter" type="button" class="recenter-button" aria-label="Return to observation area" data-i18n-aria-label="recenter" title="Return to observation area" data-i18n-title="recenter">⌖</button>
               </div>
-              <div class="map-legend"><span><i class="legend-line"></i><span data-i18n="observedPath">Observation history</span></span><span><i class="legend-point"></i><span data-i18n="lastObservedPosition">Last observed position</span></span></div>
+              <div class="map-legend"><span><i class="legend-line"></i><span data-i18n="observedPath">Observation history</span></span><span><i class="legend-point"></i><span data-i18n="lastObservedPosition">Last observed position</span></span><span id="unit-range-legend" hidden><i class="legend-ring"></i><span data-i18n="units.rangeLegend">Range rings are display assumptions, not detection performance</span></span></div>
               <div id="map-attribution" class="map-attribution" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> <span data-i18n="contributors">contributors</span></div>
             </div>
           </section>
@@ -123,7 +150,44 @@
     </section><section id="alerts-view" aria-labelledby="alerts-title" hidden>
       <div class="panel alerts-panel"><div class="panel-heading"><div><span class="section-number">01</span><h2 id="alerts-title" data-i18n="qualityAlerts">Current observation quality alerts</h2></div><span class="eyebrow" data-i18n="alertsEyebrow">CURRENT ALERTS</span></div><div class="alerts-intro"><p data-i18n="alertsIntro">Review observation quality at the current replay time.</p><span data-i18n="alertsNote">Shown for the selected scenario and replay time.</span></div><ul id="alert-list" data-empty="Waiting for data." class="alert-list" aria-label="Current observation quality alerts" data-i18n-aria-label="qualityAlerts"></ul></div>
     </section><div id="alerts-events-host"></div></div>
-<div class="inspector-pane"><div id="pane-decision" class="workspace-pane" tabindex="0" role="region" aria-label="decision" data-i18n-aria-label="layout.decision"><section class="panel decision-panel" aria-labelledby="decision-title">
+<div class="inspector-pane"><div id="pane-decision" class="workspace-pane" tabindex="0" role="region" aria-label="decision" data-i18n-aria-label="layout.decision"><section id="unit-panel" class="panel unit-panel" aria-labelledby="unit-title">
+      <div class="panel-heading"><h2 id="unit-title" data-i18n="units.title">Force &amp; sensor placement</h2><span id="unit-count"></span></div>
+      <div class="unit-panel-body"><p id="unit-proposal-label"></p><p id="unit-threat-basis" class="muted"></p>
+      <h3 class="unit-subheading" data-i18n="units.coverageTitle">Proposal coverage by kind</h3><ul id="unit-coverage" class="unit-coverage"></ul>
+      <p id="unit-proposal-basis" class="muted"></p>
+      <div class="unit-actions"><button id="unit-accept" type="button" class="button button-primary" data-i18n="units.accept">Apply proposal</button><button id="unit-reoptimize" type="button" class="button button-secondary" data-i18n="units.reoptimize">Re-optimize from current picture</button><button id="unit-manual" type="button" class="button button-secondary" data-i18n="units.manual">Choose manually</button></div>
+      <div id="unit-place-controls" class="unit-actions" hidden><label for="unit-kind" data-i18n="units.kindLabel">Unit kind</label><select id="unit-kind"><option value="infantry" data-i18n="units.kind.infantry">Infantry</option><option value="radar" data-i18n="units.kind.radar">Military radar</option><option value="detection_phone" data-i18n="units.kind.detection_phone">Detection phone post</option><option value="effector_team" data-i18n="units.kind.effector_team">Response team</option></select><button id="unit-place" type="button" class="button button-secondary" data-i18n="units.place">Place</button><button id="unit-cancel" type="button" class="button button-secondary" data-i18n="units.cancel" hidden>Cancel placement</button></div>
+      <p id="unit-status" role="status" aria-live="polite"></p><div id="unit-list" class="unit-list"></div></div>
+    </section><section id="tactics-panel" class="panel tactics-panel" aria-labelledby="tactics-title">
+      <div class="panel-heading"><h2 id="tactics-title" data-i18n="tactics.title">Target identification &amp; response</h2><span id="tactics-count" class="count-badge">0</span></div>
+      <div class="tactics-body">
+        <p class="muted" data-i18n="tactics.scope">Rule-based training advice from received tracks and synthetic identification reports; uncalibrated. Recording an allocation only records your decision. Nothing in the scene changes.</p>
+        <p id="tactics-summary"></p>
+        <details id="tactics-formation" class="tactics-formation"><summary data-i18n="tactics.formation">Tactical formation</summary><p id="tactics-formation-posture"></p><ul id="tactics-teams" class="tactics-teams"></ul></details>
+        <div class="tactics-object"><label for="tactics-object" data-i18n="tactics.object">Received aircraft</label><select id="tactics-object"></select></div>
+        <div id="tactics-card" class="tactics-card"></div>
+        <p id="tactics-status" role="status" aria-live="polite"></p>
+        <details class="decision-history"><summary id="tactics-history-title"></summary><ol id="tactics-history"></ol><a href="/api/tactics/audit" download="lowsky-tactics-allocations.json" class="button button-secondary" data-i18n="tactics.export">Export allocation journal</a></details>
+        <dialog id="tactics-dialog" class="review-dialog" aria-labelledby="tactics-confirm-title"><form id="tactics-form" class="decision-form" hidden>
+          <h3 id="tactics-confirm-title" data-i18n="tactics.confirmTitle">Confirm allocation record</h3><p id="tactics-modal-summary"></p><p id="tactics-modal-context" class="muted"></p>
+          <label for="tactics-reviewer" data-i18n="decision.alias">Reviewer alias (optional)</label><input id="tactics-reviewer" maxlength="80" autocomplete="off">
+          <label for="tactics-comment" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="tactics-comment" rows="2" maxlength="1000"></textarea>
+          <p class="muted" data-i18n="tactics.recordOnly">This records a training decision in the local journal. No engagement, interception or damage is simulated.</p>
+          <div class="decision-form-actions"><button id="tactics-confirm" type="submit" class="button button-primary" data-i18n="tactics.confirm">Confirm and record</button><button id="tactics-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
+        </form></dialog>
+      </div>
+    </section><details id="exercise-panel" class="panel rehearsal-panel" open>
+      <summary data-i18n="exercise.title">Scripted training branch</summary>
+      <div class="rehearsal-body">
+        <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
+        <section class="exercise-mission-section" aria-labelledby="exercise-mission-title"><h3 id="exercise-mission-title" data-i18n="exercise.missions">Observed scene progression</h3><p class="muted" data-i18n="exercise.missionScope">Authored fictional events for received actors. These are not conclusions about identity or measured defense effectiveness.</p><div id="exercise-missions" class="exercise-missions"></div></section>
+        <details class="exercise-facilities"><summary data-i18n="exercise.facilities">Facility status</summary><ul id="exercise-assets" class="exercise-assets"></ul></details>
+        <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
+        <p id="exercise-fixed-asset" class="muted" hidden data-i18n="exercise.fixedAsset">This authored scene uses its predefined facility.</p><div id="exercise-options" class="decision-options"></div>
+        <p id="exercise-status" role="status" aria-live="polite"></p>
+        <dialog id="exercise-dialog" class="review-dialog" aria-labelledby="exercise-confirm-title"><div class="decision-form"><h3 id="exercise-confirm-title" data-i18n="exercise.confirm">Confirm training branch</h3><p id="exercise-modal-summary"></p><p id="exercise-modal-effect"></p><p id="exercise-modal-context" class="muted"></p><p data-i18n="exercise.scope">Predefined training outcome. Time continues.</p><div class="decision-form-actions"><button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button><button id="exercise-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div></div></dialog>
+      </div>
+    </details><section class="panel decision-panel" aria-labelledby="decision-title">
       <div class="panel-heading"><div><span class="section-number" data-i18n="section.decide">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
       <div class="decision-request"><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button></div>
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
@@ -175,7 +239,7 @@
       <details class="decision-history"><summary data-i18n="dashboard.history">Recent review actions</summary><ol id="dashboard-history"></ol></details>
     </section><section class="panel agent-panel" aria-labelledby="agent-title">
       <div class="panel-heading"><div><span class="section-number" data-i18n="section.assess">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
-      <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>
+      <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><button id="agent-open-settings" type="button" class="button button-secondary" data-i18n="settings.openShort" hidden>Open AI settings</button><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>
       <p class="agent-scope" data-i18n="agent.scope">Reviews received observations, sensor health and review workload. Hidden simulation positions are excluded. Human judgment remains required.</p>
       <div id="agent-report" class="agent-report"></div>
     </section></div>
@@ -233,18 +297,7 @@
         </div>
       </details>
     </section></div>
-<div id="pane-tools" class="workspace-pane" tabindex="0" role="region" aria-label="tools" data-i18n-aria-label="layout.tools" hidden><details id="exercise-panel" class="panel rehearsal-panel">
-      <summary data-i18n="exercise.title">Scripted training branch</summary>
-      <div class="rehearsal-body">
-        <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
-        <section class="exercise-mission-section" aria-labelledby="exercise-mission-title"><h3 id="exercise-mission-title" data-i18n="exercise.missions">Observed scene progression</h3><p class="muted" data-i18n="exercise.missionScope">Authored fictional events for received actors. These are not conclusions about identity or measured defense effectiveness.</p><div id="exercise-missions" class="exercise-missions"></div></section>
-        <ul id="exercise-assets" class="exercise-assets"></ul>
-        <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
-        <p id="exercise-fixed-asset" class="muted" hidden data-i18n="exercise.fixedAsset">This authored scene uses its predefined facility.</p><div id="exercise-options" class="decision-options"></div>
-        <p id="exercise-status" role="status" aria-live="polite"></p>
-        <dialog id="exercise-dialog" class="review-dialog" aria-labelledby="exercise-confirm-title"><div class="decision-form"><h3 id="exercise-confirm-title" data-i18n="exercise.confirm">Confirm training branch</h3><p id="exercise-modal-summary"></p><p id="exercise-modal-effect"></p><p id="exercise-modal-context" class="muted"></p><p data-i18n="exercise.scope">Predefined training outcome. Time continues.</p><div class="decision-form-actions"><button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button><button id="exercise-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div></div></dialog>
-      </div>
-    </details><details id="rehearsal-panel" class="panel rehearsal-panel">
+<div id="pane-tools" class="workspace-pane" tabindex="0" role="region" aria-label="tools" data-i18n-aria-label="layout.tools" hidden><details id="rehearsal-panel" class="panel rehearsal-panel">
       <summary data-i18n="rehearsal.title">Decision rehearsal review</summary>
       <div class="rehearsal-body">
         <p class="muted" data-i18n="rehearsal.scope">Review saved decisions and their received evidence across runs. Counts describe the review workflow, not decision quality. This view does not train the agent or change its rules.</p>

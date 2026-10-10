@@ -516,6 +516,11 @@ button:disabled{cursor:not-allowed}
 .exercise-missions article strong { color:#d9e4ca; }
 .exercise-missions article p { margin:5px 0; }
 .exercise-missions article span { color:#c1cda8; }
+.exercise-missions article button { display:block; margin-top:10px; }
+.facility-result-marker { position:absolute; transform:translate(-50%,12px); z-index:5; max-width:210px; padding:6px 9px; border:1px solid #7dcaaa; border-radius:3px; background:#132c25; color:#dbf4e6; font-size:11px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px #0008; }
+.facility-result-marker[data-status="restricted"] { border-color:#e4bd70; color:#ffe2ab; background:#382c19; }
+.facility-result-marker[data-status="unavailable"] { border-color:#ff8866; color:#ffe1d6; background:#45211c; }
+.facility-result-marker:focus-visible { outline:2px solid white; outline-offset:3px; }
 .decision-overall { padding:11px 12px; border-left:3px solid #a5b582; background:#1b2a25; }
 .decision-overall > h3 { margin:0 0 7px; font-size:13px; color:#dce7c8; }
 .decision-overall .agent-summary { margin:0 0 7px; font-size:13px; line-height:1.6; }
@@ -584,3 +589,82 @@ select.custom-select-source { position:absolute!important; width:1px!important; 
 .rehearsal-controls .custom-select { max-width:100%; min-width:150px; flex:1; }
 @media(max-width:800px) { .scenario-field .custom-select { flex:1; width:100%; } }
 @media(min-width:1100px) { .session-header .scenario-field .custom-select { flex:1; width:auto; } }
+
+.unit-panel { margin-bottom:12px; }
+.unit-panel-body { padding:12px 16px; font-size:12px; }
+.unit-panel-body p { line-height:1.5; margin:0 0 10px; }
+.unit-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.unit-list { display:grid; gap:8px; padding:0; margin:0; list-style:none; }
+.unit-list li { display:flex; align-items:center; gap:6px; flex-wrap:wrap; border-top:1px solid var(--line); padding-top:8px; }
+.unit-list li > span { margin-right:auto; }
+.unit-list small { display:block; color:var(--muted); margin-top:4px; }
+.unit-list button { padding:5px 8px; font-size:11px; }
+.unit-map-status { padding:10px 16px; background:#223c34; color:#d6f0dd; border-bottom:1px solid #729b83; font-size:12px; }
+#map.is-placing-unit, #map.is-placing-unit:active { cursor:crosshair; }
+.infantry-marker { position:absolute; transform:translate(-50%,-50%); border:2px solid #afdbba; border-radius:50%; width:26px; height:26px; background:#27533f; color:#e5f5e9; z-index:5; pointer-events:auto; cursor:pointer; padding:0; }
+.infantry-marker i { font-style:normal; font-size:20px; line-height:20px; }
+.infantry-marker span { position:absolute; left:29px; top:0; white-space:nowrap; padding:3px 5px; background:#14261fec; border:1px solid #5c8970; font-size:10px; }
+.infantry-marker.is-preview { border-style:dashed; background:transparent; opacity:.75; pointer-events:none; }
+.infantry-marker.is-preview span { border-style:dashed; }
+.unit-subheading { margin:4px 0 6px; font-size:11px; color:var(--ink-soft); }
+.unit-coverage { list-style:none; margin:0 0 10px; padding:0; display:grid; gap:4px; font-size:11px; }
+.unit-coverage strong { margin-right:6px; }
+.unit-coverage small { color:var(--muted); }
+.unit-actions label { align-self:center; color:var(--muted); font-size:11px; }
+.unit-actions select { min-width:150px; }
+.unit-list { display:grid; gap:10px; }
+.unit-list h3 { margin:6px 0 0; font-size:11px; color:var(--ink-soft); display:flex; justify-content:space-between; }
+.unit-list ul { display:grid; gap:8px; padding:0; margin:0; list-style:none; }
+.infantry-marker[data-kind="radar"] { background:#1f3f55; border-color:#8bc9cf; }
+.infantry-marker[data-kind="detection_phone"] { background:#4a3f1f; border-color:#dfb86a; }
+.infantry-marker[data-kind="effector_team"] { background:#552a25; border-color:#ef9281; }
+.infantry-marker[data-kind="radar"] i,.infantry-marker[data-kind="detection_phone"] i,.infantry-marker[data-kind="effector_team"] i { font-size:15px; }
+.infantry-marker.is-preview { background:transparent; }
+.legend-ring { display:block; width:12px; height:12px; border:1px dashed var(--cyan); border-radius:50%; }
+.tactics-panel { margin-bottom:12px; }
+.tactics-body { padding:12px 16px; font-size:12px; display:grid; gap:10px; }
+.tactics-body p { margin:0; line-height:1.5; }
+.tactics-body .decision-history { margin:0; }
+.tactics-formation summary,.tactics-card summary { cursor:pointer; font-weight:600; }
+.tactics-teams { list-style:none; margin:6px 0 0; padding:0; display:grid; gap:6px; }
+.tactics-teams li { border-top:1px solid var(--line); padding-top:6px; }
+.tactics-teams small,.tactics-card small { display:block; color:var(--muted); overflow-wrap:anywhere; }
+.tactics-object { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tactics-object label { color:var(--muted); font-size:11px; }
+.tactics-object .custom-select,.tactics-object select { flex:1; min-width:150px; }
+.tactics-card { display:grid; gap:8px; }
+.tactics-card h3 { margin:0; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.tactics-card h4 { margin:4px 0 2px; font-size:11px; color:var(--ink-soft); }
+.tactics-card ul { margin:0; padding-left:16px; display:grid; gap:3px; }
+.tactics-card .detail-grid { margin:0; }
+.tactics-badge { font-size:10px; border:1px solid var(--line); padding:2px 6px; border-radius:2px; color:var(--ink-soft); }
+.tactics-badge[data-value="attack_leaning"],.tactics-badge[data-value="engage_candidate"] { border-color:var(--red); color:var(--red); }
+.tactics-badge[data-value="decoy_leaning"],.tactics-badge[data-value="observe_preserve"] { border-color:var(--green); color:var(--green); }
+.tactics-badge[data-value="hold"],.tactics-badge[data-value="indeterminate"] { border-color:var(--amber); color:var(--amber); }
+.tactics-options { width:100%; border-collapse:collapse; font-size:11px; }
+.tactics-options th,.tactics-options td { text-align:left; vertical-align:top; padding:5px 4px; border-top:1px solid var(--line); }
+.tactics-options th { color:var(--muted); font-weight:600; }
+.tactics-options tr[data-status="rejected"] td { color:var(--muted); }
+.tactics-options td[data-status="recommended"] { color:var(--green); }
+.tactics-options td[data-status="penalized"] { color:var(--amber); }
+.tactics-options button { padding:4px 7px; font-size:10px; min-height:26px; }
+.tactics-allocation { padding:8px; border:1px solid #a39562; background:#2a2617; }
+
+/* AI agent settings */
+.settings-button { padding:6px 12px; font-size:12px; white-space:nowrap; }
+.settings-dialog { width:min(560px, calc(100vw - 32px)); }
+.settings-dialog h2 { margin:0 0 8px; font-size:18px; }
+.settings-dialog label { display:block; margin:12px 0 4px; font-size:12px; }
+.settings-dialog input[type="password"], .settings-dialog input:not([type]), .settings-dialog select { width:100%; box-sizing:border-box; }
+.settings-providers { border:1px solid var(--line); padding:8px 12px 10px; margin:12px 0 0; }
+.settings-providers legend { font-size:12px; padding:0 4px; }
+.settings-providers label { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
+.settings-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.settings-note { font-size:11px; line-height:1.5; }
+#agent-settings-status { min-height:1.4em; font-size:12px; }
+#agent-open-settings { padding:4px 10px; font-size:11px; }
+.settings-providers label { justify-content:flex-start; text-align:left; width:auto; }
+.settings-providers input[type="radio"] { width:auto; flex:none; margin:0; }
+.settings-providers label span { flex:1; text-align:left; }
+#agent-settings-key-status { margin:8px 0 0; line-height:1.5; }
+.settings-warning { color:#efc36a; font-size:12px; line-height:1.5; }

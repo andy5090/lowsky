@@ -29,6 +29,31 @@ test('interpolation preserves zero and translates map annotations', () => {
   assert.equal(translate('en', 'unknown-key'), 'unknown-key');
 });
 
+test('training provenance is explicit while routine controls use concise scenario copy', () => {
+  assert.match(translate('en', 'syntheticBanner'), /TRAINING.*Generated.*No live sensor feed/);
+  assert.match(translate('ko', 'syntheticBanner'), /훈련 환경.*생성된.*실시간 센서 연동 없음/);
+  const routineKeys = ['scenarioSettings', 'playbackState', 'scenarioPlayback', 'scenarioTime', 'seekLabel',
+    'priority.time', 'dashboard.saving', 'dashboard.scope', 'exercise.kind.impact_vignette', 'exercise.kind.drop_vignette'];
+  for (const language of ['en', 'ko']) {
+    for (const key of routineKeys) assert.doesNotMatch(translate(language, key), /simulation|fictional|시뮬레이션|가상/i, key);
+    assert.match(translate(language, 'notify.notificationTitle', {count: 1}), /TRAINING|훈련/);
+  }
+});
+
+test('scene controls avoid implementation jargon and seeded scope describes appearance-only variation', () => {
+  for (const language of ['en', 'ko']) {
+    for (const key of ['title', 'choose', 'confirm', 'predefined', 'outcome.unresolved', 'outcome.partial', 'outcome.prevented']) {
+      assert.doesNotMatch(translate(language, `exercise.${key}`), /scripted|vignette|predefined|분기|사전 설정|미리 정해진/i);
+    }
+    for (const key of ['mapSelected', 'mapPending', 'open', 'facilities']) {
+      assert.ok(Object.hasOwn(messages[language], `exercise.${key}`));
+    }
+  }
+  assert.match(translate('en', 'exercise.scope'), /predefined.*not predictions of defense effectiveness/);
+  assert.match(translate('en', 'test.scope'), /model appearances.*Roles, performance and routes stay fixed/);
+  assert.match(translate('ko', 'test.scope'), /모델 외형.*역할·성능·비행 경로는 바뀌지 않습니다/);
+});
+
 test('saved language survives a reload and blocked storage remains usable', () => {
   const values = new Map();
   const storage = {getItem: key => values.get(key), setItem: (key, value) => values.set(key, value)};

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from tools.monitor_server import Simulation, PROJECT
 from tools.scenario_dataset import read_json, ROOT
-from tools.simulation_test import generate, MAX_SEED, VERSION
+from tools.simulation_test import generate, visual_cast, MAX_SEED, VERSION
 from tools.situation_agent import build_bundle
 from tools.decision_engine import OPTIONS
 
@@ -125,6 +125,35 @@ class SeededTestTests(unittest.TestCase):
                               evidence_version=track['evidence_version'], reviewer='test', reason='Review received input', decision='noted'))
         row = self.sim.audit.export()['records'][-1]
         self.assertEqual(row['test_run'], state['test_run'])
+
+    def test_seeded_visual_cast_repeats_a_small_palette_without_changing_world(self):
+        world = read_json(ROOT / 'cases/case_001/world.json')['objects']
+        original = copy.deepcopy(world)
+        cast = visual_cast('case_001', 42, world)
+        self.assertEqual(cast, visual_cast('case_001', 42, world))
+        self.assertNotEqual(cast, visual_cast('case_001', 43, world))
+        self.assertEqual(world, original)
+        rows = cast['objects']
+        self.assertEqual([r['object_id'] for r in rows], [o['object_id'] for o in world])
+        self.assertIn(len({r['airframe_id'] for r in rows}), (2, 3))
+        for start in range(0, len(rows), 6):
+            self.assertEqual(len({r['airframe_id'] for r in rows[start:start + 6]}), 1)
+        for row in rows:
+            self.assertEqual(set(row), {'object_id', 'airframe_id'})
+
+    def test_visual_cast_is_author_only_and_survives_reset_and_seek(self):
+        self.start(42, 'case_001')
+        self.assertNotIn('simulation_visuals', self.sim.state())
+        self.assertNotIn('simulation_visuals', self.sim.clock_state())
+        cast = self.sim.state(show_positions=True)['simulation_visuals']
+        for command in (dict(action='pause'), dict(action='seek', at_ms=400000), dict(action='reset')):
+            self.sim.control(command)
+            self.assertEqual(self.sim.state(show_positions=True)['simulation_visuals'], cast)
+        self.assertNotIn('simulation_visuals', build_bundle(self.sim.state(show_positions=True)))
+        self.start(43, 'case_001')
+        self.assertNotEqual(self.sim.state(show_positions=True)['simulation_visuals'], cast)
+        self.sim.control(dict(action='case', case_id='case_001'))
+        self.assertNotIn('simulation_visuals', self.sim.state(show_positions=True))
 
     def test_new_test_invalidates_old_decision_and_event_captures_seed(self):
         calls = []

@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "scope": "rule_based_training_advice",
+  "purpose": "Reference values for the rule-based training recommendation layer. Ranges, costs and inventories are public-report approximations or stated assumptions from the local scenario documents; none is a measured or certified performance figure, and no engagement or damage model uses them.",
+  "effectors": [
+    {
+      "id": "interceptor_drone",
+      "label": {"en": "Interceptor drone", "ko": "요격 드론"},
+      "nominal_range_m": 4000,
+      "speed_kmh": 350,
+      "cost_tier": "low",
+      "cost_note": {"en": "Public reports: roughly $1-3k per interceptor", "ko": "공개 보도 기준 1대 약 1~3천 달러"},
+      "inventory_per_run": 12,
+      "simultaneous": null,
+      "notes": {"en": "Speed disadvantage against jet-type targets; preserve against decoy-leaning groups.", "ko": "제트형 표적에는 속도 열세. 미끼 성향 집단에는 보존."}
+    },
+    {
+      "id": "laser",
+      "label": {"en": "Directed-energy (laser)", "ko": "레이저"},
+      "nominal_range_m": 3000,
+      "cost_tier": "per_shot_low",
+      "cost_note": {"en": "Low marginal cost; one target at a time, 8-11 s per engagement (assumption)", "ko": "발당 비용 낮음, 한 번에 한 표적, 표적당 8~11초(가정)"},
+      "inventory_per_run": null,
+      "simultaneous": 1,
+      "notes": {"en": "Preferred for jet-type and fiber-optic FPV targets.", "ko": "제트형과 광섬유 FPV에 우선."}
+    },
+    {
+      "id": "autocannon",
+      "label": {"en": "Autocannon", "ko": "대공포"},
+      "nominal_range_m": 2500,
+      "cost_tier": "low",
+      "cost_note": {"en": "Ammunition cost low; debris footprint restricts use over facilities", "ko": "탄약 비용 낮음, 잔해 낙하 구역 때문에 시설 상공 제한"},
+      "inventory_per_run": null,
+      "simultaneous": null,
+      "debris_radius_m": 400,
+      "notes": {"en": "Rejected when debris would fall inside the fence or on the runway.", "ko": "잔해가 울타리 안쪽이나 활주로에 떨어지면 거부."}
+    },
+    {
+      "id": "rf_jammer",
+      "label": {"en": "RF jammer", "ko": "RF 재머"},
+      "nominal_range_m": 2000,
+      "cost_tier": "reusable",
+      "cost_note": {"en": "Reusable; interferes with own radar and has no effect on fiber-optic or autonomous aircraft", "ko": "재사용 가능, 아군 레이더 간섭, 광섬유·자율 비행체에는 무효"},
+      "inventory_per_run": null,
+      "simultaneous": null,
+      "radar_interference_radius_m": 1500,
+      "notes": {"en": "Rejected near own radar; penalized without RF emission evidence.", "ko": "아군 레이더 근처 거부, RF 발신 근거 없으면 감점."}
+    }
+  ],
+  "unit_kinds": [
+    {"id": "infantry", "label": {"en": "Infantry", "ko": "보병"}, "budget": 12, "display_range_m": 0, "role_options": ["observation_post", "patrol", "quick_reaction"]},
+    {"id": "radar", "label": {"en": "Military radar", "ko": "군사용 레이더"}, "budget": 2, "display_range_m": 5000, "reference": "data/sensors/radar_reference_specs.json (instrumented range mode, not detection range)"},
+    {"id": "detection_phone", "label": {"en": "Detection phone post", "ko": "탐지폰 초소"}, "budget": 10, "display_range_m": 1500, "reference": "data/references/picket_line_review.json (acoustic range assumption)"},
+    {"id": "effector_team", "label": {"en": "Effector team", "ko": "대응 팀"}, "budget": 4, "display_range_m": 2500}
+  ],
+  "rubric": {
+    "group_size_decoy": {"min_group": 5, "decoy": 0.25},
+    "terminal_maneuver": {"attack": 0.35, "decoy": -0.2},
+    "jet_speed": {"min_kmh": 350, "attack": 0.15, "decoy": -0.1},
+    "first_wave": {"window_ms": 90000, "decoy": 0.15},
+    "eo_fixed_wing": {"attack": 0.1, "decoy": 0.1},
+    "eo_light_airframe": {"decoy": 0.2},
+    "rf_emission": {"reconnaissance": 0.3},
+    "loiter": {"max_kmh": 60, "reconnaissance": 0.25},
+    "indeterminate_margin": 0.15
+  },
+  "constraints": {
+    "runway_corridor_margin_m": 300,
+    "radar_facility_ids": ["tower", "station_a", "station_b"],
+    "fuel_like_facility_ids": ["support_1", "support_2", "support_3"]
+  },
+  "sector_prior": {
+    "note": "Scenario prior only: approaches are biased to the north in the planning documents; weights are not derived from real geography.",
+    "weights": {"N": 1.0, "NE": 0.7, "E": 0.5, "SE": 0.25, "S": 0.2, "SW": 0.25, "W": 0.5, "NW": 0.7}
+  },
+  "placement": {
+    "radar_ring_m": [600, 900, 1200],
+    "phone_min_distance_m": 1200,
+    "phone_max_distance_m": 4500,
+    "phone_spacing_m": 700,
+    "effector_ring_m": 800,
+    "observation_ring_m": 1000,
+    "bounds_m": 5000
+  }
+}

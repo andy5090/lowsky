@@ -214,7 +214,7 @@ test('priority policy suppresses routine reports and aggregates semantic bursts,
  assert.equal(policy.observe(state(changes,{run_id:'run2',at_ms:500,tracks:[]})).reset,true);
  assert.equal(policy.observe(state(changes,{run_id:'run2',at_ms:400,tracks:[]})).medium.length,0);
 });
-test('highest review notice requires prior positive indirect evidence plus a current actionable checkpoint',async()=>{
+test('first direct receipt raises highest review notice with a current checkpoint, even without indirect evidence',async()=>{
  const {createAlertPriorityPolicy}=await import('../monitor/notifications.mjs');
  const event={id:'event1',run_id:'run-1',stage:'received_observation',status:'pending',expires_at_ms:100000,choice_report:{decision_options:[{id:'continue_monitoring'}]}};
  const direct=state([],{at_ms:3000,tracks:[{object_id:'received'}]});
@@ -225,7 +225,8 @@ test('highest review notice requires prior positive indirect evidence plus a cur
  assert.equal(policy.observe({...direct,at_ms:4000},event).high[0].kind,'direct_transition');
  assert.equal(policy.observe({...direct,at_ms:5000},{...event,id:'event2'}).high.length,0);
  const ordinary=createAlertPriorityPolicy();ordinary.observe(state([],{at_ms:0,tracks:[]}));
- assert.equal(ordinary.observe(direct,event).high.length,0);
+ assert.equal(ordinary.observe(direct,event).high.length,1);
+ assert.equal(ordinary.observe({...direct,at_ms:4000},event).high.length,0);
  const loaded=createAlertPriorityPolicy();assert.equal(loaded.observe(direct,event).high.length,0);
 });
 test('selection expiry only interrupts when an active human draft explicitly expired, once per draft',async()=>{

@@ -28,7 +28,7 @@ func verify() -> void:
 		assert(item.label.visible == preview.detected_ids.has(item.object_id))
 	preview.set_drone_positions(true)
 	for item in preview.objects:
-		assert(item.label.visible and item.label.text.begins_with("SIM "))
+		assert(item.label.visible and item.label.text.begins_with("AUTHOR "))
 	preview.set_drone_positions(false)
 	preview.elapsed_ms = 0
 	preview._process(0)

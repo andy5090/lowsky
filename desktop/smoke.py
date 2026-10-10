@@ -20,7 +20,7 @@ class SmokeError(RuntimeError):
 
 
 ASSETS = ('index.html', 'app.js', 'styles.css', 'logo.svg', 'logo-metal.png', 'geo.mjs',
-          'decisions.mjs', 'test_runs.mjs', 'review.mjs', 'exercise.mjs', 'dashboard.mjs',
+          'decisions.mjs', 'test_runs.mjs', 'review.mjs', 'exercise.mjs', 'dashboard.mjs', 'agent_settings.mjs', 'tactics.mjs',
           'radar.mjs', 'desktop.mjs', 'custom_selects.mjs', 'i18n.mjs', 'notifications.mjs', 'alert_audio.mjs', 'sw.js', 'manifest.webmanifest', 'pwa-icon.svg')
 DATA_FILES = ('site_layout.json', 'early_warning_demo.json', 'sensor_fleet_demo.json',
               'situation_review.json', 'radar_display.json', 'terrain/korea_site.json', 'terrain/korea_context.json',

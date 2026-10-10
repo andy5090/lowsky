@@ -27,7 +27,7 @@ func markers() -> Array:
 			anchor += Vector3.UP * float(target.get_meta("horizontal_span_m", 0.6)) * 0.45
 		var point = camera.unproject_position(anchor)
 		if Rect2(Vector2.ZERO, get_viewport_rect().size).has_point(point):
-			result.append({"point": point, "id": item.object_id, "sim": item.sim})
+			result.append({"point": point, "id": item.object_id, "sim": item.sim, "note": "" if item.sim else str(item.get("note", ""))})
 	return result
 
 func _draw() -> void:
@@ -43,7 +43,11 @@ func _draw() -> void:
 		draw_circle(point, 2, color)
 		if visible_markers.size() > 8 and marker.id != visible_markers[0].id:
 			continue
-		var box = Rect2(point + Vector2(15, -26), Vector2(180, 24))
+		var note: String = marker.note
+		var width = 180.0
+		if note != "":
+			width = maxf(width, font.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 12.0)
+		var box = Rect2(point + Vector2(15, -26), Vector2(width, 24 if note == "" else 42))
 		for occupied in labels:
 			if box.intersects(occupied.grow(3)):
 				box.position.y = occupied.end.y + 4
@@ -51,3 +55,6 @@ func _draw() -> void:
 		draw_line(point + Vector2(10, 0), box.position + Vector2(0, 12), color, 1, true)
 		draw_rect(box, Color(0.04, 0.06, 0.08, 0.92))
 		draw_string(font, box.position + Vector2(6, 17), ("SIM " if marker.sim else "DETECTED ") + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+		if note != "":
+			# Rule-based training advice from the shared state; the overlay only repeats the received-only label line.
+			draw_string(font, box.position + Vector2(6, 35), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, color.darkened(0.15))

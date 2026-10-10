@@ -27,7 +27,7 @@ func verify() -> void:
 	assert(preview.camera_target != first_position)
 	assert(preview.objects[1].label.pixel_size < preview.objects[0].label.pixel_size)
 	assert(preview.selected_drone_label.text.contains(preview.objects[1].object_id))
-	assert(preview.selected_drone_label.text.begins_with("CAMERA / SIM:"))
+	assert(preview.selected_drone_label.text.begins_with("CAMERA:"))
 	for item in preview.objects:
 		assert(not item.label.visible and not item.sim, "Camera selection must never grant detection labels or SIM positions")
 	preview.toggle_follow()

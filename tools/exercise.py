@@ -4,14 +4,14 @@ import uuid
 
 BRANCHES = [
     dict(id='continue', motion='continue', asset_state='unavailable', delay_ms=5000,
-         label=dict(en='Continue flight', ko='비행 지속 분기'),
+         label=dict(en='Continue flight', ko='비행 지속'),
          description=dict(en='Keep the flight path; mark the selected facility unavailable for this exercise.',ko='비행 경로를 유지하고 선택한 시설을 훈련상 사용 중단으로 표시합니다.')),
     dict(id='hold', motion='hold', asset_state='restricted', delay_ms=5000,
-         label=dict(en='Hold position', ko='제자리 대기 분기'),
-         description=dict(en='Hold the selected aircraft at its scripted position; mark the facility restricted.',ko='선택한 비행체를 정해진 시점의 위치에 대기시키고 시설을 제한 운영으로 표시합니다.')),
+         label=dict(en='Hold position', ko='제자리 대기'),
+         description=dict(en='Hold the selected aircraft at the selected position; mark the facility restricted.',ko='선택한 비행체를 정해진 시점의 위치에 대기시키고 시설을 제한 운영으로 표시합니다.')),
     dict(id='withdraw', motion='withdraw', asset_state='available', delay_ms=5000,
-         label=dict(en='Return along route', ko='경로 복귀 분기'),
-         description=dict(en='Return along the existing fictional route; keep the facility available.',ko='기존 가상 경로를 되짚어 이동하며 시설은 사용 가능 상태를 유지합니다.')),
+         label=dict(en='Return along route', ko='경로 복귀'),
+         description=dict(en='Return along the existing route; keep the facility available.',ko='기존 경로를 되짚어 이동하며 시설은 사용 가능 상태를 유지합니다.')),
 ]
 
 
@@ -90,9 +90,9 @@ def apply_observations(payload, selection, world):
 
 def view(layout, tracks, selection, at_ms, duration_ms=180_000, paced=False):
     assets=[dict(id=b['id'],label=copy.deepcopy(b['label']),position=b['position'],
-                 status='available',role=dict(en='Fictional facility',ko='가상 시설')) for b in layout['facilities']]
+                 status='available',role=dict(en='Facility',ko='시설')) for b in layout['facilities']]
     assets.insert(0,dict(id='runway',label=dict(en='Runway',ko='활주로'),position=layout['runway']['center'],
-                        status='available',role=dict(en='Fictional airfield surface',ko='가상 비행장 시설')))
+                        status='available',role=dict(en='Airfield surface',ko='비행장 시설')))
     mission_rows = missions({track['object_id'] for track in tracks}, selection, at_ms, duration_ms, paced)
     mission_objects = {definition['object_id'] for definition in VIGNETTES} if paced else set()
     record=copy.deepcopy(selection)

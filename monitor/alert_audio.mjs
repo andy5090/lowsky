@@ -3,11 +3,11 @@ import {priorityAlertKey} from './notifications.mjs';
 export const ALERT_AUDIO_STORAGE_KEY = 'lowsky.alertAudio.enabled';
 const COOLDOWN_MS = {low: 30000, medium: 8000, high: 3000};
 const RANK = {low: 1, medium: 2, high: 3};
-// Short sine tones with attack/release envelopes; no recordings or alert loops.
+// Finite, non-overlapping pulses with attack/release envelopes; no alert loops.
 const TONES = {
   low: [[440, 0, 0.12]],
   medium: [[520, 0, 0.12], [660, 0.2, 0.14]],
-  high: [[660, 0, 0.13], [820, 0.23, 0.13], [660, 0.46, 0.18]],
+  high: [[740, 0, 0.3], [980, 0.4, 0.3], [740, 0.8, 0.36]],
 };
 const nativeContext = () => new (globalThis.AudioContext || globalThis.webkitAudioContext)();
 const lowKey = alert => {
@@ -24,13 +24,13 @@ const lowKey = alert => {
  */
 export function createAlertAudioController({storage, now = () => globalThis.performance.now(),
   createContext = nativeContext, supported = createContext !== nativeContext || Boolean(globalThis.AudioContext || globalThis.webkitAudioContext),
-  onChange = () => {}, volume = 0.05, maxObservationGapMs = 5000} = {}) {
+  onChange = () => {}, volume = 0.14, maxObservationGapMs = 5000} = {}) {
   let enabled = true, unlocked = false, error = '', disposed = false, context = null;
   let run = null, previousTime = null, previousWall = null, wasConnected = true, needsBaseline = true;
   let seen = new Set(), generation = 0, unlocking = null, lastPlayed = -Infinity, lastLevel = null;
   const lastByLevel = {low: -Infinity, medium: -Infinity, high: -Infinity};
   const active = new Set();
-  const gainLimit = Math.max(0, Math.min(0.08, Number.isFinite(volume) ? volume : 0.05));
+  const gainLimit = Math.max(0, Math.min(0.2, Number.isFinite(volume) ? volume : 0.14));
   try { enabled = storage?.getItem(ALERT_AUDIO_STORAGE_KEY) !== '0'; } catch { /* Session-only preference. */ }
   const getState = () => {
     const ready = unlocked && context?.state === 'running';
@@ -100,12 +100,13 @@ export function createAlertAudioController({storage, now = () => globalThis.perf
       const entry = {oscillator, gain};
       active.add(entry);
       oscillator.onended = () => clean(entry);
-      oscillator.type = 'sine';
+      oscillator.type = level === 'high' ? 'triangle' : 'sine';
       oscillator.frequency.setValueAtTime(frequency, start + offset);
       const at = start + offset;
-      const peak = gainLimit * (level === 'low' ? 0.55 : level === 'medium' ? 0.8 : 1);
+      const peak = gainLimit * (level === 'low' ? 0.22 : level === 'medium' ? 0.45 : 1);
       gain.gain.setValueAtTime(0, at);
       gain.gain.linearRampToValueAtTime(peak, at + 0.018);
+      if (level === 'high') gain.gain.setValueAtTime(peak, at + length - 0.06);
       gain.gain.linearRampToValueAtTime(0, at + length);
       oscillator.connect(gain); gain.connect(context.destination);
       oscillator.start(at); oscillator.stop(at + length + 0.01);

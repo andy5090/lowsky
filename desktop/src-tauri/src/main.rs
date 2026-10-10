@@ -356,14 +356,15 @@ fn main() {
             fs::create_dir_all(&data)?;
             let config = data.join(".env");
             if !config.exists() {
-                fs::write(&config, "# LOW SKY agent settings. Restart the app after editing.\n# Never share this file with your API key.\nOPENAI_API_KEY=\nLOW_SKY_AGENT_MODEL=openai:gpt-6.1-sol\n")?;
+                fs::write(&config, "# Optional fallback settings. Prefer LOW SKY > AI model & API key... (no restart needed).\n# Values saved in that dialog take priority over this file. Restart the app after editing this file.\n# Never share this file with your API key.\nOPENAI_API_KEY=\nANTHROPIC_API_KEY=\nLOW_SKY_AGENT_MODEL=openai:gpt-6.1-sol\n")?;
                 #[cfg(unix)] { use std::os::unix::fs::PermissionsExt; fs::set_permissions(&config, fs::Permissions::from_mode(0o600))?; }
             }
             app.manage(Runtime { processes: Mutex::new(Processes::default()), payload: app.path().resource_dir()?.join("payload"), data, stopped: AtomicBool::new(false), fullscreen: AtomicBool::new(false), native_gate: Mutex::new(()) });
             let view = MenuItem::with_id(app, "3d", "Open 3D simulation / 3D 열기", true, None::<&str>)?;
-            let settings = MenuItem::with_id(app, "data", "Application data & agent settings…", true, None::<&str>)?;
+            let agent = MenuItem::with_id(app, "agent", "AI model & API key… / AI 설정", true, None::<&str>)?;
+            let settings = MenuItem::with_id(app, "data", "Application data folder…", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[
-                &Submenu::with_items(app, "LOW SKY", true, &[&view, &settings, &PredefinedMenuItem::separator(app)?, &PredefinedMenuItem::quit(app, None)?])?,
+                &Submenu::with_items(app, "LOW SKY", true, &[&view, &agent, &settings, &PredefinedMenuItem::separator(app)?, &PredefinedMenuItem::quit(app, None)?])?,
                 &Submenu::with_items(app, "Edit", true, &[&PredefinedMenuItem::copy(app, None)?, &PredefinedMenuItem::paste(app, None)?, &PredefinedMenuItem::select_all(app, None)?])?,
             ])?;
             app.set_menu(menu)?;
@@ -392,6 +393,12 @@ fn main() {
             match event.id().as_ref() {
                 "3d" => { if let Err(error) = runtime.post("/api/desktop", &serde_json::json!({"action":"open_3d"}), false) { show_error(app, &error); } },
                 "data" => open_path(&runtime.data),
+                // Opens the in-app settings dialog; the key is entered in the page and saved by the local service.
+                "agent" => if let Some(window) = app.get_webview_window("monitor") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.eval("window.dispatchEvent(new Event('lowsky:open-agent-settings'))");
+                },
                 _ => {}
             }
         })

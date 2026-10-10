@@ -319,7 +319,7 @@ func verify_mission_vignettes(preview: Node3D) -> void:
 	preview.update_mission_vignettes()
 	var halfway: Vector3 = actor.node.position
 	assert(marker.visible and not marker.get_node("Label").visible)
-	assert(not marker.get_node("Payload").visible and not marker.get_node("Outcome").visible)
+	assert(not marker.get_node("Payload").visible and not marker.get_node("Damage").visible and not marker.get_node("Flash").visible)
 	preview.update_mission_vignettes()
 	assert(actor.node.position.is_equal_approx(halfway), "Paused time must freeze illustrative descent")
 	preview.elapsed_ms = 1750
@@ -349,7 +349,7 @@ func verify_mission_vignettes(preview: Node3D) -> void:
 		mission.phase = phase
 		preview.update_mission_vignettes()
 		assert(marker.get_meta("phase") == phase)
-		assert(marker.get_node("Outcome").visible and not payload.visible)
+		assert(marker.get_node("Damage").visible == (phase == "complete") and not payload.visible)
 		assert(not marker.get_node("Label").visible, "Outcome does not grant detection")
 	preview.simulation_missions.clear()
 	preview.update_mission_vignettes()

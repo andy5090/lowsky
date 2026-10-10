@@ -41,18 +41,48 @@ test('enabled preference never autoplays or creates context; gesture unlock esta
   assert.equal(f.oscillators.length, 1);
 });
 
-test('low, medium and high use distinct capped-envelope sine patterns and highest batch wins', async () => {
+test('low, medium and high use distinct capped-envelope patterns and highest batch wins', async () => {
   for (const [level, count] of [['low', 1], ['medium', 2], ['high', 3]]) {
     const f = fixture({volume: 99}); await f.ready(); f.setTime(1000);
     const notices = level === 'low' ? {} : {...updates('medium', 'm'), ...(level === 'high' ? updates('high', 'h') : {})};
     assert.deepEqual(f.observe([low()], notices), {status: 'played', level});
     assert.equal(f.oscillators.length, count);
     for (const [index, oscillator] of f.oscillators.entries()) {
-      assert.equal(oscillator.type, 'sine');
-      assert(oscillator.stops[0] - oscillator.started < 0.3);
-      assert(f.gains[index].gain.values.filter(value => value[0] === 'ramp').every(value => value[1] <= 0.08));
+      assert.equal(oscillator.type, level === 'high' ? 'triangle' : 'sine');
+      assert(oscillator.stops[0] - oscillator.started < 0.4);
+      assert(f.gains[index].gain.values.every(value => value[1] >= 0 && value[1] <= 0.2));
       assert.equal(f.gains[index].gain.values.at(-1)[1], 0);
+      if (index) assert(oscillator.started > f.oscillators[index - 1].stops[0], 'Pulses never overlap or add their gains');
     }
+  }
+});
+
+test('high priority is louder and sustained, but finishes within a bounded three-pulse sequence', async () => {
+  const peaks = {};
+  for (const level of ['low', 'medium', 'high']) {
+    const f = fixture(); await f.ready(); f.setTime(1000);
+    f.observe(level === 'low' ? [low()] : [], level === 'low' ? {} : updates(level, 'fresh'));
+    peaks[level] = Math.max(...f.gains.flatMap(node => node.gain.values.map(value => value[1])));
+    if (level === 'high') {
+      assert.equal(f.oscillators.length, 3);
+      assert(f.oscillators.at(-1).stops[0] - f.oscillators[0].started < 1.2);
+      for (const node of f.gains) {
+        const sustain = node.gain.values.find(value => value[0] === 'set' && value[1] > 0);
+        assert(sustain && sustain[2] - node.gain.values[0][2] >= 0.23);
+      }
+    }
+  }
+  assert(peaks.high > 2 * peaks.medium);
+  assert(peaks.medium > peaks.low);
+  assert.equal(peaks.high, 0.14);
+});
+
+test('invalid or extreme volume cannot produce unbounded gain', async () => {
+  for (const volume of [-1, 0, NaN, Infinity, 99]) {
+    const f = fixture({volume}); await f.ready(); f.setTime(1000);
+    f.observe([], updates('high', 'fresh'));
+    assert(f.gains.every(node => node.gain.values.every(value => Number.isFinite(value[1]) && value[1] >= 0 && value[1] <= 0.2)));
+    if (volume <= 0) assert(f.gains.every(node => node.gain.values.every(value => value[1] === 0)));
   }
 });
 

@@ -70,21 +70,21 @@ def build(root):
     descriptions = [
         (
             localized("Indicators and first reports", "전조와 첫 관측"),
-            localized(f"02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. {first_count} synthetic objects; review indirect indications before direct reports at 04:30.", f"오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 {first_count}대. 04:30 직접 관측 전까지 간접 조짐을 검토합니다."),
+            localized(f"02:00 AM · Northern Gyeonggi base, possible arrival from the North Korean side. {first_count} aircraft; review indirect indications before direct reports at 04:30.", f"오전 02:00 · 경기 북부 기지, 북측 유입 가능성. 비행체 {first_count}대. 04:30 직접 관측 전까지 간접 조짐을 검토합니다."),
             localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
-            localized(f"{first_count} small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", f"소형 비행체 {first_count}대와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
+            localized(f"{first_count} small aerial objects with three observation marker classes; labels are observations, not hostile or civilian classifications.", f"소형 비행체 {first_count}대와 세 가지 관측 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
         ),
         (
             localized("Conflicting evidence and review", "상충 근거와 검토"),
-            localized(f"02:00 AM · Fictional northern Gyeonggi base, possible arrival from the North Korean side. {second_count} synthetic objects; indirect indications followed by conflicting reports and review.", f"오전 02:00 · 경기 북부 가상 기지, 북측 유입 가능성. 합성 비행체 {second_count}대. 간접 조짐 이후 상충 보고와 재검토가 이어집니다."),
+            localized(f"02:00 AM · Northern Gyeonggi base, possible arrival from the North Korean side. {second_count} aircraft; indirect indications followed by conflicting reports and review.", f"오전 02:00 · 경기 북부 기지, 북측 유입 가능성. 비행체 {second_count}대. 간접 조짐 이후 상충 보고와 재검토가 이어집니다."),
             localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
-            localized(f"{second_count} synthetic objects; {conflicting_count} conflicting tracks, with the remaining tracks as comparison traffic.", f"합성 비행체 {second_count}대. {conflicting_count}대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
+            localized(f"{second_count} aircraft; {conflicting_count} conflicting tracks, with the remaining tracks as comparison traffic.", f"비행체 {second_count}대. {conflicting_count}대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
         ),
         (
             localized("Monitoring load test: source loss and recovery", "모니터링 부하 시험: 채널 단절·복구"),
-            localized("240 synthetic aerial objects exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.", "합성 비행체 240개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."),
+            localized("240 aircraft exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.", "비행체 240개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."),
             localized("Retain last evidence during loss, distinguish missing corroboration from disappearance, and verify recovery without inventing tracks.", "단절 중 마지막 근거를 보존하고 교차 확인 불가와 대상 소멸을 구분하며, 근거를 만들어내지 않고 복구를 확인합니다."),
-            localized("240 synthetic objects sharing two observation channels, plus an independent health-only fleet of 240 virtual sensor endpoints. These are workload assumptions, not measured attack or deployment sizes.", "합성 비행체 240개가 두 관측 채널을 공유하며, 별도의 가상 센서 240개는 상태 정보만 제공합니다. 수량은 부하 시험 가정이며 실측 공격·배치 규모가 아닙니다."),
+            localized("240 synthetic objects sharing two observation channels, plus an independent health-only fleet of 240 virtual sensor endpoints. These are workload assumptions, not measured attack or deployment sizes.", "비행체 240개가 두 관측 채널을 공유하며, 별도의 가상 센서 240개는 상태 정보만 제공합니다. 수량은 부하 시험 가정이며 실측 공격·배치 규모가 아닙니다."),
         ),
     ]
     for index, (variant, count) in enumerate(zip(VARIANTS, WORKLOAD_COUNTS)):

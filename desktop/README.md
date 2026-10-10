@@ -12,12 +12,14 @@ The two windows are intentionally separate native surfaces. Godot is not embedde
 
 ## Settings and user data
 
-Choose **LOW SKY → Application data & agent settings…** to open the application data folder:
+Choose **LOW SKY → AI model & API key… / AI 설정**, or **AI settings** in the monitor header, to pick OpenAI, Anthropic Claude or the offline rules-only overview, select a model, paste your own API key, test the connection and save. No restart is needed. Each user supplies their own key and is billed by their provider. Without a key, the app still simulates and shows how to configure the agent. Deep Agents and both provider SDKs are bundled; provider access needs Internet and your account.
+
+Choose **LOW SKY → Application data folder…** to open the per-user folder:
 
 - macOS: `~/Library/Application Support/com.lowsky.desktop/`
 - Windows: `%APPDATA%\com.lowsky.desktop\`
 
-The folder contains `.env`, `backend.log`, `godot.log`, and three audit journals. On macOS the `.env` file is hidden in Finder; use **Command+Shift+.** to show hidden files. Put your own `OPENAI_API_KEY` into this user file and restart LOW SKY. The selected model defaults to `openai:gpt-6.1-sol`; set `LOW_SKY_AGENT_MODEL=` explicitly for the offline rule-based overview. Without a key, the app still simulates and shows the missing-configuration status. Deep Agents dependencies are bundled, but provider access still needs Internet and your account.
+It contains `agent-settings.json` (saved provider, models and keys, owner-only permissions), `.env`, `backend.log`, `godot.log` and the audit journals. The key is never shown again in the app; remove it with **Remove saved key** or by deleting `agent-settings.json`. The hidden `.env` remains an optional fallback for `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and `LOW_SKY_AGENT_MODEL` (restart after editing); values saved in the dialog take priority.
 
 The repository `.env`, source documents, `.local/`, and existing review journals are never included. Journals are written outside the install folder and survive application upgrades. The optional Codex virtual operator still requires a separately installed and authenticated Codex CLI; it is not part of this installer. Browser PWA installation and browser notifications depend on browser APIs and may be unavailable in the system webview; simulation and in-app alert UI remain available.
 
