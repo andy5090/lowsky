@@ -29,8 +29,8 @@
         "ko": "가상의 공개 공지를 검토할 수 있습니다. 공지만으로 항적이나 탐지 경보를 생성하지 않습니다."
       },
       "uncertainty": {
-        "en": "The notice does not confirm an object, intent, or future event. No prior multiplier is calibrated.",
-        "ko": "공지로 대상·의도·미래 사건을 확인할 수 없습니다. 사전확률 배수는 보정되지 않았습니다."
+        "en": "This notice does not confirm a drone, its purpose, or what will happen next. How much this information should change the risk assessment has not been verified.",
+        "ko": "이 공지만으로 드론의 존재나 목적, 앞으로 일어날 일을 알 수 없습니다. 이 정보가 위험 판단에 얼마나 영향을 주는지도 아직 검증되지 않았습니다."
       },
       "case_ids": [
         "case_001",

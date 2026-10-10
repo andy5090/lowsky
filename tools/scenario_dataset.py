@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1] / "data" / "scenarios" / "v1"
 TIMES = tuple(range(0, 180_001, 10_000))
 SOURCES = ("channel_a", "channel_b")
 VARIANTS = ("consistent", "contradictory", "missing")
-WORKLOAD_COUNTS = (12, 24, 240)
+WORKLOAD_COUNTS = (48, 96, 240)
 TTL_MS = 45_000
 
 
@@ -43,18 +43,20 @@ def build(root):
         "interpolation": "linear_between_keyframes",
         "environment": [{"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]}, *layout["facilities"], *layout.get("field_installations", [])],
     })
+    first_count, second_count, _ = WORKLOAD_COUNTS
+    conflicting_count = len(range(0, second_count, 4))
     descriptions = [
         (
             localized("0200: Indicators and first reports", "새벽 2시: 전조와 첫 관측"),
-            localized("12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", "합성 비행체 12개가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
+            localized(f"{first_count} synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", f"합성 비행체 {first_count}대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
             localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
-            localized("12 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", "소형 비행체 12개와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
+            localized(f"{first_count} small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", f"소형 비행체 {first_count}대와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
         ),
         (
             localized("0200: Conflicting evidence and review", "새벽 2시: 상충 근거와 검토"),
-            localized("24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.", "합성 비행체 24개가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 6개 대상의 표식을 다르게 보고하고 이후 재확인합니다."),
+            localized(f"{second_count} synthetic aerial objects provide mixed background traffic. Channel B reports different labels for {conflicting_count} tracks from 01:00 to 02:00, followed by reconfirmation.", f"합성 비행체 {second_count}대가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 {conflicting_count}대의 표식을 다르게 보고하고 이후 재확인합니다."),
             localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
-            localized("24 synthetic objects; six conflicting tracks, with the remaining tracks as comparison traffic.", "합성 비행체 24개. 6개 대상에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
+            localized(f"{second_count} synthetic objects; {conflicting_count} conflicting tracks, with the remaining tracks as comparison traffic.", f"합성 비행체 {second_count}대. {conflicting_count}대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
         ),
         (
             localized("Monitoring load test: source loss and recovery", "모니터링 부하 시험: 채널 단절·복구"),
@@ -147,8 +149,8 @@ def build(root):
                         "split": "development", "variant": variant, "focus_object_id": objects[0]})
         name, summary, objective, composition = descriptions[index]
         event = {
-            "consistent": localized("All 12 candidates have a first report; corroboration may still be pending.", "12개 대상의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."),
-            "contradictory": localized("Channel B begins conflicting labels on six tracks.", "채널 B에서 6개 대상의 표식 상충이 시작됩니다."),
+            "consistent": localized(f"All {count} candidates have a first report; corroboration may still be pending.", f"{count}대의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."),
+            "contradictory": localized(f"Channel B begins conflicting labels on {conflicting_count} tracks.", f"채널 B에서 {conflicting_count}대의 표식 상충이 시작됩니다."),
             "missing": localized("Channel B stops reporting. Preserve the last received evidence.", "채널 B의 보고가 중단됩니다. 마지막 수신 근거를 보존합니다."),
         }[variant]
         briefings.append({

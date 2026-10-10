@@ -222,7 +222,7 @@ class SimulationTests(SimulationFixture):
         truth = self.sim.state(show_positions=True)
         self.assertEqual(normal['tracks'], [])
         self.assertNotIn('simulation_positions', normal)
-        self.assertEqual(len(truth['simulation_positions']), 12)
+        self.assertEqual(len(truth['simulation_positions']), 48)
         positions = truth.pop('simulation_positions')
         self.assertEqual(truth, normal)
         self.assertEqual(set(positions[0]), {'object_id', 'position'})
@@ -509,7 +509,7 @@ class HTTPTests(SimulationFixture):
         state = json.loads(raw)
         self.assertEqual(status, 200)
         self.assertEqual(headers['Cache-Control'], 'no-store')
-        self.assertEqual(len(state['simulation_positions']), 12)
+        self.assertEqual(len(state['simulation_positions']), 48)
         self.assertEqual(state['tracks'], [])
         self.assertEqual(self.sim.state()['tracks'], [])
 

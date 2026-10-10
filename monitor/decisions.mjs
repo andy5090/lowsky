@@ -5,21 +5,24 @@ export function decisionStatusKey(event, enabled, notice = '') {
   return notice || (event ? `decision.${event.status}` : enabled ? 'decision.watching' : 'decision.disabled');
 }
 
+export function decisionReport(event) { return event?.report || event?.choice_report; }
+export function decisionOpen(event) { return ['pending','evaluating','ready','failed'].includes(event?.status); }
+
 export function selectDecision(event, optionId) {
-  if (event?.status !== 'ready' || !DECISION_OPTIONS.includes(optionId)
-      || !event.report?.decision_options?.some(option => option.id === optionId)) return null;
+  if (!decisionOpen(event) || !DECISION_OPTIONS.includes(optionId)
+      || !decisionReport(event)?.decision_options?.some(option => option.id === optionId)) return null;
   return {run_id:event.run_id,event_id:event.id,evidence_version:event.evidence_version,
-    option_id:optionId,at_ms:event.at_ms,language:event.report.language};
+    option_id:optionId,at_ms:event.at_ms,language:decisionReport(event).language};
 }
 
 export function decisionDraftStatus(draft, event, state, language) {
   if (!draft) return 'empty';
-  if (!event || event.status !== 'ready' || draft.run_id !== state?.run_id
+  if (!event || !decisionOpen(event) || draft.run_id !== state?.run_id
       || draft.run_id !== event.run_id || draft.event_id !== event.id
       || draft.evidence_version !== event.evidence_version || draft.at_ms !== event.at_ms
       || (Number.isFinite(event.expires_at_ms) && state.at_ms >= event.expires_at_ms)
-      || draft.language !== language || event.report?.language !== language
-      || !event.report?.decision_options?.some(option => option.id === draft.option_id)) return 'stale';
+      || draft.language !== language || decisionReport(event)?.language !== language
+      || !decisionReport(event)?.decision_options?.some(option => option.id === draft.option_id)) return 'stale';
   return 'ready';
 }
 

@@ -1,7 +1,8 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
-import {selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
+import {exerciseConfirmation} from './exercise.mjs';
+import {decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
@@ -26,6 +27,7 @@ let decisions = null, decisionBusy = false, decisionDraft = null, decisionError 
 let decisionLanguagePending = false, decisionAvailable = false;
 let decisionNoticeRun = null;
 let rehearsals = null, rehearsalRecords = null, rehearsalBusy = false, rehearsalError = false, rehearsalRequest = 0, rehearsalSignature = '';
+let exerciseDraft = null, exerciseRun = null, exerciseAt = 0, exerciseBusy = false, exerciseError = false;
 let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
 const selectedComments = {track:'',situation:''};
@@ -56,6 +58,7 @@ function connection(ok, message='') {
   updateReviewAvailability();
   updateTrackReviewAvailability();
   renderNotificationSettings();
+  renderExercise();
   if (!ok) { if (state) { delete state.simulation_positions; drawMap(); } $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
@@ -152,7 +155,7 @@ function renderAssessment() {
   const signature = JSON.stringify([language,report,Boolean(stale)]);
   if(signature===assessmentSignature)return;
   assessmentSignature=signature;
-  $('agent-report').innerHTML = report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t('agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>` : `<p class="empty-state">${t('agent.empty')}</p>`;
+  $('agent-report').innerHTML = report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>` : `<p class="empty-state">${t('agent.empty')}</p>`;
 }
 async function runAssessment() {
   if(!connected || !state || assessmentBusy || assessment?.running || assessment?.configuration_error)return;
@@ -210,7 +213,7 @@ function renderDecisions() {
   $('decision-status').textContent = operatorActive() ? t('operator.autoNotice') : t(statusKey);
   $('decision-attention').hidden = !event && !expired;
   $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : expired ? $('decision-expired').textContent : '';
-  const report = event?.report;
+  const report = decisionReport(event);
   $('decision-timing').textContent = event ? t('decision.timing',{captured:fmt(event.at_ms),now:fmt(state.at_ms),age:fmt(Math.max(0,state.at_ms-event.at_ms)),remaining:fmt(Math.max(0,event.expires_at_ms-state.at_ms)),count:(decisions.events || []).filter(item=>!['decided','superseded','expired'].includes(item.status)).length}) : '';
   $('decision-bilingual-note').hidden = !$('decision-bilingual').checked;
   const signature = JSON.stringify([language,event,decisionBusy,operatorActive(),decisionDraft?.event_id,decisionDraft?.option_id]);
@@ -218,7 +221,7 @@ function renderDecisions() {
     decisionSignature = signature;
     $('decision-event').innerHTML = event ? `<p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p>
       <ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul>
-      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${decisionText(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${decisionText(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t(report.mode==='standard'?'decision.standard':'agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${decisionText(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${decisionText(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${!decisionOpen(event) || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
       decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
@@ -350,6 +353,71 @@ async function operatorCommand(action) {
 }
 $('operator-start').onclick=()=>operatorCommand('start');
 $('operator-stop').onclick=()=>operatorCommand('stop');
+
+function renderExercise() {
+  const exercise = state?.exercise;
+  const available = exercise?.scope === 'scripted_training';
+  if (exerciseRun !== state?.run_id || (state?.at_ms || 0) < exerciseAt) {
+    exerciseDraft = null; exerciseError = false;
+    $('exercise-object').value = ''; $('exercise-asset').value = '';
+  }
+  exerciseRun = state?.run_id; exerciseAt = state?.at_ms || 0;
+  const selectedBranch = exercise?.selection;
+  if (exerciseDraft && !exerciseConfirmation(state,exerciseDraft,true)) exerciseDraft = null;
+  const disabled = !connected || !available || exerciseBusy || Boolean(selectedBranch);
+  const objects = exercise?.eligible_objects || [], assets = exercise?.assets || [], branches = exercise?.branches || [];
+  for (const [id, rows, label] of [['exercise-object',objects.map(id=>({id,label:id})),'exercise.chooseObject'],['exercise-asset',assets.map(asset=>({id:asset.id,label:localized(asset.label)})),'exercise.chooseAsset']]) {
+    const select = $(id), signature = JSON.stringify([language,rows]);
+    if (select.dataset.signature !== signature) {
+      const previous = select.value;
+      select.innerHTML = `<option value="">${escape(t(label))}</option>` + rows.map(row=>`<option value="${escape(row.id)}">${escape(row.label)}</option>`).join('');
+      if(rows.some(row=>row.id===previous))select.value=previous;
+      select.dataset.signature = signature;
+    }
+    select.disabled = disabled || !objects.length;
+  }
+  const assetSignature = JSON.stringify([language,assets]);
+  if ($('exercise-assets').dataset.signature !== assetSignature) {
+    $('exercise-assets').dataset.signature = assetSignature;
+    $('exercise-assets').innerHTML = assets.map(asset=>`<li><strong>${escape(localized(asset.label))}</strong><span>${escape(localized(asset.role))}</span><span>${escape(t(`exercise.status.${asset.status}`))}</span><button type="button" class="button button-secondary" data-focus-asset="${escape(asset.id)}">${escape(t('exercise.focus'))}</button></li>`).join('');
+    $('exercise-assets').querySelectorAll('[data-focus-asset]').forEach(button=>button.onclick=()=>{
+      const asset=state?.exercise?.assets.find(item=>item.id===button.dataset.focusAsset);
+      if(asset?.position){plan.x=asset.position[0];plan.z=asset.position[2];plan.zoom=8;setMode('site');}
+    });
+  }
+  const canChoose = !disabled && objects.includes($('exercise-object').value) && assets.some(asset=>asset.id===$('exercise-asset').value);
+  const optionsSignature = JSON.stringify([language,branches,canChoose,exerciseDraft?.branch_id]);
+  if ($('exercise-options').dataset.signature !== optionsSignature) {
+    $('exercise-options').dataset.signature = optionsSignature;
+    $('exercise-options').innerHTML = branches.map(branch=>`<article><h3>${escape(localized(branch.label))}</h3><p>${escape(localized(branch.description))}</p><p class="decision-effect">${escape(t('exercise.predefined'))}<br>${escape(t(`exercise.motion.${branch.motion}`))}<br>${escape(t('exercise.facilityResult',{status:t(`exercise.status.${branch.asset_state}`)}))}<br>${escape(t('exercise.delay',{seconds:branch.delay_ms/1000}))}</p><button type="button" class="button button-secondary" data-exercise-branch="${escape(branch.id)}" aria-pressed="${exerciseDraft?.branch_id===branch.id}" ${canChoose?'':'disabled'}>${escape(t(exerciseDraft?.branch_id===branch.id?'exercise.chosen':'exercise.choose'))}</button></article>`).join('');
+    $('exercise-options').querySelectorAll('[data-exercise-branch]').forEach(button=>button.onclick=()=>{
+      exerciseDraft = {run_id:state.run_id,object_id:$('exercise-object').value,asset_id:$('exercise-asset').value,branch_id:button.dataset.exerciseBranch};
+      exerciseError=false;renderExercise();
+    });
+  }
+  $('exercise-confirm').disabled = disabled || !exerciseConfirmation(state,exerciseDraft,true);
+  let status = exerciseBusy ? t('exercise.saving') : exerciseError ? t('exercise.failed') : !connected ? t('exercise.disconnected') : !available ? t('exercise.unavailable') : !objects.length ? t('exercise.waiting') : t('exercise.ready');
+  if(selectedBranch) {
+    const branch=branches.find(item=>item.id===selectedBranch.branch_id), asset=assets.find(item=>item.id===selectedBranch.asset_id);
+    status = t(selectedBranch.status==='applied'?'exercise.applied':'exercise.pending',{object:selectedBranch.object_id,asset:localized(asset?.label),branch:localized(branch?.label),time:fmt(selectedBranch.effective_at_ms)});
+  } else if(exerciseDraft && !exerciseBusy && !exerciseError) {
+    status = t('exercise.confirmSummary',{object:exerciseDraft.object_id,asset:localized(assets.find(item=>item.id===exerciseDraft.asset_id)?.label),branch:localized(branches.find(item=>item.id===exerciseDraft.branch_id)?.label)});
+  }
+  $('exercise-status').textContent = status;
+}
+for (const id of ['exercise-object','exercise-asset']) $(id).onchange=()=>{exerciseDraft=null;exerciseError=false;renderExercise();};
+$('exercise-confirm').onclick=()=>{
+  if(!connected || exerciseBusy)return;
+  const body=exerciseConfirmation(state,exerciseDraft,true);
+  if(!body)return;
+  exerciseBusy=true;exerciseError=false;renderExercise();
+  controlChain=controlChain.then(async()=>{
+    const version=++requestVersion;
+    try {const data=await api('/api/control',body);if(version===requestVersion)render(data);exerciseDraft=null;}
+    catch {exerciseError=true;}
+    finally {exerciseBusy=false;renderExercise();}
+  });
+};
 
 function renderWorkload() {
   if (!state) return;
@@ -836,6 +904,8 @@ function renderBriefing() {
   const caseId=state?.case_id || $('case-select').value;
   const brief=briefings.find(b=>b.case_id===caseId);
   if(!brief)return;
+  const counts=reviewQueue(state?.tracks || []);
+  $('brief-counts').textContent=t('brief.counts',{total:brief.object_count ?? brief.object_ids.length,received:counts.received,current:counts.current});
   const seeded = state?.test_run?.mode === 'seeded';
   const signature=`${caseId}:${language}:${seeded}`;
   if(signature===briefingSignature)return;

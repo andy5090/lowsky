@@ -11,7 +11,7 @@ test('a previous confirmation notice never hides a new pending or ready event',(
  assert.equal(decisionStatusKey(event,true,'decision.unavailable'),'decision.unavailable');
 });
 test('a recommendation never selects or confirms a decision',()=>{
- assert.equal(selectDecision({...event,status:'evaluating'},'hold_review'),null);
+ assert.equal(selectDecision({...event,status:'evaluating',report:null},'hold_review'),null);
  assert.equal(selectDecision(event,'continue_monitoring'),null);
  assert.equal(selectDecision(event,'unknown_action'),null);
  assert.equal(decisionConfirmation(null,event,state,'en','operator','Inspect evidence',true),null);
@@ -47,4 +47,13 @@ test('expired cards and elapsed deadlines cannot be confirmed',()=>{
  assert.equal(decisionDraftStatus(draft,timed,{...state,at_ms:34999},'en'),'ready');
  assert.equal(decisionDraftStatus(draft,timed,{...state,at_ms:35000},'en'),'stale');
  assert.equal(decisionConfirmation(draft,{...timed,status:'expired'},state,'en','','',true),null);
+});
+
+test('standard choices remain selectable before an agent report and after failure',()=>{
+ for(const status of ['pending','evaluating','failed']) {
+  const pending={...event,status,report:null,choice_report:event.report};
+  const draft=selectDecision(pending,'hold_review');
+  assert.equal(draft.option_id,'hold_review');
+  assert.equal(decisionConfirmation(draft,pending,state,'en','','',true).confirm,true);
+ }
 });

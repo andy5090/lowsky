@@ -14,7 +14,7 @@ The internal `LOW_SKY_Suggestion.docx` proposes a pitch expansion around a vendo
 
 ## Claims requiring separate work
 
-- **Scenario count:** the repository has three active scenarios (12, 24 and 240 objects), with exactly one monitoring load case. The proposal's “12 cases” does not describe this version. The earlier instruction to keep a few focused scenarios takes precedence.
+- **Scenario count:** the repository has three active scenarios (48, 96 and 240 objects), with exactly one monitoring load case. The proposal's “12 cases” does not describe this version. The earlier instruction to keep a few focused scenarios takes precedence.
 - **SAPIENT:** a versioned adapter, official schema validation, timestamp/coordinate mapping and interoperability testing are required before making a compatibility claim. Current JSON alone is not proof.
 - **Site replacement:** layout, terrain, georeferencing, asset geometry and source positions are currently coordinated across several files. A one-file YAML site switch is not implemented; replacing metadata alone would misalign the map and 3D view.
 - **Constraints and delegation:** the current server validates run identity, captured-situation validity, response deadlines, supported review choices and durable recording; choices leave playback unchanged. It does not evaluate weapon suitability, allocate effectors or learn authority thresholds from rehearsal records.

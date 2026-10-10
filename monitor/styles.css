@@ -285,3 +285,11 @@ button:disabled{cursor:not-allowed}
 .review-suggestions button[aria-pressed="true"] { border-color:var(--olive); background:#293627; color:#e1ebd1; }
 .track-review-form details,.situation-review-form details { margin:10px 0; }
 .track-review-form summary,.situation-review-form summary { cursor:pointer; font-size:12px; color:var(--ink-soft); }
+
+.exercise-assets { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; padding:0; list-style:none; }
+.exercise-assets li { display:flex; flex-direction:column; gap:6px; padding:12px; border:1px solid var(--line); font-size:12px; }
+.exercise-assets span { color:var(--muted); }
+.exercise-assets button { align-self:flex-start; margin-top:auto; }
+#exercise-options button[aria-pressed="true"] { border-color:var(--cyan); color:var(--cyan); }
+#exercise-status { font-size:12px; line-height:1.6; color:var(--ink); }
+.brief-counts { margin:8px 18px; font-size:12px; line-height:1.5; }

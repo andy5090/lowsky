@@ -38,6 +38,8 @@ var monitor_received_at = 0
 var monitor_speed = 1.0
 var monitor_playing = false
 var monitor_test_run: Dictionary = {}
+var monitor_exercise: Dictionary = {}
+var exercise_marker: Label3D
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
@@ -467,6 +469,8 @@ func set_drone_positions(enabled: bool) -> void:
 
 func update_drone_labels() -> void:
 	for item in objects:
+		# Physical models belong to the simulation; only labels use detection visibility.
+		item.node.visible = true
 		var detected = detected_ids.has(item.object_id) and (not monitor_mode or monitor_connected)
 		item.sim = show_drone_positions
 		item.label.visible = detected or show_drone_positions
@@ -512,16 +516,18 @@ func _process(delta: float) -> void:
 	update_drone_labels()
 	for item in objects:
 		var frames = item["keyframes"]
+		var object_time = exercise_time(str(item.object_id), elapsed_ms)
 		var index = 0
-		while index < frames.size() - 2 and elapsed_ms >= float(frames[index + 1].at_ms):
+		while index < frames.size() - 2 and object_time >= float(frames[index + 1].at_ms):
 			index += 1
 		var interval = float(frames[index + 1].at_ms) - float(frames[index].at_ms)
-		var ratio = clampf((elapsed_ms - float(frames[index].at_ms)) / interval, 0, 1)
+		var ratio = clampf((object_time - float(frames[index].at_ms)) / interval, 0, 1)
 		item["node"].position = vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio)
 	if follow_drone:
 		update_follow_camera()
 	if time_label:
 		time_label.text = "%s  |  %03d / %03d s" % [case_id, elapsed_ms / 1000, int(world_data.duration_ms) / 1000]
+		time_label.text += "  |  Objects %d · Detected labels %d" % [objects.size(), detected_ids.size()]
 		if monitor_mode and monitor_test_run.get("mode") == "seeded":
 			time_label.text += "  |  Seed %s" % str(monitor_test_run.get("seed"))
 		var lines = PackedStringArray()
@@ -733,9 +739,41 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 			detected_ids[str(track.object_id)] = true
 	monitor_clock = float(state.at_ms)
 	monitor_test_run = state.get("test_run", {})
+	monitor_exercise = state.get("exercise", {})
+	update_exercise_marker()
 	monitor_speed = float(state.speed)
 	monitor_playing = bool(state.playing)
 	monitor_received_at = Time.get_ticks_msec()
 	monitor_connected = true
 	elapsed_ms = monitor_clock
 	update_drone_labels()
+
+func exercise_time(object_id: String, at_ms: float) -> float:
+	var selection = monitor_exercise.get("selection")
+	if not monitor_mode or selection == null or str(selection.object_id) != object_id or at_ms < float(selection.effective_at_ms):
+		return at_ms
+	if selection.branch_id == "hold":
+		return float(selection.effective_at_ms)
+	if selection.branch_id == "withdraw":
+		return maxf(0.0, 2.0 * float(selection.effective_at_ms) - at_ms)
+	return at_ms
+
+func update_exercise_marker() -> void:
+	var selection = monitor_exercise.get("selection")
+	if selection == null:
+		if is_instance_valid(exercise_marker):
+			exercise_marker.visible = false
+		return
+	if not is_instance_valid(exercise_marker):
+		exercise_marker = Label3D.new()
+		exercise_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		exercise_marker.font_size = 48
+		exercise_marker.pixel_size = 0.25
+		add_child(exercise_marker)
+	for asset in monitor_exercise.get("assets", []):
+		if asset.id == selection.asset_id:
+			exercise_marker.position = vector(asset.position) + Vector3(0, 45, 0)
+			exercise_marker.text = "SCRIPTED TRAINING / %s\n%s · %s" % [str(selection.status).to_upper(), asset.label.en, str(asset.status).to_upper()]
+			exercise_marker.modulate = Color(1.0, 0.7, 0.3) if asset.status != "available" else Color(0.5, 1.0, 0.7)
+			exercise_marker.visible = true
+			return

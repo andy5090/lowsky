@@ -68,6 +68,18 @@
       <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
     </section>
 
+    <details id="exercise-panel" class="panel rehearsal-panel">
+      <summary data-i18n="exercise.title">Scripted training branch</summary>
+      <div class="rehearsal-body">
+        <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
+        <ul id="exercise-assets" class="exercise-assets"></ul>
+        <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
+        <div id="exercise-options" class="decision-options"></div>
+        <p id="exercise-status" role="status" aria-live="polite"></p>
+        <button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button>
+      </div>
+    </details>
+
     <details id="rehearsal-panel" class="panel rehearsal-panel">
       <summary data-i18n="rehearsal.title">Decision rehearsal review</summary>
       <div class="rehearsal-body">
@@ -86,6 +98,8 @@
 
     <section class="panel scenario-brief" aria-labelledby="brief-heading">
       <div class="brief-summary"><div><p class="eyebrow" id="brief-heading" data-i18n="brief.heading">SCENARIO BRIEFING</p><h2 id="brief-title"></h2><p id="brief-purpose"></p></div><span id="brief-meta" class="muted"></span></div>
+      <p id="brief-counts" class="brief-counts"></p>
+      <p class="brief-counts muted" data-i18n="brief.countNote">Undetected aircraft are hidden by default. Object IDs are identifiers, not aircraft counts.</p>
       <details id="brief-details"><summary data-i18n="brief.expand">Timeline &amp; review points</summary>
         <p id="brief-preview-note" class="brief-preview-note" data-i18n="brief.preview">Scenario reference — includes nominal future events. This is not live observation evidence.</p>
         <div class="brief-body"><div><h3 data-i18n="brief.timeline">Scenario timeline</h3><ol id="brief-timeline"></ol></div>

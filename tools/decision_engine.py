@@ -12,10 +12,10 @@ from pathlib import Path
 
 try:
     from .evidence_review import digest
-    from .situation_agent import build_bundle
+    from .situation_agent import build_bundle, standard_decision_report
 except ImportError:
     from evidence_review import digest
-    from situation_agent import build_bundle
+    from situation_agent import build_bundle, standard_decision_report
 
 OPTIONS = (
     {'id': 'continue_monitoring', 'effect': 'record_monitoring'},
@@ -104,6 +104,18 @@ def transitions(previous, current):
     return result
 
 
+def relevant_changes(event, current):
+    changes = transitions(semantic_state(build_bundle(event['_frozen'])), current)
+    triggers = event['triggers']
+    if any(t['kind']=='manual_review' for t in triggers):
+        return changes
+    subjects = {(t['kind'], t['subject']) for t in triggers}
+    track_kinds = {'first_tracks','track_conflict','track_stale'}
+    if any(kind in track_kinds for kind, _ in subjects):
+        subjects.update((kind,'received_tracks') for kind in track_kinds)
+    return [change for change in changes if (change['kind'], change['subject']) in subjects]
+
+
 class DecisionEngine:
     def __init__(self, simulation, evaluator=None, audit_path=None):
         self.sim = simulation
@@ -128,7 +140,7 @@ class DecisionEngine:
             if event['run_id'] != bundle['run_id']:
                 event['status'] = 'superseded'
             elif (bundle['at_ms'] >= event['expires_at_ms']
-                  or transitions(semantic_state(build_bundle(event['_frozen'])), current)):
+                  or relevant_changes(event, current)):
                 event['status'] = 'expired'
                 event['expiration_reason'] = ('deadline' if bundle['at_ms'] >= event['expires_at_ms'] else 'situation_changed')
                 event['expired_at_ms'] = bundle['at_ms']
@@ -203,7 +215,7 @@ class DecisionEngine:
                      at_ms=state['at_ms'], expires_at_ms=min(state['at_ms'] + DECISION_WINDOW_MS, state['duration_ms']),
                      evidence_version=bundle['input_version'],
                      triggers=copy.deepcopy(triggers), status='pending', language=language,
-                     report=None, error=None, decision=None,
+                     report=None, choice_report=standard_decision_report(bundle, language), error=None, decision=None,
                      created_at_unix_ms=int(time.time() * 1000), _frozen=copy.deepcopy(state))
         self.events.append(event)
         # Keep current review cards bounded; confirmed snapshots live in the journal.
@@ -296,14 +308,14 @@ class DecisionEngine:
     def _confirm(self, command, actor=None):
         self._reconcile(self._bundle())
         event = next((e for e in self.events if e['id'] == command.get('event_id')), None)
-        if event is None or event['run_id'] != self.sim.run_id or event['status'] != 'ready':
-            raise ValueError('Event is not ready for a current decision')
+        if event is None or event['run_id'] != self.sim.run_id or event['status'] not in ACTIVE:
+            raise ValueError('Event is not open for a current decision')
         if command.get('confirm') is not True:
             raise ValueError('Explicit confirmation is required')
         if command.get('evidence_version') != event['evidence_version']:
             raise ValueError('Evidence changed; request a new assessment')
         option = command.get('option_id')
-        if option not in {item['id'] for item in event['report']['decision_options']}:
+        if option not in {item['id'] for item in OPTIONS}:
             raise ValueError('Invalid decision option')
         reviewer, reason = command.get('reviewer', ''), command.get('reason', '')
         if not isinstance(reviewer, str) or len(reviewer.strip()) > 80:
@@ -311,7 +323,7 @@ class DecisionEngine:
         if not isinstance(reason, str) or len(reason.strip()) > 1000:
             raise ValueError('Additional comment must be text up to 1000 characters')
         frozen = {k: copy.deepcopy(v) for k, v in event.items() if k != '_frozen'}
-        snapshot = dict(event=frozen, evidence=build_bundle(event['_frozen']), report=copy.deepcopy(event['report']))
+        snapshot = dict(event=frozen, evidence=build_bundle(event['_frozen']), report=copy.deepcopy(event['report'] or event['choice_report']))
         row = dict(schema_version=1, kind='event_decision', id=uuid.uuid4().hex,
                    actor=copy.deepcopy(actor or {'type': 'human'}),
                    run_id=event['run_id'], case_id=event['case_id'], event_id=event['id'],

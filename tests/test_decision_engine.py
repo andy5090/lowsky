@@ -62,6 +62,45 @@ class DecisionEngineTests(unittest.TestCase):
             self.assertEqual(len(transitions(previous, current)), 1)
             self.assertEqual(transitions(previous, {(kind, 'sensor'): ('online', ['healthy'])}), [])
 
+    def test_standard_choices_are_immediate_and_late_model_result_cannot_replace_confirmation(self):
+        entered, release = threading.Event(), threading.Event()
+        self.addCleanup(release.set)
+        def slow(*args):
+            entered.set();release.wait(3)
+            return report(*args)
+        self.engine.evaluator=slow
+        self.engine.command(dict(action='assess_current',run_id=self.sim.run_id))
+        self.assertTrue(entered.wait(1))
+        event=self.engine.snapshot()['events'][0]
+        self.assertEqual(event['status'],'evaluating')
+        self.assertEqual(len(event['choice_report']['decision_options']),3)
+        self.assertIsNone(event['choice_report']['recommended_option_id'])
+        self.engine.command(self.confirmation(event))
+        self.assertEqual(self.engine.audit.records[-1]['snapshot']['report']['mode'],'standard')
+        release.set();self.wait()
+        self.assertEqual(self.engine.snapshot()['events'][0]['status'],'decided')
+        self.assertIsNone(self.engine.snapshot()['events'][0]['report'])
+
+    def test_failed_agent_still_allows_explicit_standard_review(self):
+        def fail(*args): raise RuntimeError('provider unavailable')
+        self.engine.evaluator=fail
+        event=self.assess()
+        self.assertEqual(event['status'],'failed')
+        self.engine.command(self.confirmation(event,'defer'))
+        saved=self.engine.audit.records[-1]
+        self.assertEqual(saved['snapshot']['report']['mode'],'standard')
+        self.assertEqual(saved['outcome'],'deferred')
+
+    def test_unrelated_new_signal_does_not_expire_first_track_choice(self):
+        self.sim.control({'action':'play'})
+        self.clock.advance(10);self.engine.tick();self.wait()
+        event=self.engine.snapshot()['events'][0]
+        self.clock.advance(5);self.engine.tick();self.wait()
+        old=next(e for e in self.engine.snapshot()['events'] if e['id']==event['id'])
+        self.assertEqual(old['status'],'ready')
+        self.engine.command(self.confirmation(old))
+        self.assertTrue(self.sim.playing)
+
     def test_paused_gets_and_ack_do_not_start_provider(self):
         self.engine.snapshot()
         self.engine.tick()

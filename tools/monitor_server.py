@@ -21,6 +21,7 @@ try:
     from .situation_review import snapshot as situation_snapshot, make_review
     from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from .test_operator import TestOperator
+    from . import exercise
     from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
@@ -33,6 +34,7 @@ except ImportError:
     from situation_review import snapshot as situation_snapshot, make_review
     from simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from test_operator import TestOperator
+    import exercise
     from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -58,6 +60,9 @@ class Simulation:
         self.lock = threading.RLock()
         self.cases = read_json(root / 'manifest.json')['cases']
         self.public = {entry['case_id']: read_json(root / 'cases' / entry['case_id'] / 'public.json') for entry in self.cases}
+        self.exercise_selection = None
+        self.site_layout = read_json(PROJECT / 'data/site_layout.json')
+        self.world_frames = {}
         self.case_id = self.cases[0]['case_id']
         self.anchor_ms, self.anchor_wall = 0, clock()
         self.playing, self.speed = False, 1
@@ -87,6 +92,11 @@ class Simulation:
     def _public_input(self):
         return self.test_public if self.test_public is not None else self.public[self.case_id]
 
+    def _exercise_frames(self):
+        if self.case_id not in self.world_frames:
+            self.world_frames[self.case_id] = {obj['object_id']:obj['keyframes'] for obj in read_json(self.root / 'cases' / self.case_id / 'world.json')['objects']}
+        return self.world_frames[self.case_id]
+
     def clock_state(self):
         with self.lock:
             return self._clock_state()
@@ -94,7 +104,7 @@ class Simulation:
     def state(self, show_positions=False):
         with self.lock:
             clock = self._clock_state()
-            payload = snapshot(self._public_input(), clock['at_ms'])
+            payload = exercise.apply_observations(snapshot(self._public_input(), clock['at_ms']), self.exercise_selection, self._exercise_frames() if self.exercise_selection else {})
             health = []
             latest_health = {}
             for source in payload['source_ids']:
@@ -164,20 +174,15 @@ class Simulation:
                                          for decision in ('noted', 'needs_review', 'dismissed')}),
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
+            result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'])
             if show_positions:
                 # Explicit author view: only positions at this response's replay time.
                 # Never merge truth into observed tracks, alerts, or evidence.
                 world = read_json(self.root / 'cases' / self.case_id / 'world.json')
                 positions = []
                 for obj in world['objects']:
-                    frames = obj['keyframes']
-                    index = 0
-                    while index < len(frames) - 2 and clock['at_ms'] >= frames[index + 1]['at_ms']:
-                        index += 1
-                    start, end = frames[index:index + 2]
-                    ratio = max(0, min(1, (clock['at_ms'] - start['at_ms']) / (end['at_ms'] - start['at_ms'])))
-                    positions.append(dict(object_id=obj['object_id'],
-                                          position=[a + (b - a) * ratio for a, b in zip(start['position'], end['position'])]))
+                    positions.append(dict(object_id=obj['object_id'],position=exercise.sample(obj['keyframes'],
+                        exercise.motion_time(self.exercise_selection,obj['object_id'],clock['at_ms']))))
                 result['simulation_positions'] = positions
             return result
 
@@ -246,6 +251,7 @@ class Simulation:
         with self.lock:
             action = command.get('action')
             now_ms = self._time()
+            previous_run = self.run_id
             if action == 'start_test':
                 case_id = command.get('case_id', self.case_id)
                 if not isinstance(case_id, str) or case_id not in self.public:
@@ -292,10 +298,12 @@ class Simulation:
                 if type(speed) not in (int, float) or speed not in (1, 2, 4):
                     raise ValueError('Invalid speed')
                 self.speed = speed
+            elif action == 'exercise_branch':
+                self.exercise_selection = exercise.select(command, self.state())
             elif action == 'review_track':
                 state = self.state()
                 track = next((item for item in state['tracks'] if item['object_id'] == command.get('object_id')), None)
-                payload = snapshot(self._public_input(), state['at_ms'])
+                payload = exercise.apply_observations(snapshot(self._public_input(), state['at_ms']), self.exercise_selection, self._exercise_frames() if self.exercise_selection else {})
                 rows = [row for row in payload['observations'] if row['object_id'] == command.get('object_id')]
                 basis = evidence_snapshot(command.get('object_id'), rows, state['sources'],
                                           track['quality'] if track else None,
@@ -320,6 +328,8 @@ class Simulation:
                 self.acknowledged.add(alert_id)
             else:
                 raise ValueError('Unknown action')
+            if self.run_id != previous_run:
+                self.exercise_selection = None
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
             if not self.test_operator.applying and action in ('start_test', 'case', 'reset', 'seek', 'pause', 'play'):
@@ -400,6 +410,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/decisions.mjs': ('decisions.mjs', 'text/javascript; charset=utf-8'),
                       '/test_runs.mjs': ('test_runs.mjs', 'text/javascript; charset=utf-8'),
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
+                      '/exercise.mjs': ('exercise.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),

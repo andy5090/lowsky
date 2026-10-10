@@ -30,6 +30,7 @@ func verify() -> void:
 	assert(preview.drone_overlay.markers().is_empty(), "No labels before any received detection")
 	for item in preview.objects:
 		assert(not item.label.visible)
+		assert(item.node.visible, "Physical drone models remain visible without detection labels")
 	await control({"action": "seek", "at_ms": 10000})
 	await create_timer(0.4).timeout
 	var received_count: int = preview.detected_ids.size()
@@ -88,6 +89,7 @@ func verify() -> void:
 	assert(preview.drone_overlay.markers().is_empty())
 	for item in preview.objects:
 		assert(not item.label.visible)
+		assert(item.node.visible, "Physical drone models remain visible without detection labels")
 	await control({"action": "case", "case_id": "case_001"})
 	await control({"action": "speed", "speed": 1})
 	print("PASS: HTTP shared clock, case/seek/speed/play/pause, detection-only labels, explicit SIM switch, rewind clearing, follow camera, local control isolation and disconnect freeze")

@@ -17,7 +17,7 @@ class DatasetTests(unittest.TestCase):
 
     def test_all_fixtures_match_rubric(self):
         self.assertEqual(validate(self.root), {
-            "cases": 3, "scene_groups": 3, "observations": 6876, "checkpoints": 1380,
+            "cases": 3, "scene_groups": 3, "observations": 10224, "checkpoints": 1920,
         })
 
     def test_briefings_match_distinct_scenarios(self):
@@ -25,10 +25,15 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(document["author_preview"])
         self.assertEqual(len(document["cases"]), 3)
         self.assertEqual([b["case_id"] for b in document["cases"] if b["scenario_type"] == "load_test"], ["case_003"])
-        for brief, count in zip(document["cases"], (12, 24, 240)):
+        for brief, count in zip(document["cases"], (48, 96, 240)):
             public = self.public(brief["case_id"])
+            world = read_json(self.root / "cases" / brief["case_id"] / "world.json")
+            rubric = read_json(self.root / "evaluation" / f"{brief['case_id']}.json")
             self.assertEqual(brief["object_ids"], public["object_ids"])
             self.assertEqual(brief["object_count"], count)
+            self.assertEqual([obj["object_id"] for obj in world["objects"]], public["object_ids"])
+            self.assertEqual(len(world["objects"]), count)
+            self.assertEqual(len(rubric["checkpoints"]), count * 5)
             self.assertEqual(brief["duration_ms"], 180000)
             self.assertEqual(brief["sample_interval_ms"], 10000)
             for field in ("name", "summary", "objective", "composition", "count_basis"):
@@ -76,8 +81,8 @@ class DatasetTests(unittest.TestCase):
             self.assertTrue(all(information_state(payload, obj) == "consistent" for obj in payload["object_ids"]))
         payload = snapshot(self.public("case_002"), 90000)
         states = [information_state(payload, obj) for obj in payload["object_ids"]]
-        self.assertEqual(states.count("contradictory"), 6)
-        self.assertEqual(states.count("consistent"), 18)
+        self.assertEqual(states.count("contradictory"), 24)
+        self.assertEqual(states.count("consistent"), 72)
 
     def test_regeneration_is_byte_identical(self):
         before = {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob("*.json")}

@@ -16,22 +16,22 @@
         "ko": "새벽 2시: 전조와 첫 관측"
       },
       "summary": {
-        "en": "12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
-        "ko": "합성 비행체 12개가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
+        "en": "48 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
+        "ko": "합성 비행체 48대가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
       },
       "objective": {
         "en": "Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.",
         "ko": "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."
       },
       "composition": {
-        "en": "12 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.",
-        "ko": "소형 비행체 12개와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."
+        "en": "48 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.",
+        "ko": "소형 비행체 48대와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."
       },
       "count_basis": {
         "en": "Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.",
         "ko": "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."
       },
-      "object_count": 12,
+      "object_count": 48,
       "object_ids": [
         "object_11",
         "object_12",
@@ -44,7 +44,43 @@
         "object_19",
         "object_20",
         "object_21",
-        "object_22"
+        "object_22",
+        "object_23",
+        "object_24",
+        "object_25",
+        "object_26",
+        "object_27",
+        "object_28",
+        "object_29",
+        "object_30",
+        "object_31",
+        "object_32",
+        "object_33",
+        "object_34",
+        "object_35",
+        "object_36",
+        "object_37",
+        "object_38",
+        "object_39",
+        "object_40",
+        "object_41",
+        "object_42",
+        "object_43",
+        "object_44",
+        "object_45",
+        "object_46",
+        "object_47",
+        "object_48",
+        "object_49",
+        "object_50",
+        "object_51",
+        "object_52",
+        "object_53",
+        "object_54",
+        "object_55",
+        "object_56",
+        "object_57",
+        "object_58"
       ],
       "duration_ms": 180000,
       "sample_interval_ms": 10000,
@@ -79,8 +115,8 @@
         {
           "at_ms": 60000,
           "text": {
-            "en": "All 12 candidates have a first report; corroboration may still be pending.",
-            "ko": "12개 대상의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."
+            "en": "All 48 candidates have a first report; corroboration may still be pending.",
+            "ko": "48대의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."
           }
         },
         {
@@ -118,22 +154,22 @@
         "ko": "새벽 2시: 상충 근거와 검토"
       },
       "summary": {
-        "en": "24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.",
-        "ko": "합성 비행체 24개가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 6개 대상의 표식을 다르게 보고하고 이후 재확인합니다."
+        "en": "96 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for 24 tracks from 01:00 to 02:00, followed by reconfirmation.",
+        "ko": "합성 비행체 96대가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 24대의 표식을 다르게 보고하고 이후 재확인합니다."
       },
       "objective": {
         "en": "Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.",
         "ko": "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."
       },
       "composition": {
-        "en": "24 synthetic objects; six conflicting tracks, with the remaining tracks as comparison traffic.",
-        "ko": "합성 비행체 24개. 6개 대상에서 상충 보고가 발생하고 나머지는 비교 대상입니다."
+        "en": "96 synthetic objects; 24 conflicting tracks, with the remaining tracks as comparison traffic.",
+        "ko": "합성 비행체 96대. 24대에서 상충 보고가 발생하고 나머지는 비교 대상입니다."
       },
       "count_basis": {
         "en": "Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.",
         "ko": "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."
       },
-      "object_count": 24,
+      "object_count": 96,
       "object_ids": [
         "object_11",
         "object_12",
@@ -158,7 +194,79 @@
         "object_31",
         "object_32",
         "object_33",
-        "object_34"
+        "object_34",
+        "object_35",
+        "object_36",
+        "object_37",
+        "object_38",
+        "object_39",
+        "object_40",
+        "object_41",
+        "object_42",
+        "object_43",
+        "object_44",
+        "object_45",
+        "object_46",
+        "object_47",
+        "object_48",
+        "object_49",
+        "object_50",
+        "object_51",
+        "object_52",
+        "object_53",
+        "object_54",
+        "object_55",
+        "object_56",
+        "object_57",
+        "object_58",
+        "object_59",
+        "object_60",
+        "object_61",
+        "object_62",
+        "object_63",
+        "object_64",
+        "object_65",
+        "object_66",
+        "object_67",
+        "object_68",
+        "object_69",
+        "object_70",
+        "object_71",
+        "object_72",
+        "object_73",
+        "object_74",
+        "object_75",
+        "object_76",
+        "object_77",
+        "object_78",
+        "object_79",
+        "object_80",
+        "object_81",
+        "object_82",
+        "object_83",
+        "object_84",
+        "object_85",
+        "object_86",
+        "object_87",
+        "object_88",
+        "object_89",
+        "object_90",
+        "object_91",
+        "object_92",
+        "object_93",
+        "object_94",
+        "object_95",
+        "object_96",
+        "object_97",
+        "object_98",
+        "object_99",
+        "object_100",
+        "object_101",
+        "object_102",
+        "object_103",
+        "object_104",
+        "object_105",
+        "object_106"
       ],
       "duration_ms": 180000,
       "sample_interval_ms": 10000,
@@ -193,8 +301,8 @@
         {
           "at_ms": 60000,
           "text": {
-            "en": "Channel B begins conflicting labels on six tracks.",
-            "ko": "채널 B에서 6개 대상의 표식 상충이 시작됩니다."
+            "en": "Channel B begins conflicting labels on 24 tracks.",
+            "ko": "채널 B에서 24대의 표식 상충이 시작됩니다."
           }
         },
         {
