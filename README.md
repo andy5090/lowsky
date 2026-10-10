@@ -1,5 +1,7 @@
 # LOW SKY 가상 공군 기지 시나리오 실험
 
+<img src="monitor/logo-metal.png" alt="LOW SKY 메탈 항공 휘장 아이콘" width="144" height="144">
+
 배경은 **실존 장소를 재현하지 않는 가상의 공군 기지**, 아트 방향은 **실사 지향**으로 확정했다. 현재는 Godot 3D 제작자 보기와 별도의 웹 관측 모니터를 같은 재생 시계로 연결했다. 실제 지도 위 가상 기지 배치와 별도 평면도를 제공한다. Deep Agents와 설명 생성은 아직 연결하지 않았다.
 
 원본 기획 문서는 로컬 참고 자료로 보관하며 공개 저장소에는 포함하지 않는다. 구현 범위는 `docs/mvp-direction.md`에서 확인할 수 있다. 외부 에셋의 출처와 라이선스는 각 `godot/third_party` 하위 폴더에 보관한다.
@@ -15,11 +17,21 @@
 - `godot/third_party/realistic/`: PBR 재질 4세트, HDRI 하늘, Cesium 항공기와 라이선스·파일 해시.
 - `godot/detailed_environment.gd`: 가상 지형, 상세 격납고·관제탑·보조 건물.
 - `godot/plains_environment.gd`: 평야형 테스트 지형, 농경지 패턴과 절차 생성 수목대.
-- `monitor/`: 영어 기본·한국어 선택 관측 모니터, 실제 지도 위 합성 오버레이와 별도 도면, 근거·현재 알림·확인 표시.
+- `monitor/`: 영어 기본·한국어 선택 **Decision making workspace**, 케이스별 설명, 가상 조성 구역, 드론 연속 이동, 관측 근거·현재 알림·확인 표시.
 - `tools/monitor_server.py`: 표준 라이브러리 기반 로컬 서버와 공유 시계.
 - `data/site_layout.json`: 가상 활주로 2,500 × 45m, 부지 1,200 × 2,900m (3.48㎢), 높이 2.5m의 외곽 울타리. 설계 표준이나 실제 기지 치수의 재현이 아니다.
 - `data/terrain/korea_site.json`: 한국 임의 지점(36.5N, 127.8E) 주변 공개 DEM을 10km × 10km, 50m 격자로 변환한 지형.
 - `godot/preview.gd`: 가상 장면 재생과 에셋 연결 확인. 실제 기지의 지리·운영 모델이 아니다.
+
+## 로고
+
+LOW SKY 아이콘은 브러시드 실버 메탈·건메탈 방패, 공군을 연상시키는 각진 날개, 저고도 감지 아치와 지평선을 조합했다. 특정 국가나 실제 부대의 공식 휘장이 아닌 가상 프로젝트용 디자인이다.
+
+- [투명 배경 PNG](monitor/logo-metal.png): 웹 헤더와 브라우저 파비콘에 적용. 헤더 표시 크기는 데스크톱 52px, 모바일 42px이다.
+- [생성 기록과 전체 프롬프트](monitor/logo-metal.provenance.json): 내장 `image_gen` 도구로 생성한 날짜·방식·요청 내용을 보관한다.
+- 이전 [벡터 아이콘](monitor/logo.svg)은 비교용으로 보관하며 현재 헤더·파비콘은 새 PNG를 사용한다.
+
+로고 이미지에 글자를 넣지 않고 `LOW SKY` 텍스트를 HTML로 유지해 작은 화면에서도 이름을 읽기 쉽게 했다.
 
 ## 실행
 

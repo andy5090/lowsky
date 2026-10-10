@@ -1,0 +1,8 @@
+{
+  "asset": "logo-metal.png",
+  "created_on": "2026-10-10",
+  "method": "built-in image_gen tool",
+  "purpose": "LOW SKY header icon and favicon; fictional military aviation emblem",
+  "transparent_background": true,
+  "prompt": "Use case: logo-brand. Create one premium military aviation emblem icon for LOW SKY, a fictional low-altitude early-warning simulation dashboard. Icon only, absolutely no text or letters. Symmetric compact square composition, centered symbol occupying 88% of canvas. A bold machined titanium shield with short angular swept aircraft wings extending sideways; inside, a simple low horizon line and two restrained upward radar/sensor arcs surrounding a small descending aircraft-like chevron just above the horizon. Air-force insignia character without copying any actual national or unit insignia. Materials: brushed silver titanium and dark gunmetal, subtle beveled edges and crisp highlights, restrained deep navy recessed details. Strong readable silhouette at 40px, few broad shapes, elegant precision, no tiny rivets or ornate feathers, no wreath, no stars, no weapons, no skulls. Front orthographic view, studio lighting, no tilted perspective, no mockup, no separate shadow outside emblem. Genuine transparent background, clean alpha, no checkerboard rendered into pixels."
+}

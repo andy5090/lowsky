@@ -201,6 +201,7 @@ class Handler(BaseHTTPRequestHandler):
             assets = {'/': ('index.html', 'text/html; charset=utf-8'),
                       '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
                       '/logo.svg': ('logo.svg', 'image/svg+xml'),
+                      '/logo-metal.png': ('logo-metal.png', 'image/png'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/motion.mjs': ('motion.mjs', 'text/javascript; charset=utf-8'),
