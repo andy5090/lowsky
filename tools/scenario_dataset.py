@@ -31,19 +31,15 @@ def require(condition, message):
 def build(root):
     """Rebuild only the versioned, generated fixture files; no random state."""
     entries = []
+    layout = read_json(Path(__file__).resolve().parents[1] / "data/site_layout.json")
     scene = {
         "schema_version": "1.0",
         "synthetic": True,
-        "coordinates": {"axes": "right-handed, Y-up", "unit": "fictional_scene_unit"},
+        "coordinates": {"axes": "right-handed, Y-up", "unit": "meter"},
         "interpolation": "linear_between_keyframes",
         "environment": [
             {"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]},
-            {"id": "runway", "asset_id": "runway", "position": [0, 0, 0]},
-            {"id": "building_1", "asset_id": "hangar", "position": [20, 0, 15]},
-            {"id": "building_2", "asset_id": "utility_building", "position": [20, 0, -5]},
-            {"id": "tower", "asset_id": "control_tower", "position": [17, 0, -24]},
-            {"id": "station_a", "asset_id": "observation_station", "position": [-12, 0, 20]},
-            {"id": "station_b", "asset_id": "observation_station", "position": [-12, 0, -20]},
+            *layout["facilities"],
         ],
     }
     write_json(root / "scene.json", scene)
@@ -56,7 +52,7 @@ def build(root):
             "objects": [
                 {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj]},
                  "keyframes": [
-                     {"at_ms": tick, "position": [-30 + step * 12 + group, 4 + i * 3, -18 + i * 18]}
+                     {"at_ms": tick, "position": [(-30 + step * 12 + group) * 10, 4 + i * 3, (-18 + i * 18) * 10]}
                      for step, tick in enumerate(TIMES)
                  ]}
                 for i, obj in enumerate(objects)
@@ -180,7 +176,7 @@ def validate(root):
     manifest = read_json(root / "manifest.json")
     entries = manifest["cases"]
     scene = read_json(root / "scene.json")
-    require(scene["coordinates"]["unit"] == "fictional_scene_unit", "Invalid coordinate units")
+    require(scene["coordinates"]["unit"] == "meter", "Invalid coordinate units")
     require(all(item.get("asset_id") for item in scene["environment"]), "Missing scene asset mapping")
     require(len(entries) == 12, "Expected 12 starter cases")
     require(len({entry["case_id"] for entry in entries}) == len(entries), "Duplicate case IDs")

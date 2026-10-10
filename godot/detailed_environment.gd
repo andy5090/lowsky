@@ -104,17 +104,20 @@ static func make_terrain(material: Material) -> Node3D:
 	# Low distant terrain, deliberately fictional and outside the replay area.
 	var noise = FastNoiseLite.new()
 	noise.seed = 6149
-	noise.frequency = 0.008
+	noise.frequency = 0.0008
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for z in range(-60, 60):
-		for x in range(-60, 60):
+	root.set_meta("width_m", 10000)
+	root.set_meta("length_m", 10000)
+	for z in range(-50, 50):
+		for x in range(-50, 50):
 			var points: Array[Vector3] = []
 			for offset in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
-				var px = (x + offset.x) * 10
-				var pz = (z + offset.y) * 10
-				var blend = smoothstep(150, 350, Vector2(px, pz).length())
-				var height = maxf(0, noise.get_noise_2d(px, pz) + 0.35) * 40 * blend - 0.02
+				var px = (x + offset.x) * 100
+				var pz = (z + offset.y) * 100
+				var outside_site = maxf(absf(px) - 1450.0, absf(pz) - 2200.0)
+				var blend = smoothstep(0, 1800, outside_site)
+				var height = maxf(0, noise.get_noise_2d(px, pz) + 0.35) * 220 * blend - 0.02
 				points.append(Vector3(px, height, pz))
 			for index in [0, 1, 2, 1, 3, 2]:
 				surface.add_vertex(points[index])

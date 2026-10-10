@@ -20,9 +20,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -33,7 +33,7 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         7,
         0
       ],
@@ -46,9 +46,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -59,9 +59,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -72,7 +72,7 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         7,
         0
       ],
@@ -85,9 +85,9 @@
       "observed_at_ms": 0,
       "available_at_ms": 0,
       "position": [
-        -28,
+        -280,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -98,9 +98,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -111,7 +111,7 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         7,
         0
       ],
@@ -124,9 +124,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -137,9 +137,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -150,7 +150,7 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         7,
         0
       ],
@@ -163,9 +163,9 @@
       "observed_at_ms": 30000,
       "available_at_ms": 30000,
       "position": [
-        -16,
+        -160,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -176,9 +176,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -189,7 +189,7 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         7,
         0
       ],
@@ -202,9 +202,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -215,9 +215,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -228,7 +228,7 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         7,
         0
       ],
@@ -241,9 +241,9 @@
       "observed_at_ms": 60000,
       "available_at_ms": 60000,
       "position": [
-        -4,
+        -40,
         10,
-        18
+        180
       ],
       "marker_label": "diamond"
     },
@@ -254,9 +254,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -267,7 +267,7 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         7,
         0
       ],
@@ -280,9 +280,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -293,9 +293,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -306,7 +306,7 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         7,
         0
       ],
@@ -319,9 +319,9 @@
       "observed_at_ms": 90000,
       "available_at_ms": 90000,
       "position": [
-        8,
+        80,
         10,
-        18
+        180
       ],
       "marker_label": "diamond"
     },
@@ -332,9 +332,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -345,7 +345,7 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         7,
         0
       ],
@@ -358,9 +358,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         10,
-        18
+        180
       ],
       "marker_label": "triangle"
     },
@@ -371,9 +371,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         4,
-        -18
+        -180
       ],
       "marker_label": "circle"
     },
@@ -384,7 +384,7 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         7,
         0
       ],
@@ -397,9 +397,9 @@
       "observed_at_ms": 120000,
       "available_at_ms": 120000,
       "position": [
-        20,
+        200,
         10,
-        18
+        180
       ],
       "marker_label": "diamond"
     }

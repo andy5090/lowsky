@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142c39">
+  <title>LOW SKY · Observation Monitor</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="LOW SKY observation monitor home" data-i18n-aria-label="home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>LOW SKY<small data-i18n="brandSubtitle">OBSERVATION MONITOR</small></span>
+    </a>
+    <div class="header-context"><span class="eyebrow" data-i18n="lab">Observation quality lab</span><span data-i18n="workspace">2D monitoring workspace</span></div>
+    <div class="system-status"><span class="status-label" data-i18n="dataConnection">Data connection</span><span id="connection-status" class="status-pill" role="status" data-i18n="connecting">Waiting for connection</span></div>
+    <div class="language-field"><label class="sr-only" for="language-select" data-i18n="language">Language</label><select id="language-select" aria-label="Language" data-i18n-aria-label="language"><option value="en" lang="en">EN</option><option value="ko" lang="ko">한국어</option></select></div>
+  </header>
+
+  <div class="demo-banner"><span class="demo-badge" data-i18n="simulation">SIMULATION</span><span data-i18n="syntheticBanner">Synthetic scenario · Not real facility or flight information</span><span class="banner-note" data-i18n="bannerNote">Explore changes in observations and data quality.</span></div>
+
+  <main id="main" class="workspace">
+    <div class="workspace-heading">
+      <div><p class="eyebrow" data-i18n="workspaceEyebrow">LOW SKY / WORKSPACE</p><h1 data-i18n="monitorTitle">Observation monitor</h1></div>
+      <nav class="view-tabs" aria-label="Monitor views" data-i18n-aria-label="viewLabel">
+        <button type="button" class="view-tab is-active" data-view="monitor" aria-current="page" data-i18n="monitorView">Observation view</button>
+        <button type="button" class="view-tab" data-view="alerts"><span data-i18n="currentAlerts">Current alerts</span> <span id="alert-count" class="count-badge">--</span></button>
+      </nav>
+    </div>
+
+    <section class="scenario-bar" aria-label="Scenario settings" data-i18n-aria-label="scenarioSettings">
+      <div class="scenario-field"><label for="case-select" data-i18n="scenario">Synthetic scenario</label><select id="case-select" aria-label="Select synthetic scenario" data-i18n-aria-label="chooseScenario"></select></div>
+      <div class="scenario-status"><span class="status-label" data-i18n="playbackState">Playback</span><span id="sim-status" class="status-pill" data-i18n="waiting">Waiting</span></div>
+      <div class="scenario-help"><span data-i18n="scenarioHelp">Explore positions, observation quality and alerts in the same scenario.</span></div>
+    </section>
+
+    <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
+      <div class="monitor-grid">
+        <div class="map-column">
+          <section class="panel map-panel" aria-labelledby="map-title">
+            <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
+            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button></div><span data-i18n="mapNote">Facilities and tracks over the real map are synthetic.</span></div>
+            <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
+              <div id="map-tiles" aria-hidden="true"></div>
+              <svg id="map-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+              <div id="map-markers"></div>
+              <div class="map-label"><span class="live-dot" aria-hidden="true"></span><span data-i18n="syntheticSite">Synthetic site · Not a real facility location</span></div>
+              <div class="map-controls" aria-label="Map controls" data-i18n-aria-label="mapControls">
+                <button id="zoom-in" type="button" aria-label="Zoom in" data-i18n-aria-label="zoomIn" title="Zoom in" data-i18n-title="zoomInTitle">+</button>
+                <button id="zoom-out" type="button" aria-label="Zoom out" data-i18n-aria-label="zoomOut" title="Zoom out" data-i18n-title="zoomOutTitle">−</button>
+                <button id="recenter" type="button" class="recenter-button" aria-label="Return to observation area" data-i18n-aria-label="recenter" title="Return to observation area" data-i18n-title="recenter">⌖</button>
+              </div>
+              <div class="map-legend"><span><i class="legend-line"></i><span data-i18n="observedPath">Observation history</span></span><span><i class="legend-point"></i><span data-i18n="lastObservedPosition">Last observed position</span></span></div>
+              <div id="map-attribution" class="map-attribution" hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> <span data-i18n="contributors">contributors</span></div>
+            </div>
+          </section>
+
+          <section class="panel playback-panel" aria-label="Scenario playback" data-i18n-aria-label="scenarioPlayback">
+            <div class="playback-top"><div class="playback-title"><span class="eyebrow" data-i18n="scenarioTime">SCENARIO TIME</span><output id="time-label" for="timeline">--:--</output></div><div class="playback-actions"><button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button><button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button></div></div>
+            <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="120000" step="1000" value="0">
+            <div class="playback-bottom"><span data-i18n="timelineHelp">Scrub the timeline to compare observations.</span><div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div></div>
+          </section>
+        </div>
+
+        <aside class="observation-sidebar" aria-label="Observation details" data-i18n-aria-label="observationDetails">
+          <section class="panel tracks-panel" aria-labelledby="tracks-title">
+            <div class="panel-heading"><div><span class="section-number">02</span><h2 id="tracks-title" data-i18n="tracksTitle">Observed tracks</h2><span id="track-count" class="count-badge">--</span></div><span class="eyebrow" data-i18n="tracks">TRACKS</span></div>
+            <div id="track-list" data-empty="Waiting for data." class="track-list" aria-label="Observed track list" data-i18n-aria-label="trackList"></div>
+          </section>
+          <section class="panel detail-panel" aria-labelledby="detail-title">
+            <div class="panel-heading"><div><span class="section-number">03</span><h2 id="detail-title" data-i18n="evidenceTitle">Observation evidence</h2></div><span class="eyebrow" data-i18n="evidenceEyebrow">EVIDENCE</span></div>
+            <div id="track-detail" class="track-detail"><p class="empty-state" data-i18n="selectTrack">Select a track to see its observation evidence.</p></div>
+          </section>
+          <section class="panel active-alerts-panel" aria-labelledby="active-alerts-title">
+            <div class="panel-heading"><div><span class="alert-symbol" aria-hidden="true">!</span><h2 id="active-alerts-title" data-i18n="currentAlerts">Current alerts</h2></div><span class="eyebrow" data-i18n="qualityEyebrow">QUALITY</span></div>
+            <ul id="active-alerts" data-empty="Waiting for data." class="active-alerts"></ul>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="alerts-view" aria-labelledby="alerts-title" hidden>
+      <div class="panel alerts-panel"><div class="panel-heading"><div><span class="section-number">01</span><h2 id="alerts-title" data-i18n="qualityAlerts">Current observation quality alerts</h2></div><span class="eyebrow" data-i18n="alertsEyebrow">CURRENT ALERTS</span></div><div class="alerts-intro"><p data-i18n="alertsIntro">Review observation quality at the current replay time.</p><span data-i18n="alertsNote">Shown for the selected scenario and replay time.</span></div><ul id="alert-list" data-empty="Waiting for data." class="alert-list" aria-label="Current observation quality alerts" data-i18n-aria-label="qualityAlerts"></ul></div>
+    </section>
+
+    <section class="panel events-panel" aria-labelledby="events-title"><div class="panel-heading"><div><h2 id="events-title" data-i18n="eventsTitle">Scenario events</h2></div><span class="eyebrow" data-i18n="eventsEyebrow">EVENT LOG</span></div><ol id="events-list" data-empty="Waiting for data." class="events-list"></ol></section>
+    <footer class="workspace-footer"><div><span class="footer-mark" aria-hidden="true"></span><span id="source-status" data-i18n="sourceLoading">Checking data sources</span></div><span>LOW SKY <span class="footer-divider">/</span> <span data-i18n="demoFooter">Synthetic observation demo</span></span></footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

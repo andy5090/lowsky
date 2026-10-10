@@ -2,13 +2,16 @@ extends RefCounted
 ## Art-direction test: fictional plains, fields and shelterbelts. No map data.
 
 static func elevation(x: float, z: float, noise: FastNoiseLite) -> float:
-	return noise.get_noise_2d(x, z) * 7.0 * smoothstep(100, 350, Vector2(x, z).length()) - 0.02
+	# The entire 2.5 x 4 km enclosure plus a generous buffer stays level.
+	var outside_site = maxf(absf(x) - 1450.0, absf(z) - 2200.0)
+	return noise.get_noise_2d(x, z) * 18.0 * smoothstep(0, 1600, outside_site) - 0.02
 
 static func patch(rect: Rect2, material: Material, noise: FastNoiseLite, lift: float = 0.0) -> MeshInstance3D:
 	var surface = SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var columns = ceili(rect.size.x / 10.0)
-	var rows = ceili(rect.size.y / 10.0)
+	# A 100 m grid bounds the 10 km landscape at 20,000 triangles.
+	var columns = maxi(1, ceili(rect.size.x / 100.0))
+	var rows = maxi(1, ceili(rect.size.y / 100.0))
 	for z in range(rows):
 		for x in range(columns):
 			var points: Array[Vector3] = []
@@ -30,8 +33,10 @@ static func make(grass: StandardMaterial3D) -> Node3D:
 	root.name = "PlainsTerrain"
 	var noise = FastNoiseLite.new()
 	noise.seed = 6149
-	noise.frequency = 0.002
-	root.add_child(patch(Rect2(-600, -600, 1200, 1200), grass, noise))
+	noise.frequency = 0.0005
+	root.set_meta("width_m", 10000)
+	root.set_meta("length_m", 10000)
+	root.add_child(patch(Rect2(-5000, -5000, 10000, 10000), grass, noise))
 	var fields = Node3D.new()
 	fields.name = "Fields"
 	root.add_child(fields)
@@ -42,18 +47,19 @@ static func make(grass: StandardMaterial3D) -> Node3D:
 		material.albedo_color = color
 		material.normal_scale = 0.08
 		field_materials.append(material)
-	# Rectangular agricultural plots leave a broad clear apron around the demo.
-	for z in range(-5, 5):
-		for x in range(-5, 5):
-			if x in [-1, 0] and z in [-1, 0]:
+	# Farm parcels are outside the whole enclosure, not between its facilities.
+	var clear_site = Rect2(-1450, -2200, 2900, 4400)
+	for z in range(-7, 7):
+		for x in range(-7, 7):
+			var rect = Rect2(x * 650 + 15, z * 650 + 15, 620, 620)
+			if rect.intersects(clear_site):
 				continue
-			var rect = Rect2(x * 100 + 4, z * 100 + 4, 92, 92)
 			var material = field_materials[posmod(x * 3 + z * 7, palette.size())]
 			fields.add_child(patch(rect, material, noise, 0.12))
 	var road_material = grass.duplicate() as StandardMaterial3D
 	road_material.albedo_color = Color("89857a")
 	road_material.normal_enabled = false
-	var road = patch(Rect2(-300, -103, 700, 4), road_material, noise, 0.16)
+	var road = patch(Rect2(-4000, -2400, 8000, 6), road_material, noise, 0.16)
 	road.name = "FarmLane"
 	root.add_child(road)
 	add_shelterbelts(root, noise)
@@ -63,14 +69,15 @@ static func add_shelterbelts(root: Node3D, noise: FastNoiseLite) -> void:
 	var rng = RandomNumberGenerator.new()
 	rng.seed = 9317
 	var trees: Array[Vector3] = []
-	for index in range(115):
-		var x = -290 + index * 6.0
-		var z = -110 + rng.randf_range(-4, 4)
-		trees.append(Vector3(x, elevation(x, z, noise), z))
-	for index in range(65):
-		var x = 105 + rng.randf_range(-4, 4)
-		var z = -100 + index * 6.0
-		trees.append(Vector3(x, elevation(x, z, noise), z))
+	for side in [-1, 1]:
+		for index in range(90):
+			var x = side * 1700 + rng.randf_range(-4, 4)
+			var z = -2670 + index * 60.0
+			trees.append(Vector3(x, elevation(x, z, noise), z))
+		for index in range(70):
+			var x = -1380 + index * 40.0
+			var z = side * 2450 + rng.randf_range(-4, 4)
+			trees.append(Vector3(x, elevation(x, z, noise), z))
 	var belt = Node3D.new()
 	belt.name = "Shelterbelts"
 	root.add_child(belt)

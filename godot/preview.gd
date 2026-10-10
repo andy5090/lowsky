@@ -2,6 +2,8 @@ extends Node3D
 ## Local fixture viewer. Author view is explicitly separate from agent input.
 
 const Detailed = preload("res://detailed_environment.gd")
+const Geographic = preload("res://geographic_environment.gd")
+const Site = preload("res://site_environment.gd")
 const Plains = preload("res://plains_environment.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
@@ -17,11 +19,21 @@ var case_id = "case_001"
 var use_external_assets = true
 var realistic = true
 var plains_test = true
+var geographic = true
+var terrain_data: Dictionary = {}
 var terrain: Node3D
 var terrain_button: Button
 var materials: Dictionary = {}
 var display_profiles: Dictionary = {}
-var camera_target = Vector3(12, 2.5, 14)
+var site_layout: Dictionary = {}
+var camera_target = Vector3.ZERO
+var monitor_mode = false
+var monitor_connected = false
+var monitor_request: HTTPRequest
+var monitor_clock = 0.0
+var monitor_received_at = 0
+var monitor_speed = 1.0
+var monitor_playing = false
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 
@@ -87,7 +99,10 @@ func vector(values: Array) -> Vector3:
 func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 	if realistic:
 		match asset_id:
-			"ground_tile": return Plains.make(materials.grass) if plains_test else Detailed.make_terrain(materials.grass)
+			"ground_tile":
+				if geographic:
+					return Geographic.make(terrain_data, materials.grass)
+				return Plains.make(materials.grass) if plains_test else Detailed.make_terrain(materials.grass)
 			"hangar": return Detailed.make_hangar(materials)
 			"control_tower": return Detailed.make_tower(materials)
 			"utility_building": return Detailed.make_utility_building(materials)
@@ -145,12 +160,16 @@ func collect_bounds(node: Node3D, parent_transform: Transform3D) -> Array:
 	return bounds
 
 func _ready() -> void:
+	site_layout = read_json(data_root.path_join("../../site_layout.json"))
+	camera_target = vector(site_layout.camera.target)
+	monitor_mode = "--monitor" in OS.get_cmdline_user_args()
 	display_profiles = read_json("res://assets/display_profiles.json")
 	use_external_assets = not "--blockout" in OS.get_cmdline_user_args()
 	realistic = use_external_assets and not "--stylized" in OS.get_cmdline_user_args()
 	plains_test = not "--hills" in OS.get_cmdline_user_args()
-	if realistic:
-		build_materials()
+	geographic = not ("--hills" in OS.get_cmdline_user_args() or "--plains" in OS.get_cmdline_user_args())
+	terrain_data = read_json(data_root.path_join("../../terrain/korea_site.json"))
+	build_materials()
 	var environment = WorldEnvironment.new()
 	var settings = Environment.new()
 	if realistic:
@@ -165,7 +184,7 @@ func _ready() -> void:
 		settings.ambient_light_energy = 0.7
 		settings.fog_enabled = true
 		settings.fog_light_color = Color("9dabb3")
-		settings.fog_density = 0.0004
+		settings.fog_density = 0.000035
 		settings.fog_sky_affect = 0.15
 	else:
 		settings.background_mode = Environment.BG_COLOR
@@ -186,30 +205,35 @@ func _ready() -> void:
 	if realistic:
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		camera.fov = 48
-		camera.position = Vector3(49, 20, 61)
-		camera.far = 1600
+		camera.position = vector(site_layout.camera.close)
+		camera.far = 18000
 	else:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-		camera.size = 115
-		camera.position = Vector3(78, 76, 90)
-		camera_target = Vector3.ZERO
+		camera.size = 5200
+		camera.position = vector(site_layout.camera.overview)
+		camera.far = 18000
 	add_child(camera)
 	camera.look_at(camera_target)
 	for placement in read_json(data_root.path_join("scene.json"))["environment"]:
 		var instance = asset_instance(placement["asset_id"])
 		instance.position = vector(placement["position"])
+		instance.scale *= vector(placement.get("scale", [1, 1, 1]))
 		add_child(instance)
 		if placement["asset_id"] == "ground_tile":
 			terrain = instance
+	add_child(Site.make(site_layout, materials))
 	if realistic:
 		add_realistic_details()
 	build_ui()
 	load_case("case_001")
+	if monitor_mode:
+		start_monitor()
 	if "--capture" in OS.get_cmdline_user_args():
 		playing = false
 		elapsed_ms = 65000
 		if "--overview" in OS.get_cmdline_user_args():
-			camera.position = Vector3(70, 70, 90)
+			camera.position = vector(site_layout.camera.overview)
+			camera_target = Vector3.ZERO
 			camera.look_at(camera_target)
 		for frame in range(30):
 			await get_tree().process_frame
@@ -217,6 +241,8 @@ func _ready() -> void:
 		var filename = "asset-overview.png" if "--overview" in OS.get_cmdline_user_args() else "asset-preview.png"
 		if realistic and plains_test:
 			filename = "plains-overview.png" if "--overview" in OS.get_cmdline_user_args() else "plains-preview.png"
+		if realistic and geographic:
+			filename = "korea-overview.png" if "--overview" in OS.get_cmdline_user_args() else "korea-preview.png"
 		var output = ProjectSettings.globalize_path("res://../artifacts/" + filename)
 		DirAccess.make_dir_recursive_absolute(output.get_base_dir())
 		var error = get_viewport().get_texture().get_image().save_png(output)
@@ -224,12 +250,7 @@ func _ready() -> void:
 		get_tree().quit(error)
 
 func add_realistic_details() -> void:
-	# Display-only aircraft and apron; neither becomes agent observation evidence.
-	Detailed.box(self, Vector3(7, 0.12, 7), Vector3(6, 0.06, 26), materials.asphalt)
-	Detailed.box(self, Vector3(28, 0.14, 24), Vector3(19, 0.08, 29), materials.concrete)
-	var paint = solid_material(Color("d4bd74"), 0, 0.9)
-	for x in [9, 19, 29]:
-		Detailed.box(self, Vector3(0.07, 0.02, 12), Vector3(x, 0.17, 31), paint)
+	# Display-only aircraft; never observation evidence.
 	var aircraft = (load("res://third_party/realistic/cesium_air/Cesium_Air.glb") as PackedScene).instantiate()
 	var bounds = collect_bounds(aircraft, Transform3D.IDENTITY)
 	var combined: AABB = bounds[0]
@@ -237,13 +258,10 @@ func add_realistic_details() -> void:
 		combined = combined.merge(bound)
 	var factor = 10.0 / maxf(combined.size.x, combined.size.z)
 	aircraft.scale = Vector3.ONE * factor
-	aircraft.position = Vector3(17, 0.18, 31) - Vector3(combined.get_center().x, combined.position.y, combined.get_center().z) * factor
+	aircraft.position = vector(site_layout.aircraft_position) - Vector3(combined.get_center().x, combined.position.y, combined.get_center().z) * factor
 	add_child(aircraft)
-	for z in [-28, -20, -12, -4, 4, 12, 20, 28]:
-		for side in [-1, 1]:
-			Detailed.rod(self, Vector3(side * 4.4, 0, z), Vector3(side * 4.4, 0.3, z), 0.07, materials.dark_metal)
 	var credit = Label.new()
-	credit.text = "FICTIONAL SITE  •  MATERIALS / HDRI: POLY HAVEN  •  AIRCRAFT: CESIUM CONTRIBUTORS"
+	credit.text = "FICTIONAL SITE  •  MATERIALS: POLY HAVEN  •  AIRCRAFT: CESIUM  •  KOREA TERRAIN: MAPZEN / USGS"
 	credit.position = Vector2(26, 867)
 	credit.add_theme_font_size_override("font_size", 12)
 	var layer = CanvasLayer.new()
@@ -276,7 +294,7 @@ func build_ui() -> void:
 	column.add_child(subtitle)
 	if realistic:
 		terrain_button = Button.new()
-		terrain_button.text = "Terrain: Plains test  [T]" if plains_test else "Terrain: Original hills  [T]"
+		terrain_button.text = terrain_caption()
 		terrain_button.pressed.connect(toggle_terrain)
 		column.add_child(terrain_button)
 	var buttons = HBoxContainer.new()
@@ -286,10 +304,12 @@ func build_ui() -> void:
 		button.text = ["Consistent", "Conflicting", "Missing"][index]
 		var id = "case_%03d" % (index + 1)
 		button.pressed.connect(func(): load_case(id))
+		button.disabled = monitor_mode
 		buttons.add_child(button)
 	var playback = Button.new()
 	playback.text = "Pause / Resume  [Space]"
 	playback.pressed.connect(func(): playing = not playing)
+	playback.disabled = monitor_mode
 	column.add_child(playback)
 	time_label = Label.new()
 	column.add_child(time_label)
@@ -298,18 +318,31 @@ func build_ui() -> void:
 	column.add_child(status_label)
 	var hint = Label.new()
 	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\nSynthetic observations. No LLM connected."
+	if monitor_mode:
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: http://127.0.0.1:8765\n3D author view · monitor shows observations"
 	hint.modulate = Color("91b6b8")
 	column.add_child(hint)
+
+func terrain_caption() -> String:
+	if geographic:
+		return "Terrain: Korea DEM / modified site  [T]"
+	return "Terrain: Synthetic plains  [T]" if plains_test else "Terrain: Synthetic hills  [T]"
 
 func toggle_terrain() -> void:
 	if not realistic:
 		return
-	plains_test = not plains_test
+	if geographic:
+		geographic = false
+		plains_test = true
+	elif plains_test:
+		plains_test = false
+	else:
+		geographic = true
 	remove_child(terrain)
 	terrain.queue_free()
 	terrain = asset_instance("ground_tile")
 	add_child(terrain)
-	terrain_button.text = "Terrain: Plains test  [T]" if plains_test else "Terrain: Original hills  [T]"
+	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
 	for item in objects:
@@ -332,7 +365,13 @@ func load_case(id: String) -> void:
 	elapsed_ms = 0
 
 func _process(delta: float) -> void:
-	if playing:
+	camera.near = clampf(camera.position.distance_to(camera_target) * 0.02, 0.1, 50.0)
+	if monitor_mode:
+		var age = Time.get_ticks_msec() - monitor_received_at
+		monitor_connected = monitor_connected and age <= 1500
+		if monitor_connected:
+			elapsed_ms = minf(monitor_clock + (minf(age, 500) * monitor_speed if monitor_playing else 0.0), 120000)
+	elif playing:
 		elapsed_ms = minf(elapsed_ms + delta * 1000, 120000)
 	for item in objects:
 		var frames = item["keyframes"]
@@ -348,7 +387,7 @@ func _process(delta: float) -> void:
 				if event["source_id"] == source and event["available_at_ms"] <= elapsed_ms:
 					state = event["status"]
 			lines.append("%s: %s" % [source, state])
-		status_label.text = "\n".join(lines)
+		status_label.text = ("MONITOR: connected" if monitor_connected else "MONITOR: disconnected · replay frozen") if monitor_mode else "\n".join(lines)
 
 func pan_camera(relative: Vector2) -> void:
 	var offset = camera.position - camera_target
@@ -358,8 +397,8 @@ func pan_camera(relative: Vector2) -> void:
 	var back = Vector3(camera.basis.z.x, 0, camera.basis.z.z).normalized()
 	var movement = (-right * relative.x + back * relative.y / maxf(offset.normalized().y, 0.15)) * scale
 	var target = camera_target + movement
-	target.x = clampf(target.x, -400, 400)
-	target.z = clampf(target.z, -400, 400)
+	target.x = clampf(target.x, -6000, 6000)
+	target.z = clampf(target.z, -6000, 6000)
 	camera.position += target - camera_target
 	camera_target = target
 
@@ -394,6 +433,8 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if monitor_mode and event.keycode in [KEY_SPACE, KEY_R, KEY_1, KEY_2, KEY_3]:
+			return
 		match event.keycode:
 			KEY_SPACE: playing = not playing
 			KEY_R: elapsed_ms = 0
@@ -402,15 +443,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3: load_case("case_003")
 			KEY_T: toggle_terrain()
 			KEY_H:
-				camera_target = Vector3(12, 2.5, 14) if realistic else Vector3.ZERO
-				camera.position = Vector3(49, 20, 61) if realistic else Vector3(78, 76, 90)
-				camera.size = 115
+				camera_target = vector(site_layout.camera.target)
+				camera.position = vector(site_layout.camera.close)
+				camera.size = 500
 				camera.look_at(camera_target)
 			KEY_C:
-				if camera.position.y - camera_target.y < 35:
-					camera.position = camera_target + Vector3(58, 67.5, 76)
+				if camera.position.y < 1000:
+					camera_target = Vector3.ZERO
+					camera.position = vector(site_layout.camera.overview)
+					camera.size = 5200
 				else:
-					camera.position = camera_target + Vector3(37, 17.5, 47)
+					camera_target = vector(site_layout.camera.target)
+					camera.position = vector(site_layout.camera.close)
+					camera.size = 500
 				camera.look_at(camera_target)
 			KEY_LEFT, KEY_RIGHT:
 				camera.position = camera_target + (camera.position - camera_target).rotated(Vector3.UP, 0.12 if event.keycode == KEY_LEFT else -0.12)
@@ -422,11 +467,50 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if realistic:
-				camera.position = camera_target + (camera.position - camera_target).normalized() * maxf(18, camera.position.distance_to(camera_target) - 4)
+				camera.position = camera_target + (camera.position - camera_target).normalized() * maxf(18, camera.position.distance_to(camera_target) * 0.88)
 			else:
-				camera.size = maxf(40, camera.size - 5)
+				camera.size = maxf(40, camera.size * 0.88)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if realistic:
-				camera.position = camera_target + (camera.position - camera_target).normalized() * minf(220, camera.position.distance_to(camera_target) + 4)
+				camera.position = camera_target + (camera.position - camera_target).normalized() * minf(10000, camera.position.distance_to(camera_target) * 1.12)
 			else:
-				camera.size = minf(160, camera.size + 5)
+				camera.size = minf(12000, camera.size * 1.12)
+
+func start_monitor() -> void:
+	playing = false
+	monitor_request = HTTPRequest.new()
+	monitor_request.timeout = 1.0
+	add_child(monitor_request)
+	monitor_request.request_completed.connect(receive_monitor_clock)
+	var timer = Timer.new()
+	timer.wait_time = 0.25
+	timer.timeout.connect(poll_monitor)
+	add_child(timer)
+	timer.start()
+	poll_monitor()
+
+func poll_monitor() -> void:
+	if monitor_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
+		monitor_request.request("http://127.0.0.1:8765/api/clock")
+
+func receive_monitor_clock(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+		monitor_connected = false
+		return
+	var state = JSON.parse_string(body.get_string_from_utf8())
+	if not state is Dictionary or not state.has_all(["case_id", "at_ms", "playing", "speed"]):
+		monitor_connected = false
+		return
+	var next_case = str(state.case_id)
+	if not next_case.begins_with("case_") or not next_case.substr(5).is_valid_int():
+		return
+	if next_case != case_id:
+		if not FileAccess.file_exists(data_root.path_join("cases/%s/world.json" % next_case)):
+			return
+		load_case(next_case)
+	monitor_clock = float(state.at_ms)
+	monitor_speed = float(state.speed)
+	monitor_playing = bool(state.playing)
+	monitor_received_at = Time.get_ticks_msec()
+	monitor_connected = true
+	elapsed_ms = monitor_clock

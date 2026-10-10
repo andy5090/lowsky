@@ -33,19 +33,24 @@ func verify() -> void:
 	event.keycode = KEY_R
 	preview._unhandled_input(event)
 	assert(preview.elapsed_ms == 0)
-	assert(preview.has_node("PlainsTerrain/Fields"))
-	assert(preview.has_node("PlainsTerrain/Shelterbelts"))
-	# Art-direction switching must not restart or alter the scenario replay.
+	assert(preview.has_node("GeographicTerrain"))
+	assert(preview.terrain.get_meta("triangle_count") == 80000)
+	assert(preview.terrain_data.origin.lat == 36.5)
+	assert(preview.terrain_data.origin.lon == 127.8)
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1250, 2000), -0.02))
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -5000, -5000), float(preview.terrain_data.heights_m[0][0]) - 373.0))
+	# Terrain modes must not restart or alter replay.
 	preview.elapsed_ms = 65000
 	preview._process(0)
 	var object_position = preview.objects[0]["node"].position
 	event.keycode = KEY_T
 	preview._unhandled_input(event)
-	assert(preview.has_node("FictionalTerrain"))
-	assert(not preview.has_node("PlainsTerrain"))
+	assert(preview.has_node("PlainsTerrain/Fields"))
+	assert(preview.has_node("PlainsTerrain/Shelterbelts"))
 	preview._unhandled_input(event)
-	assert(preview.has_node("PlainsTerrain"))
-	assert(not preview.has_node("FictionalTerrain"))
+	assert(preview.has_node("FictionalTerrain"))
+	preview._unhandled_input(event)
+	assert(preview.has_node("GeographicTerrain"))
 	assert(preview.elapsed_ms == 65000)
 	assert(preview.case_id == "case_002")
 	assert(preview.objects[0]["node"].position.is_equal_approx(object_position))
@@ -55,10 +60,12 @@ func verify() -> void:
 			assert(is_equal_approx(vertex.y, -0.02), "Airfield surface must remain level")
 	assert(preview.has_node("DetailedHangar"))
 	assert(preview.has_node("DetailedTower"))
+	assert(preview.get_node("SiteInfrastructure/Runway").get_meta("length_m") == 2500)
+	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("perimeter_m") == 13000)
 	var initial_camera_position = preview.camera.position
 	event.keycode = KEY_C
 	preview._unhandled_input(event)
-	assert(preview.camera.position.y == 70)
+	assert(preview.camera.position.y == 2400)
 	preview._unhandled_input(event)
 	assert(preview.camera.position.is_equal_approx(initial_camera_position))
 	event.keycode = KEY_LEFT
@@ -101,7 +108,7 @@ func verify() -> void:
 			node.free()
 			imported_models += 1
 	assert(imported_models == 4)
-	print("PASS: 12 cases, playback and camera input, plains/hills switching preserves replay, level airfield, detailed buildings, PBR mipmaps and 5 external models")
+	print("PASS: 12 cases, playback and camera input, Korea DEM and terrain switching preserve replay, level airfield, detailed buildings, PBR mipmaps and 5 external models")
 	preview.queue_free()
 	await process_frame
 	quit()
@@ -156,12 +163,12 @@ func verify_camera_drag(preview: Node3D) -> bool:
 	# --headless to exercise button delivery as well as camera motion.
 	if DisplayServer.get_name() != "headless":
 		var before_ui: Vector3 = preview.camera.position
-		var terrain_before: bool = preview.plains_test
+		var terrain_before: bool = preview.geographic
 		mouse_motion(0, Vector2.ZERO, ui_point)
 		mouse_button(MOUSE_BUTTON_LEFT, true, ui_point)
 		assert(preview.drag_button == MOUSE_BUTTON_NONE)
 		mouse_button(MOUSE_BUTTON_LEFT, false, ui_point)
-		assert(preview.plains_test != terrain_before, "Terrain button must still receive clicks")
+		assert(preview.geographic != terrain_before, "Terrain button must still receive clicks")
 		assert(preview.camera.position.is_equal_approx(before_ui))
 	else:
 		print("SKIP: native GUI button delivery requires a rendered window")
@@ -184,7 +191,7 @@ func verify_camera_drag(preview: Node3D) -> bool:
 	home.pressed = true
 	home.keycode = KEY_H
 	preview._unhandled_input(home)
-	assert(preview.camera.position.is_equal_approx(Vector3(49, 20, 61)))
-	assert(preview.camera_target.is_equal_approx(Vector3(12, 2.5, 14)))
+	assert(preview.camera.position.is_equal_approx(preview.vector(preview.site_layout.camera.close)))
+	assert(preview.camera_target.is_equal_approx(preview.vector(preview.site_layout.camera.target)))
 	print("PASS: mouse pan/orbit through viewport, drag release, focus loss, pitch limits and home")
 	return true

@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "synthetic": true,
+  "unit": "meter",
+  "description": "Fictional visual test layout; dimensions are explicit demo assumptions, not a real site or design standard.",
+  "perimeter": {
+    "width_m": 2500,
+    "length_m": 4000,
+    "height_m": 2.5
+  },
+  "runway": {
+    "center": [
+      -300,
+      0,
+      0
+    ],
+    "width_m": 45,
+    "length_m": 2500
+  },
+  "apron": {
+    "center": [
+      220,
+      0,
+      150
+    ],
+    "width_m": 300,
+    "length_m": 400
+  },
+  "facilities": [
+    {
+      "id": "building_1",
+      "asset_id": "hangar",
+      "position": [
+        410,
+        0,
+        50
+      ],
+      "scale": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "building_2",
+      "asset_id": "utility_building",
+      "position": [
+        440,
+        0,
+        -100
+      ],
+      "scale": [
+        4,
+        2,
+        4
+      ]
+    },
+    {
+      "id": "tower",
+      "asset_id": "control_tower",
+      "position": [
+        450,
+        0,
+        -220
+      ],
+      "scale": [
+        1.5,
+        1.5,
+        1.5
+      ]
+    },
+    {
+      "id": "station_a",
+      "asset_id": "observation_station",
+      "position": [
+        -650,
+        0,
+        -250
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "station_b",
+      "asset_id": "observation_station",
+      "position": [
+        -650,
+        0,
+        250
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "aircraft_position": [
+    210,
+    0.2,
+    220
+  ],
+  "camera": {
+    "target": [
+      390,
+      8,
+      50
+    ],
+    "close": [
+      630,
+      160,
+      380
+    ],
+    "overview": [
+      2500,
+      2400,
+      3500
+    ]
+  }
+}
