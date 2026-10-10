@@ -44,6 +44,24 @@
       <div class="scenario-help"><span data-i18n="scenarioHelp">Explore positions, observation quality and alerts in the same scenario.</span></div>
     </section>
 
+    <aside id="decision-attention" class="decision-attention" hidden><span id="decision-attention-text"></span><a href="#decision-title" class="button button-primary" data-i18n="decision.viewChoices">View choices</a></aside>
+    <section class="panel decision-panel" aria-labelledby="decision-title">
+      <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
+      <div class="agent-controls"><label><input id="decision-enabled" type="checkbox" checked> <span data-i18n="decision.guided">Pause and assess important events</span></label><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button><a href="/api/decisions/audit" download="lowsky-decisions.json" class="button button-secondary" data-i18n="decision.export">Export decision journal</a></div>
+      <p class="agent-scope" data-i18n="decision.scope">Important received events pause shared playback for assessment and your decision. Selecting an option does not execute it.</p>
+      <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
+      <div id="decision-event" class="decision-event"></div>
+      <form id="decision-form" class="decision-form" hidden>
+        <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
+        <p id="decision-confirm-summary"></p><p id="decision-draft-status" role="status" aria-live="polite"></p>
+        <label for="decision-reviewer" data-i18n="review.actor">Reviewer alias</label><input id="decision-reviewer" maxlength="80" required autocomplete="off">
+        <label for="decision-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="decision-reason" rows="3" maxlength="1000" required></textarea>
+        <p class="muted" data-i18n="decision.local">This records a local simulation decision. The reviewer alias is self-entered.</p>
+        <div class="decision-form-actions"><button id="decision-confirm" type="submit" class="button button-primary" data-i18n="decision.confirm">Confirm and apply</button><button id="decision-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
+      </form>
+      <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
+    </section>
+
     <section class="panel agent-panel" aria-labelledby="agent-title">
       <div class="panel-heading"><div><span class="section-number">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
       <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>

@@ -1,6 +1,7 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue} from './review.mjs';
+import {selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
@@ -20,6 +21,9 @@ let controlChain = Promise.resolve();
 let notifier, notificationBusy = false, notificationMessage = '', installPrompt;
 let assessment = null, assessmentBusy = false, assessmentLastAttempt = 0, assessmentFailure = false;
 let assessmentSignature = '';
+let decisions = null, decisionBusy = false, decisionDraft = null, decisionError = '', decisionSignature = '';
+let decisionLanguagePending = false, decisionAvailable = false;
+let decisionNoticeRun = null;
 let queuePage = 0, queueFilter = 'all', queueRun = null;
 let trackReviewBusy = false, reviewTargetKey = '', reviewTargetVersion = '';
 let showPositions = false;
@@ -70,6 +74,7 @@ function render(data) {
   renderSituation();
   renderWorkload();
   renderAssessment();
+  renderDecisions();
   notifier?.observe(data);
   const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions]);
   if (signature !== dataSignature) {
@@ -128,7 +133,8 @@ function renderAssessment() {
   $('agent-mode').textContent = t(assessment?.mode==='llm'?'agent.llm':'agent.rules');
   const configurationError = assessment?.configuration_error;
   $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running) || Boolean(configurationError);
-  $('agent-auto').disabled = Boolean(configurationError);
+  $('agent-auto').disabled = Boolean(configurationError) || Boolean(decisions?.enabled);
+  if (decisions?.enabled) $('agent-auto').checked = false;
   let status = assessment?.running || assessmentBusy ? 'agent.running' : configurationError ? `agent.${configurationError}` : assessmentFailure || assessment?.error ? 'agent.failed' : assessment?.configured ? 'agent.ready' : 'agent.unconfigured';
   $('agent-status').textContent = `${t(status)}${assessment?.model ? ` (${assessment.model})` : ''}`;
   const report = assessment?.latest?.run_id===state?.run_id ? assessment.latest : null;
@@ -153,13 +159,90 @@ async function pollAssessment() {
   try {
     const result=await api('/api/assessment');
     if(state?.run_id===run){assessment=result;assessmentFailure=false;renderAssessment();}
-    if($('agent-auto').checked && connected && state?.playing && !assessmentBusy && !assessment?.running
+    if(!decisions?.enabled && $('agent-auto').checked && connected && state?.playing && !assessmentBusy && !assessment?.running
        && performance.now()-assessmentLastAttempt>=30000)runAssessment();
   } catch {assessmentFailure=true;renderAssessment();}
   setTimeout(pollAssessment,1500);
 }
 $('agent-assess').onclick=runAssessment;
 $('agent-auto').onchange=()=>{if($('agent-auto').checked)runAssessment();};
+
+function currentDecision() {
+  if (!decisions || !state || decisions.run_id !== state.run_id) return null;
+  return (decisions.events || []).find(event=>!['decided','superseded'].includes(event.status)) || null;
+}
+function renderDecisions() {
+  if (decisionNoticeRun !== state?.run_id) {
+    if (decisionError === 'decision.saved') decisionError = '';
+    decisionNoticeRun = state?.run_id;
+  }
+  const event = currentDecision();
+  const waiting = (decisions && state && decisions.run_id === state.run_id ? decisions.events || [] : []).filter(item=>!['decided','superseded'].includes(item.status));
+  $('decision-count').textContent = waiting.length;
+  if (decisions) $('decision-enabled').checked = decisions.enabled;
+  $('decision-enabled').disabled = !connected || decisionBusy;
+  $('decision-assess').disabled = !connected || !state || decisionBusy || event?.status === 'evaluating';
+  const statusKey = decisionStatusKey(event, decisions?.enabled, decisionError);
+  $('decision-status').textContent = t(statusKey);
+  $('decision-attention').hidden = !event;
+  $('decision-attention-text').textContent = event ? t(statusKey) : '';
+  const report = event?.report;
+  const signature = JSON.stringify([language,event,decisionBusy,decisionDraft?.event_id,decisionDraft?.option_id]);
+  if (signature !== decisionSignature) {
+    decisionSignature = signature;
+    $('decision-event').innerHTML = event ? `<p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p>
+      <ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul>
+      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${t(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${t(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
+    document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
+      decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
+      $('decision-reason').focus();
+    });
+    if ($('decision-retry')) $('decision-retry').onclick=()=>decisionAction({action:'retry',event_id:event.id,language});
+  }
+  $('decision-form').hidden = !decisionDraft;
+  if (decisionDraft) {
+    const status = decisionDraftStatus(decisionDraft,event,state,language);
+    $('decision-confirm-summary').textContent = `${t(`decision.option.${decisionDraft.option_id}`)} · ${t(`decision.effect.${decisionDraft.option_id}`)} · ${fmt(decisionDraft.at_ms)} · ${decisionDraft.event_id}`;
+    $('decision-draft-status').textContent = status === 'stale' ? t('decision.stale') : t('decision.confirmNote');
+    $('decision-confirm').disabled = !connected || !decisionAvailable || decisionBusy || status !== 'ready';
+  }
+  $('decision-history').innerHTML = (decisions && state && decisions.run_id===state.run_id ? decisions.history || [] : []).map(record=>`<li>${fmt(record.at_ms || 0)} · ${escape(t(`decision.option.${record.option_id}`))}<p>${escape(record.reason || '')}</p></li>`).join('') || `<li>${t('none')}</li>`;
+}
+async function decisionAction(body) {
+  if (!connected || !state || decisionBusy) return false;
+  const run = state.run_id;
+  decisionBusy=true;decisionError='';renderDecisions();
+  try {
+    const result=await api('/api/decisions',{run_id:run,...body});
+    if(state?.run_id===run){decisions=result;decisionAvailable=true;return true;}
+    return false;
+  } catch {decisionError='decision.failedRequest';return false;}
+  finally {decisionBusy=false;renderDecisions();renderAssessment();}
+}
+async function syncDecisionLanguage() {
+  if (!state || !decisions || decisionLanguagePending || decisions.language === language) return;
+  decisionLanguagePending = true;
+  try { await decisionAction({action:'configure',enabled:decisions.enabled,language}); }
+  finally {decisionLanguagePending=false;}
+}
+async function pollDecisions() {
+  const run=state?.run_id;
+  try {
+    const result=await api('/api/decisions');
+    if(state?.run_id===run){decisions=result;decisionAvailable=true;if(decisionError==='decision.unavailable')decisionError='';renderDecisions();renderAssessment();await syncDecisionLanguage();}
+  } catch {decisionAvailable=false;decisionError='decision.unavailable';renderDecisions();}
+  setTimeout(pollDecisions,1500);
+}
+$('decision-enabled').onchange=()=>decisionAction({action:'configure',enabled:$('decision-enabled').checked,language});
+$('decision-assess').onclick=()=>decisionAction({action:'assess_current',language});
+$('decision-cancel').onclick=()=>{decisionDraft=null;decisionError='';renderDecisions();};
+$('decision-form').onsubmit=async event=>{
+  event.preventDefault();
+  const body=decisionConfirmation(decisionDraft,currentDecision(),state,language,$('decision-reviewer').value,$('decision-reason').value,true);
+  if(!body || !decisionAvailable){renderDecisions();return;}
+  if(await decisionAction(body)){decisionDraft=null;$('decision-reason').value='';decisionError='decision.saved';renderDecisions();}
+};
 
 function renderWorkload() {
   if (!state) return;
@@ -642,13 +725,13 @@ function applyLanguage(next, persist = false) {
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
   renderBriefing();
-  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');
   renderNotificationSettings();
 }
-$('language-select').onchange = event => applyLanguage(event.target.value, true);
+$('language-select').onchange = event => {applyLanguage(event.target.value, true);syncDecisionLanguage();};
 let notificationStorage;
 try{notificationStorage=localStorage;}catch{ /* Session-only opt-in if storage is unavailable. */ }
 const notificationSupported=isSecureContext && 'Notification' in window && 'serviceWorker' in navigator && 'MessageChannel' in window;
@@ -664,6 +747,6 @@ try{
   config=await api('/api/config');
   renderCases();
   Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});
-  setMode('site');poll();pollAssessment();
+  setMode('site');poll();pollAssessment();pollDecisions();
   api('/api/briefings').then(data=>{briefings=data.cases;renderCases();renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
 }catch(error){connection(false,'startServer');$('map-status').textContent=t('requestFailed');}

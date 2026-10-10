@@ -87,6 +87,32 @@ export LOW_SKY_AGENT_MODEL=openai:gpt-6.1-sol
 
 See [.env.example](.env.example) and the [OpenAI environment-variable setup](https://developers.openai.com/api/docs/quickstart). Keep the key server-side; do not paste it into chat or browser storage. The server reads the project `.env` at startup for `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `LOW_SKY_AGENT_MODEL`; existing shell variables take precedence. Only single-line `KEY=value` values, optional `export`, quotes and comments are supported; no variable or command expansion occurs. Restart after changes. `.env` is ignored by Git; only the key-free `.env.example` is tracked. Missing `OPENAI_API_KEY` disables assessment and shows a setup message; presence is only a configuration check, not proof of valid credentials or model access. For the offline rules baseline, explicitly set `LOW_SKY_AGENT_MODEL=""`. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. Requests have a 60-second provider timeout, zero retries and a 180-second overall graph deadline. SDK tool calling and structured output are tested with local transport fixtures. A credentialed **GPT-6.1 Sol** assessment of the synthetic 240-track case was also verified in the browser on 2026-10-10, including all four evidence tools and valid evidence references. This is an integration smoke test, not a comparative model-quality benchmark. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
 
+## Event-driven decision checkpoints
+
+**Pause and assess important events** is enabled by default. During playback the server batches important received changes, pauses the shared monitor/Godot clock, and asks the agent to explain three choices with cited evidence and an advisory recommendation. The four observation tools plus a read-only checkpoint/choice tool are available to the agent; it cannot confirm or execute an option. A persistent **View choices** notice remains visible when the map is on screen.
+
+Triggers are first received tracks, the onset/clearance of conflicting or stale tracks, observation-source loss/recovery, virtual-fleet loss/recovery, and area early-signal changes. Repeated heartbeats and changing IDs alone do not interrupt. Changes are grouped by source/area or aggregate condition, not one prompt per object. Seek/reset establishes a new baseline; **Request a decision checkpoint** evaluates the current received situation explicitly. Disabling guided replay leaves normal playback available. The separate 30-second automatic overview is disabled while guided replay is on.
+
+| Human choice | Confirmed local effect |
+| --- | --- |
+| Continue monitoring | Record the choice and resume shared playback. |
+| Hold for evidence review | Record the choice and keep playback paused for inspection. |
+| Defer for further review | Record an unresolved local follow-up and resume playback. |
+
+Resume starts a new replay if the previous one is complete. No external task, recipient, sensor control or operational action is invoked. A recommendation never preselects an option: select one, review its effect, enter a reviewer alias and reason, then **Confirm and apply**. Cancel has no effect. Changed run/time/evidence invalidates the proposal and disables stale confirmation while retaining draft text. New important events pause immediately even if an older provider call must finish first. A failed model call leaves the clock paused with an explicit retry; it never executes an option or pretends a rule result is a successful model assessment.
+
+Confirmed decisions are flushed to `.local/event-decisions.jsonl` before applying their local effect, including the event, received evidence bundle, exact report, evidence version, reviewer alias, reason and timestamp. **Export decision journal** / `/api/decisions/audit` exports all runs; the panel history shows the current run. This is a local journal, not authenticated identity or tamper-proof remote storage. Unconfirmed event cards are in memory (last 100); restarting the server clears them. The CLI accepts `--decision-audit-path` for isolated tests.
+
+For a deterministic shared-clock integration check, start an isolated rules server, then run:
+
+```sh
+LOW_SKY_AGENT_MODEL='' .local/agent-venv/bin/python tools/monitor_server.py --port 8766 --audit-path .local/test-track-reviews.jsonl --decision-audit-path .local/test-decisions.jsonl
+# In another terminal:
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_decisions.gd --quit-after 1200 -- --monitor --monitor-port=8766
+```
+
+The credentialed Sol integration was verified on an automatically paused `case_003` source-loss event: all required evidence tools were consulted, three cited choices passed validation, and the UI required explicit confirmation. This verifies software behavior in the synthetic scenario, not real-world decision quality.
+
 ## Workload, sensor fleet and durable evidence reviews
 
 The received-track queue shows 12 rows per page with all/evidence-gap/unreviewed filters. Counts cover all received tracks. Large map views keep position symbols but show history only for the selected track; optional SIM truth remains off by default.

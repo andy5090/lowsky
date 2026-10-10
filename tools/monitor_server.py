@@ -15,6 +15,7 @@ try:
     from .sensor_fleet import snapshot as fleet_snapshot
     from .situation_agent import configuration_status, evaluate as evaluate_situation
     from .env_config import load_agent_env
+    from .decision_engine import DecisionEngine, DecisionBusy
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
 except ImportError:
@@ -23,6 +24,7 @@ except ImportError:
     from sensor_fleet import snapshot as fleet_snapshot
     from situation_agent import configuration_status, evaluate as evaluate_situation
     from env_config import load_agent_env
+    from decision_engine import DecisionEngine, DecisionBusy
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
 
@@ -35,7 +37,8 @@ class AssessmentBusy(ValueError):
 
 class Simulation:
     def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None, audit_path=None,
-                 assessment_evaluator=None, assessment_configuration=None):
+                 assessment_evaluator=None, assessment_configuration=None,
+                 decision_evaluator=None, decision_audit_path=None):
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
         self.audit = AuditLog(audit_path)
@@ -57,6 +60,7 @@ class Simulation:
         self.assessment_latest = None
         self.assessment_error = None
         self.assessment_thread = None
+        self.decisions = DecisionEngine(self, decision_evaluator, decision_audit_path)
 
     def _time(self):
         elapsed = (self.clock() - self.anchor_wall) * 1000 * self.speed if self.playing else 0
@@ -284,6 +288,7 @@ class Simulation:
                 raise ValueError('Unknown action')
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
+            self.decisions.observe_control()
             return self.state()
 
 
@@ -317,6 +322,11 @@ class Handler(BaseHTTPRequestHandler):
                 show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
         elif path == '/api/assessment':
             self.respond(200, self.server.simulation.assessment_state())
+        elif path == '/api/decisions':
+            self.respond(200, self.server.simulation.decisions.snapshot())
+        elif path == '/api/decisions/audit':
+            with self.server.simulation.lock:
+                self.respond(200, self.server.simulation.decisions.audit.export())
         elif path == '/api/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.audit.export())
@@ -339,6 +349,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/logo.svg': ('logo.svg', 'image/svg+xml'),
                       '/logo-metal.png': ('logo-metal.png', 'image/png'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
+                      '/decisions.mjs': ('decisions.mjs', 'text/javascript; charset=utf-8'),
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
@@ -361,7 +372,7 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(403, {'error': 'Same-origin requests only'})
             return
         path = urlsplit(self.path).path
-        if path not in ('/api/control', '/api/assessment'):
+        if path not in ('/api/control', '/api/assessment', '/api/decisions'):
             self.respond(404, {'error': 'Not found'})
             return
         if self.headers.get_content_type() != 'application/json':
@@ -374,11 +385,14 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
                 raise ValueError('Expected an object')
-            if path == '/api/assessment':
+            if path == '/api/decisions':
+                self.respond(202 if body.get('action') in ('assess_current', 'retry') else 200,
+                             self.server.simulation.decisions.command(body))
+            elif path == '/api/assessment':
                 self.respond(202, self.server.simulation.start_assessment(body))
             else:
                 self.respond(200, self.server.simulation.control(body))
-        except AssessmentBusy as error:
+        except (AssessmentBusy, DecisionBusy) as error:
             self.respond(409, {'error': str(error)})
         except (ValueError, TypeError) as error:
             self.respond(400, {'error': str(error)})
@@ -386,8 +400,21 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(503, {'error': 'Review could not be saved; local audit storage is unavailable'})
 
 
+class MonitorServer(ThreadingHTTPServer):
+    def serve_forever(self, poll_interval=.5):
+        self.simulation.decisions.start()
+        try:
+            super().serve_forever(poll_interval)
+        finally:
+            self.simulation.decisions.stop()
+
+    def server_close(self):
+        self.simulation.decisions.stop()
+        super().server_close()
+
+
 def make_server(port=8765, simulation=None):
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    server = MonitorServer(('127.0.0.1', port), Handler)
     server.simulation = simulation or Simulation()
     return server
 
@@ -396,9 +423,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--audit-path', type=Path, default=PROJECT / '.local' / 'track-reviews.jsonl')
+    parser.add_argument('--decision-audit-path', type=Path, default=PROJECT / '.local' / 'event-decisions.jsonl')
     args = parser.parse_args()
     load_agent_env(PROJECT / '.env')
-    server = make_server(args.port, Simulation(audit_path=args.audit_path))
+    server = make_server(args.port, Simulation(audit_path=args.audit_path, decision_audit_path=args.decision_audit_path))
     print(f'LOW SKY monitor: http://127.0.0.1:{server.server_port}', flush=True)
     try:
         server.serve_forever()

@@ -46,6 +46,13 @@
       "implementation": "Situation assessment with OpenAI GPT-6.1 Sol through Deep Agents, received-only evidence tools, validated citations and explicit offline rules mode. Credentialed synthetic-case smoke test passed; no operational validation or automated action."
     },
     {
+      "id": "U2",
+      "source": "user",
+      "requirement": "Agent intervention and explicit human decisions at important events",
+      "status": "implemented",
+      "implementation": "Received-event checkpoints pause shared replay, generate three cited local review choices and an advisory recommendation, then require explicit selection, reviewer alias, reason and confirmation. Stale proposals are rejected. Separate durable decision journal stores frozen evidence and report. No automatic or operational action."
+    },
+    {
       "id": "D1-2",
       "source": "engineering_review",
       "requirement": "Bound scope and distinguish rules from model reasoning",
@@ -71,7 +78,7 @@
       "source": "engineering_review",
       "requirement": "Human decision and versioned evidence audit",
       "status": "implemented",
-      "implementation": "Track review captures self-entered reviewer alias, decision, reason, replay and wall time, received-evidence snapshot and hash; local append-only JSONL export. Alias is not authenticated identity."
+      "implementation": "Track review captures self-entered reviewer alias, decision, reason, replay and wall time, received-evidence snapshot and hash; local append-only JSONL export. Alias is not authenticated identity. Event decisions additionally preserve the exact agent report and choice before any local replay effect."
     },
     {
       "id": "D8",

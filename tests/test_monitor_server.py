@@ -28,7 +28,7 @@ class SimulationFixture(unittest.TestCase):
         self.root = Path(self.temp.name)
         build(self.root)
         self.clock = FakeClock()
-        self.sim = monitor_server.Simulation(self.root, clock=self.clock)
+        self.sim = monitor_server.Simulation(self.root, clock=self.clock, decision_evaluator=lambda *args: {})
 
     def select(self, case_id, at_ms=0):
         self.sim.control({"action": "case", "case_id": case_id})
@@ -450,6 +450,45 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(len(state['simulation_positions']), 12)
         self.assertEqual(state['tracks'], [])
         self.assertEqual(self.sim.state()['tracks'], [])
+
+    def test_decision_http_contract_origin_and_durable_confirmation(self):
+        from tools.decision_engine import OPTIONS
+        self.sim.decisions.evaluator = lambda state, event, language: dict(
+            summary='Review received evidence', mode='rules',
+            decision_options=[dict(id=o['id'], reason='Local option', evidence_ids=[]) for o in OPTIONS],
+            recommended_option_id='hold_review')
+        headers = {'Content-Type': 'application/json', 'Origin': self.origin}
+        command = dict(action='assess_current', run_id=self.sim.run_id, language='en')
+        for unsafe in ({'Origin': 'https://attacker.example'}, {'Sec-Fetch-Site': 'cross-site'}):
+            self.assertEqual(self.request('POST', '/api/decisions', json.dumps(command), {**headers, **unsafe})[0], 403)
+        self.assertIsNone(self.sim.decisions.worker)
+        self.assertEqual(self.request('POST', '/api/decisions', json.dumps(command), headers)[0], 202)
+        self.sim.decisions.worker.join(2)
+        status, response_headers, raw = self.request('GET', '/api/decisions')
+        self.assertEqual(status, 200)
+        self.assertEqual(response_headers['Cache-Control'], 'no-store')
+        event = json.loads(raw)['events'][0]
+        self.assertEqual(event['status'], 'ready')
+        self.assertNotIn('_frozen', event)
+        confirmation = dict(action='confirm', run_id=self.sim.run_id, event_id=event['id'],
+            evidence_version=event['evidence_version'], option_id='defer', reviewer='tester', reason='Review later', confirm=True)
+        with patch.object(self.sim.decisions.audit, 'append', side_effect=OSError('disk unavailable')):
+            self.assertEqual(self.request('POST', '/api/decisions', json.dumps(confirmation), headers)[0], 503)
+        self.assertFalse(self.sim.playing)
+        self.assertEqual(self.request('POST', '/api/decisions', json.dumps(confirmation), headers)[0], 200)
+        self.assertTrue(self.sim.playing)
+        exported = json.loads(self.request('GET', '/api/decisions/audit')[2])
+        self.assertEqual(exported['records'][0]['outcome'], 'deferred')
+        self.assertIn('evidence', exported['records'][0]['snapshot'])
+        self.assertEqual(self.request('POST', '/api/decisions', json.dumps(confirmation), headers)[0], 400)
+        self.assertEqual(self.request('GET', '/api/decisions', headers={'Host': 'attacker.example'})[0], 403)
+
+    def test_decision_service_lifecycle_and_get_never_evaluates(self):
+        self.assertEqual(self.request('GET', '/api/decisions')[0], 200)
+        self.assertTrue(self.sim.decisions.scheduler.is_alive())
+        self.assertIsNone(self.sim.decisions.worker)
+        self.sim.decisions.stop()
+        self.assertFalse(self.sim.decisions.scheduler.is_alive())
 
     def test_assessment_http_contract_and_same_origin_controls(self):
         self.sim.assessment_configuration = lambda: dict(configured=False, mode='rules', model=None,

@@ -203,3 +203,31 @@ button:disabled{cursor:not-allowed}
 .agent-findings li { margin-bottom:10px; }
 .agent-findings small { display:block; color:#819ca4; overflow-wrap:anywhere; }
 @media(max-width:760px) { .agent-findings { grid-template-columns:1fr; } }
+
+.decision-panel { margin-bottom:18px; border-color:#a39562; }
+.decision-status { margin:8px 18px; padding:12px; background:#252a20; border-left:3px solid #d3c38e; color:#e7e1bf; font-size:13px; }
+.decision-event { padding:0 18px 18px; }
+.decision-triggers { font-size:12px; line-height:1.6; padding-left:18px; }
+.decision-triggers small,.decision-options small { display:block; color:#8ba5aa; overflow-wrap:anywhere; }
+.decision-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:16px 0; }
+.decision-options article { display:flex; flex-direction:column; align-items:flex-start; padding:16px; border:1px solid #59604b; background:#172126; font-size:12px; line-height:1.6; }
+.decision-options h3 { margin:0 0 8px; color:#e0e8d6; font-size:14px; }
+.decision-evidence { margin:16px 0; padding:12px; border:1px solid #3e4b45; }
+.decision-evidence summary { cursor:pointer; font-size:13px; color:#c4d4b1; }
+.decision-options button { margin-top:auto; }
+.decision-effect { color:#d5dfbf; padding-top:10px; border-top:1px solid #3e4b45; width:100%; }
+.decision-recommendation { color:#e5cb82; border:1px solid #897a4e; padding:3px 7px; font-size:10px; }
+.decision-form { margin:0 18px 18px; padding:18px; border:1px solid #a39562; display:grid; gap:8px; font-size:12px; }
+.decision-form[hidden] { display:none; }
+.decision-form h3,.decision-form p { margin:0 0 8px; overflow-wrap:anywhere; }
+.decision-form input,.decision-form textarea { background:#0b161d; color:#d3e2de; border:1px solid #466069; padding:10px; font:inherit; width:100%; }
+.decision-form-actions { display:flex; flex-wrap:wrap; gap:10px; }
+#decision-draft-status { color:#e5cb82; }
+.decision-history { margin:0 18px 18px; font-size:12px; line-height:1.6; }
+.decision-history summary { cursor:pointer; }
+@media(max-width:760px) { .decision-options { grid-template-columns:1fr; } }
+
+.decision-attention { position:fixed; right:20px; bottom:20px; z-index:900; display:flex; align-items:center; gap:16px; max-width:calc(100vw - 40px); padding:12px 16px; background:#17272c; border:1px solid #c5d09b; box-shadow:0 6px 24px #0008; font-size:13px; color:#e0e8d6; }
+.decision-attention[hidden] { display:none; }
+#decision-title { scroll-margin-top:90px; }
+@media(max-width:600px) { .decision-attention { right:12px; bottom:12px; max-width:calc(100vw - 24px); gap:10px; font-size:12px; } }

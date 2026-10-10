@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from tools.monitor_server import Simulation
 from tools.situation_agent import (_create_agent, _evidence_tools, build_bundle, configuration_status, deepagents_report,
-                                   evaluate, rules_report, validate_report)
+                                   evaluate, evaluate_decision, rules_report, validate_report, validate_decision_report,
+                                   DECISION_EFFECTS)
 
 
 class SituationAgentTests(unittest.TestCase):
@@ -156,6 +157,41 @@ class SituationAgentTests(unittest.TestCase):
             with patch.dict(os.environ, {'LOW_SKY_AGENT_MODEL': ''}):
                 self.assertEqual(configuration_status()['mode'], 'rules')
 
+    def test_decision_choices_are_fixed_cited_and_have_no_execution_side_effect(self):
+        state = self.state()
+        original = copy.deepcopy(state)
+        event = dict(id='checkpoint', evidence_version='frozen', triggers=[],
+                     **{key: state[key] for key in ('run_id', 'case_id', 'at_ms')})
+        report = evaluate_decision(state, event, 'ko')
+        self.assertEqual(state, original)
+        self.assertEqual({option['id'] for option in report['decision_options']}, set(DECISION_EFFECTS))
+        self.assertEqual(report['recommended_option_id'], 'hold_review')
+        core = {key: report[key] for key in ('summary', 'known', 'uncertain', 'review_items',
+                                           'decision_options', 'recommended_option_id')}
+        bundle = build_bundle(state)
+        for mutation in ('unknown_action', 'duplicate', 'unsupported_citation', 'unknown_recommendation'):
+            bad = copy.deepcopy(core)
+            if mutation == 'unknown_action':
+                bad['decision_options'][0]['id'] = 'dispatch_external'
+            elif mutation == 'duplicate':
+                bad['decision_options'][0] = bad['decision_options'][1]
+            elif mutation == 'unsupported_citation':
+                bad['decision_options'][0]['evidence_ids'] = ['not_received']
+            else:
+                bad['recommended_option_id'] = 'unlisted'
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                validate_decision_report(bad, bundle)
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            evaluate_decision(state, {**event, 'run_id': 'stale'})
+        with patch.dict(os.environ, {'LOW_SKY_AGENT_MODEL': 'test:fake'}):
+            def runner(bundle, language, model, context):
+                self.assertNotIn('reason', context)
+                self.assertNotIn('reviewer', context)
+                self.assertEqual({choice['id'] for choice in context['choices']}, set(DECISION_EFFECTS))
+                return core
+            result = evaluate_decision(state, {**event, 'reason': 'private', 'reviewer': 'private'}, runner=runner)
+            self.assertEqual(result['mode'], 'llm')
+
     @unittest.skipUnless(importlib.util.find_spec('langchain_openai'), 'Optional OpenAI adapter is not installed')
     def test_openai_adapter_serializes_evidence_tools_without_network(self):
         import httpx
@@ -198,6 +234,7 @@ class SituationAgentTests(unittest.TestCase):
         class EvidenceModel(BaseChatModel):
             model_name: str = 'lowsky:test'
             bound_names: list[str] = Field(default_factory=list)
+            checkpoint: bool = False
             @property
             def _llm_type(self):
                 return 'lowsky-test'
@@ -209,8 +246,10 @@ class SituationAgentTests(unittest.TestCase):
                 if not any(isinstance(message, ToolMessage) for message in messages):
                     calls = [dict(name=tool.__name__, args={}, id=f'call_{index}')
                              for index, tool in enumerate(_evidence_tools(bundle))]
+                    if self.checkpoint:
+                        calls.append(dict(name='decision_checkpoint', args={}, id='checkpoint_call'))
                 else:
-                    calls = [dict(name='SituationReport', args=expected, id='structured_report')]
+                    calls = [dict(name='DecisionReport' if self.checkpoint else 'SituationReport', args=expected, id='structured_report')]
                 return ChatResult(generations=[ChatGeneration(message=AIMessage(content='', tool_calls=calls))])
         model = EvidenceModel()
         agent = _create_agent(bundle, model)
@@ -223,6 +262,16 @@ class SituationAgentTests(unittest.TestCase):
         with patch('langchain.chat_models.init_chat_model', return_value=model) as initialize:
             self.assertEqual(deepagents_report(bundle, 'en', 'lowsky:test'), expected)
             initialize.assert_called_once_with('lowsky:test', timeout=60, max_retries=0)
+        expected = dict(**expected, decision_options=[dict(id=key, reason='Human review choice',
+                       evidence_ids=[bundle['observations']['id']]) for key in DECISION_EFFECTS],
+                        recommended_option_id='hold_review')
+        model.checkpoint = True
+        context = dict(id='test-event', choices=[dict(id=key, effect=value) for key, value in DECISION_EFFECTS.items()])
+        with patch('langchain.chat_models.init_chat_model', return_value=model):
+            result = deepagents_report(bundle, 'en', 'lowsky:test', context)
+        self.assertEqual(validate_decision_report(result, bundle), expected)
+        self.assertIn('decision_checkpoint', model.bound_names)
+        self.assertFalse({'execute', 'task', 'write_file'} & set(model.bound_names))
 
 
 if __name__ == '__main__':
