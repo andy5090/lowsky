@@ -9,6 +9,7 @@ const frame=radarFrame(display,facilities,state,31000);
 assert.equal(frame[0].returns.length,1);
 assert.deepEqual(frame[0].returns[0].position,[1,2,3]);
 assert.equal(frame[1].returns.length,0);
+assert.equal(radarFrame(display,facilities,{...state,tracks:[{last_known:true,records:[record]}]},31000)[0].returns.length,0);
 assert.equal(radarFrame(display,facilities,state,33500)[0].returns.length,0);
 assert.equal(radarFrame(display,facilities,{...state,at_ms:30000},30000)[0].returns.length,0);
 assert.equal(radarFrame(display,facilities,{...state,sources:[]},31000)[0].returns.length,0);

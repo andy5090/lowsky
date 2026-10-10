@@ -210,6 +210,31 @@ class SimulationTests(SimulationFixture):
         rewind = self.sim.control({"action": "seek", "at_ms": 0})
         self.assertEqual(rewind["tracks"], [])
 
+    def test_negative_detection_never_reveals_author_object(self):
+        public = self.sim.public[self.sim.case_id]
+        public['observations'] = [dict(public['observations'][0], detected=False)]
+        state = self.sim.control({'action': 'seek', 'at_ms': 60000})
+        self.assertEqual(state['tracks'], [])
+        self.assertFalse(any('object_id' in alert for alert in state['alerts']))
+
+    def test_truth_requires_explicit_opt_in_and_never_becomes_evidence(self):
+        normal = self.sim.state()
+        truth = self.sim.state(show_positions=True)
+        self.assertEqual(normal['tracks'], [])
+        self.assertNotIn('simulation_positions', normal)
+        self.assertEqual(len(truth['simulation_positions']), 12)
+        positions = truth.pop('simulation_positions')
+        self.assertEqual(truth, normal)
+        self.assertEqual(set(positions[0]), {'object_id', 'position'})
+        self.sim.control({'action': 'seek', 'at_ms': 5000})
+        later = self.sim.state(show_positions=True)
+        self.assertNotEqual(later['simulation_positions'][0]['position'], positions[0]['position'])
+        self.assertEqual(later['tracks'], [])
+        self.assertAlmostEqual(later['simulation_positions'][0]['position'][2], -1900 + 3800 / 36)
+        self.sim.control({'action': 'case', 'case_id': 'case_003'})
+        self.assertEqual(len(self.sim.state(show_positions=True)['simulation_positions']), 36)
+        self.assertNotIn('simulation_positions', self.sim.state())
+
     def test_different_observation_times_raise_comparison_alert_with_evidence(self):
         public = self.sim.public[self.sim.case_id]
         public["observations"] = [r for r in public["observations"]
@@ -304,6 +329,19 @@ class HTTPTests(SimulationFixture):
         for path in ("/api/preview", "/motion.mjs"):
             status, _, _ = self.request("GET", path)
             self.assertEqual(status, 404)
+
+    def test_truth_query_is_explicit_separate_and_not_cached(self):
+        for query in ('', '?show_positions=0', '?show_positions=true'):
+            status, _, raw = self.request('GET', '/api/state' + query)
+            self.assertEqual(status, 200)
+            self.assertNotIn('simulation_positions', json.loads(raw))
+        status, headers, raw = self.request('GET', '/api/state?show_positions=1')
+        state = json.loads(raw)
+        self.assertEqual(status, 200)
+        self.assertEqual(headers['Cache-Control'], 'no-store')
+        self.assertEqual(len(state['simulation_positions']), 12)
+        self.assertEqual(state['tracks'], [])
+        self.assertEqual(self.sim.state()['tracks'], [])
 
     def test_state_and_control_share_replay_clock(self):
         status, _, raw = self.post({"action": "seek", "at_ms": 60000})

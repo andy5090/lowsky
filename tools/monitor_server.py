@@ -6,7 +6,7 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 try:
     from .scenario_dataset import ROOT, read_json, snapshot, information_state
@@ -51,7 +51,7 @@ class Simulation:
         with self.lock:
             return self._clock_state()
 
-    def state(self):
+    def state(self, show_positions=False):
         with self.lock:
             clock = self._clock_state()
             payload = snapshot(self.public[self.case_id], clock['at_ms'])
@@ -106,10 +106,26 @@ class Simulation:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
             situation = situation_snapshot(self.situation_feed, self.case_id, clock['at_ms'], payload['object_ids'],
                                            [r for r in self.context_reviews if r['run_id'] == self.run_id])
-            return dict(**clock, situation=situation, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
+            result = dict(**clock, situation=situation, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
                         contexts=payload['contexts'], early_warning=early_warning,
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
+            if show_positions:
+                # Explicit author view: only positions at this response's replay time.
+                # Never merge truth into observed tracks, alerts, or evidence.
+                world = read_json(self.root / 'cases' / self.case_id / 'world.json')
+                positions = []
+                for obj in world['objects']:
+                    frames = obj['keyframes']
+                    index = 0
+                    while index < len(frames) - 2 and clock['at_ms'] >= frames[index + 1]['at_ms']:
+                        index += 1
+                    start, end = frames[index:index + 2]
+                    ratio = max(0, min(1, (clock['at_ms'] - start['at_ms']) / (end['at_ms'] - start['at_ms'])))
+                    positions.append(dict(object_id=obj['object_id'],
+                                          position=[a + (b - a) * ratio for a, b in zip(start['position'], end['position'])]))
+                result['simulation_positions'] = positions
+            return result
 
     def control(self, command):
         with self.lock:
@@ -191,7 +207,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path == '/api/state':
-            self.respond(200, self.server.simulation.state())
+            self.respond(200, self.server.simulation.state(
+                show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
         elif path == '/api/briefings':
             # Deliberate operator preview; kept out of observation-only state and clock.
             self.respond(200, read_json(self.server.simulation.root / 'briefings.json'))

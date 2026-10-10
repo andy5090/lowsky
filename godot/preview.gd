@@ -42,6 +42,8 @@ var drag_orbit = false
 var follow_drone = false
 var follow_button: Button
 var drone_overlay: Control
+var show_drone_positions = false
+var detected_ids: Dictionary = {}
 
 func solid_material(color: Color, metallic: float = 0.0, roughness: float = 0.8) -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
@@ -344,9 +346,9 @@ func build_ui() -> void:
 	follow_button.pressed.connect(toggle_follow)
 	column.add_child(follow_button)
 	var aids = CheckButton.new()
-	aids.text = "SIM markers (not sensor evidence)"
-	aids.button_pressed = true
-	aids.toggled.connect(func(enabled: bool): drone_overlay.visible = enabled)
+	aids.text = "Show drone positions (SIM)"
+	aids.button_pressed = false
+	aids.toggled.connect(set_drone_positions)
 	column.add_child(aids)
 	time_label = Label.new()
 	column.add_child(time_label)
@@ -356,7 +358,7 @@ func build_ui() -> void:
 	var hint = Label.new()
 	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\n3D author view · monitor shows observations\nF: follow drone / overview · Model span 0.6 m" % monitor_base_url
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\nLabels: received detections / SIM switch\nF: follow drone / overview · Model span 0.6 m" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	column.add_child(hint)
 
@@ -413,6 +415,7 @@ func toggle_terrain() -> void:
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
+	detected_ids.clear()
 	for item in objects:
 		item["node"].queue_free()
 	objects.clear()
@@ -424,13 +427,52 @@ func load_case(id: String) -> void:
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
+		label.visible = false
 		label.position.y = 0.7
 		label.font_size = 40
 		label.pixel_size = 0.015 if realistic else 0.03
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		instance.add_child(label)
-		objects.append({"object_id": item.object_id, "node": instance, "keyframes": item["keyframes"]})
+		objects.append({"object_id": item.object_id, "node": instance, "label": label, "sim": false, "keyframes": item["keyframes"]})
 	elapsed_ms = 0
+	update_drone_labels()
+
+func set_drone_positions(enabled: bool) -> void:
+	show_drone_positions = enabled
+	update_drone_labels()
+
+func update_drone_labels() -> void:
+	for item in objects:
+		var detected = detected_ids.has(item.object_id) and (not monitor_mode or monitor_connected)
+		item.sim = show_drone_positions
+		item.label.visible = detected or show_drone_positions
+		item.label.text = ("SIM " if show_drone_positions else "DETECTED ") + item.object_id
+		item.label.modulate = Color("edb0fb") if show_drone_positions else Color("78e4d2")
+
+func standalone_detections() -> Dictionary:
+	# Only received, fresh observations from online sources grant label visibility.
+	var health: Dictionary = {}
+	var records: Dictionary = {}
+	var result: Dictionary = {}
+	var ttl = float(public_data.get("freshness_ms", 45000))
+	for event in public_data.get("source_health", []):
+		if event.available_at_ms > elapsed_ms or event.observed_at_ms > elapsed_ms:
+			continue
+		var previous: Dictionary = health.get(event.source_id, {})
+		if previous.is_empty() or event.observed_at_ms > previous.observed_at_ms or (event.observed_at_ms == previous.observed_at_ms and event.available_at_ms >= previous.available_at_ms):
+			health[event.source_id] = event
+	for event in public_data.get("observations", []):
+		if event.get("detected", true) == false or event.available_at_ms > elapsed_ms or event.observed_at_ms > elapsed_ms:
+			continue
+		var key = event.object_id + ":" + event.source_id
+		var previous: Dictionary = records.get(key, {})
+		if previous.is_empty() or event.observed_at_ms > previous.observed_at_ms or (event.observed_at_ms == previous.observed_at_ms and event.available_at_ms >= previous.available_at_ms):
+			records[key] = event
+	for event in records.values():
+		var source: Dictionary = health.get(event.source_id, {})
+		if not source.is_empty() and source.status == "online" and elapsed_ms - source.observed_at_ms <= ttl and elapsed_ms - event.observed_at_ms <= ttl:
+			result[event.object_id] = true
+	return result
 
 func _process(delta: float) -> void:
 	camera.near = clampf(camera.position.distance_to(camera_target) * 0.02, 0.1, 50.0)
@@ -441,6 +483,9 @@ func _process(delta: float) -> void:
 			elapsed_ms = minf(monitor_clock + (minf(age, 500) * monitor_speed if monitor_playing else 0.0), float(world_data.duration_ms))
 	elif playing:
 		elapsed_ms = minf(elapsed_ms + delta * 1000, float(world_data.duration_ms))
+	if not monitor_mode:
+		detected_ids = standalone_detections()
+	update_drone_labels()
 	for item in objects:
 		var frames = item["keyframes"]
 		var index = 0
@@ -601,26 +646,41 @@ func start_monitor() -> void:
 
 func poll_monitor() -> void:
 	if monitor_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		monitor_request.request(monitor_base_url + "/api/clock")
+		monitor_request.request(monitor_base_url + "/api/state")
 
 func receive_monitor_clock(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
 		monitor_connected = false
+		detected_ids.clear()
+		update_drone_labels()
 		return
 	var state = JSON.parse_string(body.get_string_from_utf8())
-	if not state is Dictionary or not state.has_all(["case_id", "at_ms", "playing", "speed"]):
+	if not state is Dictionary or not state.has_all(["case_id", "at_ms", "playing", "speed", "tracks"]) or not state.tracks is Array:
 		monitor_connected = false
+		detected_ids.clear()
+		update_drone_labels()
 		return
 	var next_case = str(state.case_id)
 	if not next_case.begins_with("case_") or not next_case.substr(5).is_valid_int():
+		monitor_connected = false
+		detected_ids.clear()
+		update_drone_labels()
 		return
 	if next_case != case_id:
 		if not FileAccess.file_exists(data_root.path_join("cases/%s/world.json" % next_case)):
+			monitor_connected = false
+			detected_ids.clear()
+			update_drone_labels()
 			return
 		load_case(next_case)
+	detected_ids.clear()
+	for track in state.tracks:
+		if track is Dictionary and track.has("object_id") and not track.get("last_known", true):
+			detected_ids[str(track.object_id)] = true
 	monitor_clock = float(state.at_ms)
 	monitor_speed = float(state.speed)
 	monitor_playing = bool(state.playing)
 	monitor_received_at = Time.get_ticks_msec()
 	monitor_connected = true
 	elapsed_ms = monitor_clock
+	update_drone_labels()

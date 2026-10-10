@@ -2,6 +2,8 @@
 export const STORAGE_KEY = 'lowsky.monitor.language';
 export const messages = {
   "en": {
+    "positions.toggle": "Show drone positions",
+    "positions.warning": "SIM ground truth · Includes undetected drones · Not sensor evidence",
     "notify.title": "Current alert notifications",
     "notify.scope": "While this app is open or minimized. Browser suspension may delay delivery.",
     "notify.enable": "Enable notifications",
@@ -258,6 +260,8 @@ export const messages = {
     "brief.unavailable": "Scenario descriptions are unavailable. Replay remains available."
   },
   "ko": {
+    "positions.toggle": "드론 위치 보기",
+    "positions.warning": "SIM 실제 위치 · 미탐지 드론 포함 · 센서 관측 근거 아님",
     "notify.title": "현재 알림의 기기 알림",
     "notify.scope": "앱이 열려 있거나 최소화된 동안 동작합니다. 브라우저가 일시 중지되면 알림이 지연될 수 있습니다.",
     "notify.enable": "기기 알림 켜기",

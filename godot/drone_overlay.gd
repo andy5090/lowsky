@@ -1,5 +1,5 @@
 extends Control
-## Screen-space author aids, not sensor detections or physical drone geometry.
+## Received detection labels; optional SIM markers expose author positions.
 
 var camera: Camera3D
 var objects: Array = []
@@ -16,31 +16,34 @@ func markers() -> Array:
 	if not is_instance_valid(camera):
 		return result
 	for item in objects:
+		if not item.label.visible:
+			continue
 		var target: Node3D = item.node
 		if not is_instance_valid(target) or camera.is_position_behind(target.global_position):
 			continue
 		var point = camera.unproject_position(target.global_position)
 		if Rect2(Vector2.ZERO, get_viewport_rect().size).has_point(point):
-			result.append({"point": point, "id": item.object_id})
+			result.append({"point": point, "id": item.object_id, "sim": item.sim})
 	return result
 
 func _draw() -> void:
 	var font = ThemeDB.fallback_font
-	var color = Color("edb0fb")
 	var labels: Array[Rect2] = []
-	for marker in markers():
+	var visible_markers = markers()
+	for marker in visible_markers:
+		var color = Color("edb0fb") if marker.sim else Color("78e4d2")
 		var point: Vector2 = marker.point
-		var radius = 6.0 if objects.size() > 8 else 9.0
+		var radius = 6.0 if visible_markers.size() > 8 else 9.0
 		draw_circle(point, radius, Color(0.06, 0.03, 0.08, 0.85))
 		draw_arc(point, radius, 0, TAU, 24, color, 2, true)
 		draw_circle(point, 2, color)
-		if objects.size() > 8 and marker.id != objects[0].object_id:
+		if visible_markers.size() > 8 and marker.id != visible_markers[0].id:
 			continue
-		var box = Rect2(point + Vector2(15, -26), Vector2(128, 24))
+		var box = Rect2(point + Vector2(15, -26), Vector2(180, 24))
 		for occupied in labels:
 			if box.intersects(occupied.grow(3)):
 				box.position.y = occupied.end.y + 4
 		labels.append(box)
 		draw_line(point + Vector2(10, 0), box.position + Vector2(0, 12), color, 1, true)
 		draw_rect(box, Color(0.04, 0.06, 0.08, 0.92))
-		draw_string(font, box.position + Vector2(6, 17), "SIM " + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+		draw_string(font, box.position + Vector2(6, 17), ("SIM " if marker.sim else "DETECTED ") + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)

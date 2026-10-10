@@ -195,6 +195,7 @@ def snapshot(public, at_ms):
     observations = [
         {key: record[key] for key in observation_keys} for record in public["observations"]
         if record["available_at_ms"] <= at_ms and record["observed_at_ms"] <= at_ms
+        and record.get("detected", True) is True
     ]
     received_ids = {row["object_id"] for row in observations}
     contexts = []

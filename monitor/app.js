@@ -17,6 +17,7 @@ let situationSignature = '', situationRun = null, situationOptions = '', reviewP
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
 let notifier, notificationBusy = false, notificationMessage = '', installPrompt;
+let showPositions = false;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
@@ -40,7 +41,7 @@ function connection(ok, message='') {
   for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
   updateReviewAvailability();
   renderNotificationSettings();
-  if (!ok) { $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
+  if (!ok) { if (state) { delete state.simulation_positions; drawMap(); } $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
 function control(body) {
   controlChain = controlChain.then(async () => {
@@ -52,7 +53,7 @@ function control(body) {
 }
 async function poll() {
   const version = ++requestVersion;
-  try { const data = await api('/api/state'); if(version === requestVersion) render(data); }
+  try { const data = await api(showPositions ? '/api/state?show_positions=1' : '/api/state'); if(version === requestVersion) render(data); }
   catch { connection(false); }
   setTimeout(poll, 500);
 }
@@ -62,7 +63,7 @@ function render(data) {
   renderBriefing();
   renderSituation();
   notifier?.observe(data);
-  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
+  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.simulation_positions]);
   if (signature !== dataSignature) {
     dataSignature = signature;
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
@@ -294,7 +295,7 @@ function drawSite() {
       svg+=`<g class="fixed-phone-point"><title>${escape(title)}</title><path d="M ${x} ${y+8} V ${y-4}" stroke="#d1c49b" stroke-width="2"/><rect x="${x-3}" y="${y-9}" width="6" height="9" fill="#172b2e" stroke="#d1c49b" stroke-width="1.5"/></g>`;
     }
   }
-  for(const t of state?.tracks || []){
+  for(const t of (state?.tracks || []).filter(track => connected && track.last_known === false)){
     const coords=t.history.map(r=>point(r.position[0],r.position[2]).join(',')).join(' ');
     svg+=`<polyline points="${coords}" fill="none" stroke="${t.object_id===selected?'#dfb86a':'#8bc9cf'}" stroke-width="1.5" stroke-dasharray="4 4"/>`;
   }
@@ -310,7 +311,7 @@ function drawSite() {
     marker.setAttribute('aria-label',`${zoneLabel(z)} · ${t(`early.${z.status}`)} · ${t('early.focus')}`);
     marker.onclick=()=>focusZone(z.id);markers.append(marker);
   }
-  for(const t of state?.tracks || []){
+  for(const t of (state?.tracks || []).filter(track => connected && track.last_known === false)){
     if(!t.position) continue;
     const [x,y]=point(t.position[0],t.position[2]);
     if(x<0||x>w||y<0||y>h) continue;
@@ -322,6 +323,18 @@ function drawSite() {
     marker.classList.toggle('is-stale', Boolean(t.last_known));
     marker.innerHTML=`<span>${escape(t.object_id)}</span>`;
     marker.onclick=()=>select(t.object_id); markers.append(marker);
+  }
+  if(showPositions && connected) for(const drone of state?.simulation_positions || []){
+    const [x,y]=point(drone.position[0],drone.position[2]);
+    if(x<0||x>w||y<0||y>h) continue;
+    const marker=document.createElement('div');
+    marker.className='truth-marker';
+    marker.setAttribute('role','img');
+    marker.setAttribute('aria-label',`SIM ${drone.object_id}`);
+    marker.style.left=`${x}px`;marker.style.top=`${y}px`;
+    marker.innerHTML=`<span>SIM ${escape(drone.object_id)}</span>`;
+    marker.title=`SIM ${drone.object_id} · ${t('positions.warning')}`;
+    markers.append(marker);
   }
   $('map-status').textContent=mode==='region'?t('mapRegionStatus'):t('mapSiteStatus');
 }
@@ -369,6 +382,19 @@ function drawRadar(atMs) {
   const status=`${t('radar.note')} · ${t(state.playing&&connected?'radar.live':'radar.paused')} · ${t('radar.returns',{count})}`;
   if($('radar-status').textContent!==status)$('radar-status').textContent=status;
 }
+$('positions-toggle').onclick=async()=>{
+  showPositions=!showPositions;
+  $('positions-toggle').classList.toggle('is-active',showPositions);
+  $('positions-toggle').setAttribute('aria-pressed',showPositions);
+  $('positions-status').hidden=!showPositions;
+  if(state) delete state.simulation_positions;
+  drawMap();
+  const version=++requestVersion;
+  try {
+    const data=await api(showPositions?'/api/state?show_positions=1':'/api/state');
+    if(version===requestVersion) render(data);
+  } catch { if(version===requestVersion) connection(false); }
+};
 $('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
 function animateRadar(now) {
   if(state?.playing && radarVisible && connected && !$('monitor-view').hidden)

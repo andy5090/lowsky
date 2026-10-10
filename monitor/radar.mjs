@@ -11,7 +11,7 @@ export function radarFrame(display, facilities, state, atMs) {
     const facility = facilities.find(f => f.id === station.facility_id);
     if (!facility) return [];
     const health = state.sources.find(s => s.source_id === station.source_id)?.status || 'unknown';
-    const returns = health === 'online' ? state.tracks.flatMap(track => track.records
+    const returns = health === 'online' ? state.tracks.filter(track => track.last_known !== true).flatMap(track => track.records
       .filter(r => r.source_id === station.source_id && r.observed_at_ms <= state.at_ms
         && r.available_at_ms <= state.at_ms && atMs >= r.available_at_ms
         && atMs - r.available_at_ms < display.return_visible_ms)

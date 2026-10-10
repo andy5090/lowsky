@@ -151,3 +151,11 @@ button:disabled{cursor:not-allowed}
 .notification-bar [role=status]{color:var(--ink-soft)}
 .notification-actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
 @media(max-width:1000px){.notification-bar{align-items:flex-start;flex-direction:column}.notification-actions{flex-shrink:1}}
+
+/* Explicit simulation truth stays distinct from received observation markers. */
+.positions-status { padding:8px 16px; background:#281b30; color:#edb0fb; border-bottom:1px solid #9d6ca9; font-size:11px; }
+.positions-status[hidden] { display:none; }
+.truth-marker { position:absolute; transform:translate(-50%,-50%); color:#edb0fb; width:9px; height:9px; border:1px solid #edb0fb; background:#281b30e6; pointer-events:auto; }
+.truth-marker span { display:none; position:absolute; top:12px; left:0; white-space:nowrap; padding:3px 5px; font-size:10px; background:#281b30; }
+.truth-marker:hover { z-index:6; }
+.truth-marker:hover span { display:block; }

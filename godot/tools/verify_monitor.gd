@@ -20,15 +20,35 @@ func control(command: Dictionary) -> Dictionary:
 
 func verify() -> void:
 	await control({"action": "case", "case_id": "case_002"})
-	await control({"action": "seek", "at_ms": 65000})
+	await control({"action": "seek", "at_ms": 0})
 	var preview = (load("res://preview.tscn") as PackedScene).instantiate()
 	root.add_child(preview)
 	await create_timer(0.8).timeout
 	assert(preview.monitor_mode and preview.monitor_connected)
-	assert(preview.case_id == "case_002" and preview.elapsed_ms == 65000)
+	assert(preview.case_id == "case_002" and preview.elapsed_ms == 0)
+	assert(not preview.show_drone_positions)
+	assert(preview.drone_overlay.markers().is_empty(), "No labels before any received detection")
+	for item in preview.objects:
+		assert(not item.label.visible)
+	await control({"action": "seek", "at_ms": 10000})
+	await create_timer(0.4).timeout
+	var received_count: int = preview.detected_ids.size()
+	assert(received_count > 0 and received_count < preview.objects.size())
+	assert(preview.drone_overlay.markers().size() == received_count)
+	preview.set_drone_positions(true)
+	assert(preview.drone_overlay.markers().size() == preview.objects.size())
+	for marker in preview.drone_overlay.markers():
+		assert(marker.sim)
+	preview.set_drone_positions(false)
+	assert(preview.drone_overlay.markers().size() == received_count)
+	await control({"action": "seek", "at_ms": 0})
+	await create_timer(0.4).timeout
+	assert(preview.drone_overlay.markers().is_empty(), "Rewind clears all detection labels")
+	await control({"action": "seek", "at_ms": 65000})
+	await create_timer(0.4).timeout
 	assert(preview.camera.position == preview.vector(preview.site_layout.camera.overview))
 	assert(preview.drone_overlay.mouse_filter == Control.MOUSE_FILTER_IGNORE)
-	assert(preview.drone_overlay.markers().size() == preview.objects.size(), "All drones need visible overview markers")
+	assert(preview.drone_overlay.markers().size() == preview.detected_ids.size(), "Overview labels follow received detections")
 	var before_position: Vector3 = preview.objects[0].node.position
 	preview.toggle_follow()
 	assert(preview.follow_drone)
@@ -48,7 +68,7 @@ func verify() -> void:
 	assert(preview.objects[0].node.position == paused_position)
 	preview.toggle_follow()
 	assert(not preview.follow_drone)
-	assert(preview.drone_overlay.markers().size() == preview.objects.size())
+	assert(preview.drone_overlay.markers().size() == preview.detected_ids.size())
 	preview.toggle_follow()
 	preview.pan_camera(Vector2(5, 0))
 	assert(not preview.follow_drone, "Manual camera movement must exit follow")
@@ -65,9 +85,12 @@ func verify() -> void:
 	preview.receive_monitor_clock(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
 	preview._process(1)
 	assert(not preview.monitor_connected and preview.elapsed_ms == 150000)
+	assert(preview.drone_overlay.markers().is_empty())
+	for item in preview.objects:
+		assert(not item.label.visible)
 	await control({"action": "case", "case_id": "case_001"})
 	await control({"action": "speed", "speed": 1})
-	print("PASS: HTTP shared clock, case/seek/speed/play/pause, visible overview markers, follow camera, local control isolation and disconnect freeze")
+	print("PASS: HTTP shared clock, case/seek/speed/play/pause, detection-only labels, explicit SIM switch, rewind clearing, follow camera, local control isolation and disconnect freeze")
 	preview.queue_free()
 	await process_frame
 	quit()
