@@ -554,3 +554,30 @@ button:disabled{cursor:not-allowed}
 .app-header .desktop-controls { flex:0 1 auto; }
 @media(max-width:1250px) { .app-header:has(.desktop-controls:not([hidden])) .header-context { display:none; } }
 @media(max-width:800px) { .app-header .desktop-controls { flex-basis:100%; justify-content:flex-end; padding-top:4px; border-top:1px solid var(--line); } }
+
+/* Custom select surfaces keep native controls only as the form/value source. */
+select.custom-select-source { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; border:0!important; clip:rect(0,0,0,0)!important; clip-path:inset(50%)!important; overflow:hidden!important; white-space:nowrap!important; opacity:0!important; pointer-events:none!important; }
+.custom-select { display:inline-flex; min-width:0; max-width:100%; vertical-align:middle; }
+.custom-select-trigger { width:100%; min-width:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 10px; border:1px solid #466069; border-radius:2px; background:#0b161d; color:#d3e2de; font:inherit; line-height:1.35; cursor:pointer; text-align:left; }
+.custom-select-trigger:focus-visible { outline:2px solid #a9c4ba; outline-offset:2px; }
+.custom-select-trigger[aria-expanded="true"] { border-color:#b3c491; background:#172821; }
+.custom-select-trigger:disabled { opacity:.45; cursor:not-allowed; }
+.custom-select-trigger[aria-invalid="true"] { border-color:#d4a783; }
+.custom-select-text { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.custom-select-arrow { color:#a7bcb3; flex-shrink:0; font-size:14px; }
+.custom-select-menu { position:fixed; inset:auto; margin:0; box-sizing:border-box; z-index:1800; overflow-y:auto; overscroll-behavior:contain; padding:4px; background:#111f24; border:1px solid #718575; border-radius:3px; box-shadow:0 12px 40px #000b; color:#d3e2de; font:12px/1.4 var(--sans,system-ui,sans-serif); }
+.custom-select-menu::backdrop { background:transparent; }
+.custom-select-option { position:relative; padding:9px 29px 9px 10px; min-height:34px; overflow-wrap:anywhere; cursor:pointer; border:1px solid transparent; border-radius:2px; }
+.custom-select-option[aria-selected="true"] { color:#e6efcc; }
+.custom-select-option[aria-selected="true"]::after { content:'✓'; position:absolute; right:9px; color:#bfcea0; }
+.custom-select-option.is-active { background:#2a3d33; border-color:#69816e; }
+.custom-select-option[aria-disabled="true"] { opacity:.4; cursor:not-allowed; }
+.language-field .custom-select { width:76px; font-size:11px; }
+.scenario-field .custom-select { width:clamp(180px,24vw,340px); font-size:12px; }
+.speed-field .custom-select { width:75px; font-size:11px; }
+.dashboard-toolbar .custom-select { flex:1; min-width:140px; font-size:12px; }
+.review-dialog .custom-select,.track-review-form .custom-select,.situation-review-form .custom-select { width:100%; }
+.queue-controls .custom-select { flex:1; min-width:140px; font-size:11px; }
+.rehearsal-controls .custom-select { max-width:100%; min-width:150px; flex:1; }
+@media(max-width:800px) { .scenario-field .custom-select { flex:1; width:100%; } }
+@media(min-width:1100px) { .session-header .scenario-field .custom-select { flex:1; width:auto; } }

@@ -439,6 +439,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/exercise.mjs': ('exercise.mjs', 'text/javascript; charset=utf-8'),
                       '/dashboard.mjs': ('dashboard.mjs', 'text/javascript; charset=utf-8'),
                       '/desktop.mjs': ('desktop.mjs', 'text/javascript; charset=utf-8'),
+                      '/custom_selects.mjs': ('custom_selects.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),

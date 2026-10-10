@@ -459,7 +459,7 @@ class HTTPTests(SimulationFixture):
         self.assets = {"/": ("index.html", b"<!doctype html><title>test monitor</title>"),
                        "/app.js": ("app.js", b"export const synthetic = true;"),
                        "/styles.css": ("styles.css", b"body { color: navy; }")}
-        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg', 'test_runs.mjs'):
+        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg', 'test_runs.mjs', 'desktop.mjs', 'custom_selects.mjs'):
             self.assets['/' + name] = (name, (monitor_server.PROJECT / 'monitor' / name).read_bytes())
         for filename, content in self.assets.values():
             (self.project / "monitor" / filename).write_bytes(content)
@@ -701,7 +701,8 @@ class HTTPTests(SimulationFixture):
         expected_types = {"/": "text/html", "/app.js": "text/javascript", "/styles.css": "text/css"}
         expected_types.update({'/manifest.webmanifest': 'application/manifest+json',
                                '/notifications.mjs': 'text/javascript', '/sw.js': 'text/javascript', '/test_runs.mjs': 'text/javascript',
-                               '/pwa-icon.svg': 'image/svg+xml'})
+                               '/pwa-icon.svg': 'image/svg+xml', '/desktop.mjs': 'text/javascript',
+                               '/custom_selects.mjs': 'text/javascript'})
         for path, (_, expected) in self.assets.items():
             with self.subTest(path=path):
                 status, headers, body = self.request("GET", path + "?v=1")

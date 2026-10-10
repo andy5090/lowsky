@@ -1,3 +1,4 @@
+import {enhanceSelects} from './custom_selects.mjs';
 import {desktopCommand, desktopShortcut, acceptDesktopState} from './desktop.mjs';
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
@@ -9,6 +10,13 @@ import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mj
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createAlertPriorityPolicy, priorityAlertKey, createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
+const customSelects=enhanceSelects(document);
+let selectSyncQueued=false;
+function syncSelects() {
+  if(selectSyncQueued)return;
+  selectSyncQueued=true;
+  queueMicrotask(()=>{selectSyncQueued=false;customSelects.sync();});
+}
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let language = 'en';
 try { language = readLanguage(localStorage); } catch { /* Storage may be unavailable. */ }
@@ -56,6 +64,7 @@ async function api(path, body) {
   return data;
 }
 function renderDesktop() {
+  syncSelects();
   $('desktop-controls').hidden=desktopState?.available!==true;
   const options={busy:desktopBusy,connected:desktopConnected};
   $('desktop-open-3d').disabled=!desktopCommand(desktopState,'open_3d',options);
@@ -88,13 +97,14 @@ $('desktop-close-3d').onclick=()=>desktopAction('close_3d');
 $('desktop-fullscreen').onclick=()=>desktopAction('toggle_monitor_fullscreen');
 document.addEventListener('keydown',event=>{
   const body=desktopShortcut(event.key,desktopState,{busy:desktopBusy,connected:desktopConnected,
-    editing:Boolean(event.target.closest?.('input,textarea,select,[contenteditable="true"]')),
+    editing:Boolean(event.target.closest?.('input,textarea,select,[role="combobox"],[role="listbox"],[contenteditable="true"]')),
     modal:Boolean(document.querySelector('dialog[open]')),repeat:event.repeat,
     modifier:event.altKey || event.ctrlKey || event.metaKey || event.shiftKey});
   if(body){event.preventDefault();desktopAction(body.action);}
 });
 
 function connection(ok, message='') {
+  syncSelects();
   connected = ok; connectionMessage = message;
   $('connection-status').textContent = ok ? t('connected') : t('disconnected');
   $('connection-status').classList.toggle('is-connected', ok);
@@ -123,6 +133,7 @@ async function poll() {
   setTimeout(poll, 500);
 }
 function render(data) {
+  syncSelects();
   state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
   renderBriefing();
@@ -140,6 +151,7 @@ function render(data) {
   renderDashboard();
 }
 function renderPlayback(data) {
+  syncSelects();
   $('case-select').value = data.case_id;
   $('sim-status').textContent = data.playing ? t('playing') : data.at_ms >= data.duration_ms ? t('finished') : t('paused');
   $('sim-status').classList.toggle('running', data.playing);
@@ -157,6 +169,7 @@ function renderPlayback(data) {
 }
 function select(id) { selected = id; renderDetails(); drawMap(); renderDashboard(); }
 function renderDetails() {
+  syncSelects();
   if(!state) return;
   $('track-count').textContent = state.tracks.length;
   if (queueRun !== state.run_id) { queuePage = 0; queueRun = state.run_id; }
@@ -191,6 +204,7 @@ function renderDetails() {
   $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
 }
 function renderAssessment() {
+  syncSelects();
   $('agent-mode').textContent = t(assessment?.mode==='llm'?'agent.llm':'agent.rules');
   const configurationError = assessment?.configuration_error;
   $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running) || Boolean(configurationError);
@@ -241,6 +255,7 @@ function currentDecision() {
   return activeDecision(decisions.events || [], decisionDraft);
 }
 function renderIndications() {
+  syncSelects();
   const summary=earlyIndicationSummary(state);
   $('indication-stage').textContent=t(`indication.stage.${summary.stage}`);
   $('indication-summary').textContent=t('indication.summary',{zones:summary.zone_count,positive:summary.positive,tracks:summary.track_count});
@@ -289,6 +304,7 @@ function priorityToast(message) {
   priorityToastTimer=setTimeout(()=>{$('priority-toast').hidden=true;},8000);
 }
 function renderPriorityAlerts() {
+  syncSelects();
   if(!state)return;
   const event=currentDecision();
   const updates=alertPriority.observe(state,event,{expiredChoice:priorityExpiredChoice});
@@ -304,7 +320,7 @@ function renderPriorityAlerts() {
   }
   if(updates.medium.length && connected && !priorityQueue.length)priorityToast(t('priority.updated',{count:updates.medium.length}));
   if(priorityQueue.length && !$('priority-dialog').open) {
-    const editing=document.activeElement?.matches('input,textarea,select,[contenteditable="true"]');
+    const editing=document.activeElement?.matches('input,textarea,select,[role="combobox"],[role="listbox"],[contenteditable="true"]');
     if(!editing && !document.querySelector('dialog[open]'))openPriority();
     else if(updates.high.length)priorityToast(t('priority.queued'));
   }
@@ -322,6 +338,7 @@ function decisionBriefHTML(event,report) {
   return `<section class="decision-overall"><h3>${escape(t('decision.overall'))}</h3><p class="agent-summary">${escape(report.summary || '')}</p><small class="decision-overall-basis">${escape(t('decision.capturedBasis',{time:fmt(event.at_ms),mode}))}${event.new_evidence_available?` · ${escape(t('decision.capturedOnly'))}`:''}${report.language!==language?` · ${escape(t('decision.languageMismatch'))}`:''}</small><div class="decision-brief-facts">${['uncertain'].map(kind=>`<div><h4>${escape(t(`agent.${kind}`))}</h4><ul>${(report[kind] || []).slice(0,1).map(item=>`<li>${escape(item.text)}</li>`).join('') || `<li>${escape(t('none'))}</li>`}</ul></div>`).join('')}</div></section>`;
 }
 function renderDecisions() {
+  syncSelects();
   renderIndications();
   renderOperator();
   if($('rehearsal-panel').open)renderRehearsals();
@@ -419,6 +436,7 @@ $('decision-form').onsubmit=async event=>{
 };
 
 function renderRehearsals() {
+  syncSelects();
   $('rehearsal-refresh').disabled = rehearsalBusy;
   $('rehearsal-run').disabled = rehearsalBusy || !rehearsals?.runs?.length;
   const selectedRun = $('rehearsal-run').value || rehearsals?.current_run_id;
@@ -447,6 +465,7 @@ function renderRehearsals() {
   }).join('');
 }
 function renderRehearsalRuns(selectedRun) {
+  syncSelects();
   $('rehearsal-run').innerHTML = (rehearsals?.runs || []).map(run=>{
     const input=run.test_run;
     const provenance=input?.mode==='seeded'?t('rehearsal.seed',{seed:input.seed}):t(input?.mode==='fixture'?'rehearsal.baseline':'rehearsal.unknownSeed');
@@ -476,6 +495,7 @@ $('rehearsal-run').onchange=()=>loadRehearsals(false);
 
 function operatorActive() { return Boolean(testOperator?.active && testOperator.run_id === state?.run_id); }
 function renderOperator() {
+  syncSelects();
   const active = operatorActive();
   const config = testOperator?.configuration;
   $('operator-start').disabled = !connected || operatorBusy || active || !config?.available || state?.test_run?.mode !== 'seeded' || !decisions?.enabled || state?.at_ms >= state?.duration_ms;
@@ -506,6 +526,7 @@ for (const [dialogId,attribute,fallback] of [['dashboard-dialog','data-dashboard
 }
 
 function renderDashboard() {
+  syncSelects();
   const context = `${state?.run_id || ''}:${selected || ''}`;
   if (dashboardContext !== context && !dashboardChoice) {
     dashboardNotice=''; $('dashboard-comment').value=''; $('dashboard-reason').value='';
@@ -596,6 +617,7 @@ $('dashboard-form').onsubmit=event=>{
 };
 
 function renderExercise() {
+  syncSelects();
   const exercise = state?.exercise;
   const available = exercise?.scope === 'scripted_training';
   if (exerciseRun !== state?.run_id || (state?.at_ms || 0) < exerciseAt) {
@@ -679,6 +701,7 @@ $('exercise-confirm').onclick=()=>{
 };
 
 function renderWorkload() {
+  syncSelects();
   if (!state) return;
   const queue = reviewQueue(state.tracks, state.track_reviews);
   $('workload-summary').innerHTML = [['received',queue.received],['current',queue.current],['attention',queue.attention],['unreviewed',queue.unreviewed]].map(([key,count])=>`<div><strong>${count}</strong><span>${t(`workload.${key}`)}</span></div>`).join('');
@@ -689,6 +712,7 @@ function renderWorkload() {
   $('fleet-last-seen').textContent = t('fleet.lastSeen',{total:fleet?.total || 0,received:received.length,time:last});
 }
 function renderCommentSuggestions(scope, keys, disabled=false) {
+  syncSelects();
   const box=$(`${scope}-suggestions`);
   const selected=selectedComments[scope];
   const options=selected && !keys.includes(selected)?[...keys,selected]:keys;
@@ -706,6 +730,7 @@ function trackReviewStatus(key='') {
   $('track-review-status').textContent = key ? t(key) : '';
 }
 function updateTrackReviewAvailability() {
+  syncSelects();
   const track = state?.tracks.find(track=>track.object_id===selected);
   const stale = track && reviewTargetVersion && track.evidence_version !== reviewTargetVersion;
   $('track-review-submit').disabled = !connected || trackReviewBusy || !track || Boolean(stale);
@@ -714,6 +739,7 @@ function updateTrackReviewAvailability() {
   if (stale && !trackReviewBusy) trackReviewStatus('review.changed');
 }
 function renderEvidenceExplanation(track) {
+  syncSelects();
   const key = `${state.run_id}:${track?.object_id || ''}`;
   if (reviewTargetKey !== key) {
     const hadDraft = Boolean($('track-reason').value.trim() || selectedComments.track);
@@ -762,11 +788,13 @@ function reviewStatus(key = '') {
   $('situation-review-status').textContent = key ? t(key) : '';
 }
 function updateReviewAvailability() {
+  syncSelects();
   const unavailable = !connected || reviewPending || !state?.situation?.events?.length;
   for (const id of ['situation-event-select','situation-decision','situation-reason','situation-submit']) $(id).disabled = unavailable;
   document.querySelectorAll('#situation-suggestions button').forEach(button=>button.disabled=unavailable);
 }
 function renderSituation() {
+  syncSelects();
   const situation = state?.situation;
   const events = situation?.events || [];
   const eventSelect = $('situation-event-select');
@@ -872,6 +900,7 @@ function deviceHealthHTML(evidence) {
   return `<small class="device-health">${t('early.healthAsReported')}: ${t('early.power')} ${t(`early.power.${power}`)} · ${t('early.network')} ${t(`early.network.${network}`)}</small>`;
 }
 function renderEarlyWarning() {
+  syncSelects();
   const feed=state?.early_warning;
   if(!feed)return;
   $('early-count').textContent=feed.zones.filter(z=>z.positive_sources>0).length;
@@ -1117,6 +1146,7 @@ $('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.valu
 const compactWorkspace = window.matchMedia('(max-width: 1099px)');
 let activePanel = compactWorkspace.matches ? 'map' : 'decision';
 function showPanel(panel) {
+  syncSelects();
   activePanel = panel === 'map' && !compactWorkspace.matches ? 'decision' : panel;
   $('workbench').dataset.panel = activePanel;
   for (const button of document.querySelectorAll('[data-panel].panel-tab')) {
@@ -1147,6 +1177,7 @@ function showView(view) {
 for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>showView(tab.dataset.view);
 
 function renderNotificationSettings() {
+  syncSelects();
   if(!notifier)return;
   const status=notifier.getState();
   $('notification-toggle').textContent=t(status.optedIn?'notify.disable':'notify.enable');
@@ -1202,6 +1233,7 @@ $('pwa-install').onclick=async()=>{
 };
 window.addEventListener('appinstalled',()=>{$('pwa-install').hidden=true;installPrompt=null;});
 function renderBriefing() {
+  syncSelects();
   const caseId=state?.case_id || $('case-select').value;
   const brief=briefings.find(b=>b.case_id===caseId);
   if(!brief)return;
@@ -1223,12 +1255,14 @@ function renderBriefing() {
 }
 
 function renderCases() {
+  syncSelects();
   if (!config) return;
   const current = state?.case_id || $('case-select').value;
   $('case-select').innerHTML = config.cases.map(c => `<option value="${escape(c.case_id)}">${escape(c.case_id)} · ${escape(localized(briefings.find(b=>b.case_id===c.case_id)?.name) || t(`variant.${c.variant}`))}</option>`).join('');
   if (current) $('case-select').value = current;
 }
 function applyLanguage(next, persist = false) {
+  syncSelects();
   language = normalizeLanguage(next);
   if (persist) { try { saveLanguage(localStorage, language); } catch { /* Storage may be unavailable. */ } }
   document.documentElement.lang = language;

@@ -316,7 +316,7 @@ The windowed preview check covers real GUI drag, orbit, and button interactions;
 
 ## Judgment dashboard
 
-Scenario selection, description, and expandable reference timeline share the top section beside the simulation controls. On desktop (at least 1100px wide and 700px tall), the map and received events stay visible while the adjacent inspector scrolls independently. Switch between **Decisions**, **Evidence**, **Signals**, and **Tools & records**; on narrower screens, **Map** is another panel. Pending decision and signal counts remain on the panel buttons. Panel changes do not pause the simulation.
+Scenario selection, description, and expandable reference timeline share the top section beside the simulation controls. On desktop (at least 1100px wide and 700px tall), the map and received events stay visible while the adjacent inspector scrolls independently. Switch between **Decisions**, **Evidence**, **Signals**, and **Tools & records**; on narrower screens, **Map** is another panel. Pending decision and signal counts remain on the panel buttons. Panel changes do not pause the simulation. Scenario references expand independently of the compact playback controls. Selection menus use the workspace’s own dropdowns, with keyboard navigation and Escape to cancel.
 
 
 The **Decision dashboard** in the **Decisions** panel summarizes received evidence, remaining review time, available review actions, the cost of waiting, and the local decision maker for the selected object. Actions use explicit confirmation; comments are optional and dismissal requires a suggested reason. The simulation keeps moving while a confirmation is open, and changed or expired choices cannot be applied.
