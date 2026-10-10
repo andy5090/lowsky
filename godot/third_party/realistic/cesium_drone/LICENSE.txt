@@ -1,0 +1,9 @@
+CesiumDrone mesh and textures
+Copyright 2017, 2018 Analytical Graphics, Inc.
+Mesh and textures by Ed Mackey.
+
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+License: https://creativecommons.org/licenses/by/4.0/
+Full legal terms: https://creativecommons.org/licenses/by/4.0/legalcode
+
+This notice reproduces the license information embedded in the original GLB asset.copyright.

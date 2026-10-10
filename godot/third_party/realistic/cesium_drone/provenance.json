@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "asset_id": "cesium_drone",
+  "source_page": "https://github.com/CesiumGS/cesium/tree/171498f00f08e45d4e6315bb8606bf28b970d099/Apps/SampleData/models/CesiumDrone",
+  "download_url": "https://raw.githubusercontent.com/CesiumGS/cesium/171498f00f08e45d4e6315bb8606bf28b970d099/Apps/SampleData/models/CesiumDrone/CesiumDrone.glb",
+  "license": "CC-BY-4.0",
+  "license_basis": "GLB asset.copyright",
+  "credit": "Copyright 2017, 2018 Analytical Graphics, Inc.; mesh and textures by Ed Mackey",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "sha256": "77e8a8cfa4763ec83097f492cd48b2143e9c40797ff7211d5752604a35ac3d9d",
+  "bytes": 1169536,
+  "triangles": 3412,
+  "reviewed_at": "2026-10-11",
+  "modifications": "Original file unchanged; runtime normalization, yaw alignment and animation sampling only"
+}
