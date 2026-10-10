@@ -1,4 +1,6 @@
 extends RefCounted
+
+const Geographic = preload("res://geographic_environment.gd")
 ## Visual geometry for a fictional base; dimensions are scene units, not a survey.
 
 static func box(root: Node3D, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:
@@ -115,7 +117,7 @@ static func make_terrain(material: Material, layout: Dictionary) -> Node3D:
 			for offset in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
 				var px = (x + offset.x) * 100
 				var pz = (z + offset.y) * 100
-				var outside_site = maxf(absf(px) - float(layout.perimeter.width_m) * 0.5 - float(layout.terrain_grading.margin_m), absf(pz) - float(layout.perimeter.length_m) * 0.5 - float(layout.terrain_grading.margin_m))
+				var outside_site = Geographic.grading_distance(px, pz, layout)
 				var blend = smoothstep(0, float(layout.terrain_grading.blend_m), outside_site)
 				var height = maxf(0, noise.get_noise_2d(px, pz) + 0.35) * 220 * blend - 0.02
 				points.append(Vector3(px, height, pz))

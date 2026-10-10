@@ -2,8 +2,21 @@ extends RefCounted
 ## DEM-backed terrain: local X points east, Z south, and Y is relative elevation.
 ## Only the fictional site's level surface and its blend are modified.
 
+static func grading_distance(x: float, z: float, layout: Dictionary) -> float:
+	var point = Vector2(x, z)
+	var polygon = PackedVector2Array()
+	for corner in layout.perimeter.polygon:
+		polygon.append(Vector2(corner[0], corner[1]))
+	if Geometry2D.is_point_in_polygon(point, polygon):
+		return -float(layout.terrain_grading.margin_m)
+	var distance = INF
+	for index in range(polygon.size()):
+		var nearest = Geometry2D.get_closest_point_to_segment(point, polygon[index], polygon[(index + 1) % polygon.size()])
+		distance = minf(distance, point.distance_to(nearest))
+	return distance - float(layout.terrain_grading.margin_m)
+
 static func elevation(data: Dictionary, x: float, z: float, layout: Dictionary) -> float:
-	var outside_site = maxf(absf(x) - (float(layout.perimeter.width_m) * 0.5 + float(layout.terrain_grading.margin_m)), absf(z) - (float(layout.perimeter.length_m) * 0.5 + float(layout.terrain_grading.margin_m)))
+	var outside_site = grading_distance(x, z, layout)
 	if outside_site <= 0.0:
 		return -0.02
 	var grid_size = int(data.grid_size)
@@ -40,7 +53,8 @@ static func make(data: Dictionary, grass: StandardMaterial3D, layout: Dictionary
 	root.set_meta("width_m", extent)
 	root.set_meta("length_m", extent)
 	root.set_meta("site_modified", true)
-	root.set_meta("flat_site_half_extents_m", Vector2((float(layout.perimeter.width_m) * 0.5 + float(layout.terrain_grading.margin_m)), (float(layout.perimeter.length_m) * 0.5 + float(layout.terrain_grading.margin_m))))
+	root.set_meta("flat_site_polygon", layout.perimeter.polygon)
+	root.set_meta("flat_site_margin_m", layout.terrain_grading.margin_m)
 	root.set_meta("site_blend_width_m", float(layout.terrain_grading.blend_m))
 	root.set_meta("triangle_count", 2 * (grid_size - 1) * (grid_size - 1))
 	var surface = SurfaceTool.new()

@@ -2,9 +2,7 @@
 export const STORAGE_KEY = 'lowsky.monitor.language';
 export const messages = {
   "en": {
-    "motion.toggle": "Simulation motion",
-    "motion.note": "Purple SIM = scripted drone motion · not sensor evidence · icon not to scale",
-    "motion.loading": "Loading simulation motion…",
+    "awaitingDetection": "Awaiting first received detection. No observed tracks.",
     "site.modified": "FICTIONAL TERRAIN REPLACEMENT",
     "title": "LOW SKY · Observation Monitor",
     "brandSubtitle": "OBSERVATION MONITOR",
@@ -93,7 +91,7 @@ export const messages = {
     "lastObservation": "Last observation",
     "noRecord": "No record",
     "none": "None",
-    "sampleInterval": "Synthetic observations every 30 seconds",
+    "sampleInterval": "Synthetic observations every 10 seconds; arrival may be delayed",
     "positionSource": "Position source",
     "localXZ": "Local X / Z",
     "focusTrack": "Zoom to track on site plan",
@@ -114,7 +112,7 @@ export const messages = {
     "context.context_001": "Synthetic display-device inspection schedule. This does not guarantee observation accuracy.",
     "context.context_002": "A synthetic operations note published late. It requests another review of observation records.",
     "runway": "Runway {length} × {width} m",
-    "perimeter": "Local coordinates · Fenced site {width} × {length} m",
+    "perimeter": "Local coordinates · Site bounding extent {width} × {length} m",
     "north": "N ↑",
     "mapRegionStatus": "Real map + synthetic site · Arbitrary Korea anchor",
     "mapSiteStatus": "Site plan · Last observed positions",
@@ -188,9 +186,7 @@ export const messages = {
     "brief.unavailable": "Scenario descriptions are unavailable. Replay remains available."
   },
   "ko": {
-    "motion.toggle": "가상 이동 표시",
-    "motion.note": "보라색 SIM = 시나리오 이동 · 센서 관측 아님 · 아이콘 크기는 축척과 무관",
-    "motion.loading": "가상 이동 불러오는 중…",
+    "awaitingDetection": "최초 탐지 수신 대기 중입니다. 관측된 대상이 없습니다.",
     "site.modified": "가상 조성 구역 · 내부 지형 대체",
     "title": "LOW SKY · 관측 모니터",
     "brandSubtitle": "관측 모니터",
@@ -279,7 +275,7 @@ export const messages = {
     "lastObservation": "마지막 관측",
     "noRecord": "기록 없음",
     "none": "없음",
-    "sampleInterval": "30초 간격 합성 관측",
+    "sampleInterval": "10초 간격 합성 관측 · 수신 지연 가능",
     "positionSource": "위치 출처",
     "localXZ": "로컬 X / Z",
     "focusTrack": "평면도에서 확대",

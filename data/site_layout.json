@@ -1,12 +1,62 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "synthetic": true,
   "unit": "meter",
-  "description": "Fictional visual test layout; dimensions are explicit demo assumptions, not a real site or design standard.",
+  "description": "Fictional airfield with a generic runway, parallel taxiway, apron and support campus. All dimensions and siting are demo assumptions, not a surveyed military installation or design compliance claim.",
   "perimeter": {
     "width_m": 1200,
     "length_m": 2900,
-    "height_m": 2.5
+    "height_m": 2.5,
+    "polygon": [
+      [
+        -460,
+        -1450
+      ],
+      [
+        -120,
+        -1450
+      ],
+      [
+        120,
+        -1300
+      ],
+      [
+        170,
+        -780
+      ],
+      [
+        480,
+        -650
+      ],
+      [
+        600,
+        -260
+      ],
+      [
+        570,
+        700
+      ],
+      [
+        360,
+        1100
+      ],
+      [
+        100,
+        1450
+      ],
+      [
+        -460,
+        1450
+      ],
+      [
+        -600,
+        1120
+      ],
+      [
+        -580,
+        -1040
+      ]
+    ]
   },
   "runway": {
     "center": [
@@ -18,56 +68,180 @@
     "length_m": 2500
   },
   "apron": {
+    "id": "flight_apron",
     "center": [
-      220,
+      120,
       0,
-      150
+      -20
     ],
     "width_m": 300,
     "length_m": 400
   },
   "facilities": [
     {
-      "id": "building_1",
+      "id": "hangar_1",
       "asset_id": "hangar",
       "position": [
-        410,
+        20,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "hangar_2",
+      "asset_id": "hangar",
+      "position": [
+        110,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "hangar_3",
+      "asset_id": "hangar",
+      "position": [
+        210,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "maintenance_hangar",
+      "asset_id": "hangar",
+      "position": [
+        150,
+        0,
+        380
+      ],
+      "scale": [
+        5.5,
+        2.6,
+        4.8
+      ],
+      "group": "maintenance"
+    },
+    {
+      "id": "workshop",
+      "asset_id": "utility_building",
+      "position": [
+        295,
+        0,
+        400
+      ],
+      "scale": [
+        5,
+        2,
+        5
+      ],
+      "group": "maintenance"
+    },
+    {
+      "id": "admin_1",
+      "asset_id": "utility_building",
+      "position": [
+        455,
+        0,
+        -450
+      ],
+      "scale": [
+        6,
+        2.5,
+        4
+      ],
+      "group": "administration"
+    },
+    {
+      "id": "admin_2",
+      "asset_id": "utility_building",
+      "position": [
+        455,
+        0,
+        -290
+      ],
+      "scale": [
+        5,
+        2.5,
+        5
+      ],
+      "group": "administration"
+    },
+    {
+      "id": "support_1",
+      "asset_id": "utility_building",
+      "position": [
+        450,
         0,
         50
       ],
       "scale": [
-        4,
+        5,
         2,
-        4
-      ]
+        6
+      ],
+      "group": "support"
     },
     {
-      "id": "building_2",
+      "id": "support_2",
+      "asset_id": "utility_building",
+      "position": [
+        470,
+        0,
+        370
+      ],
+      "scale": [
+        5,
+        2,
+        4
+      ],
+      "group": "support"
+    },
+    {
+      "id": "support_3",
       "asset_id": "utility_building",
       "position": [
         440,
         0,
-        -100
+        650
       ],
       "scale": [
-        4,
+        6,
         2,
-        4
-      ]
+        5
+      ],
+      "group": "support"
     },
     {
       "id": "tower",
       "asset_id": "control_tower",
       "position": [
-        450,
+        320,
         0,
-        -220
+        230
       ],
       "scale": [
-        1.5,
-        1.5,
-        1.5
-      ]
+        1.8,
+        1.8,
+        1.8
+      ],
+      "group": "flight_line"
     },
     {
       "id": "station_a",
@@ -81,7 +255,8 @@
         1,
         1,
         1
-      ]
+      ],
+      "group": "demo_sensor"
     },
     {
       "id": "station_b",
@@ -95,24 +270,25 @@
         1,
         1,
         1
-      ]
+      ],
+      "group": "demo_sensor"
     }
   ],
   "aircraft_position": [
-    210,
+    120,
     0.2,
-    220
+    65
   ],
   "camera": {
     "target": [
-      390,
+      120,
       8,
-      50
+      -70
     ],
     "close": [
-      630,
-      160,
-      380
+      570,
+      260,
+      510
     ],
     "overview": [
       2100,
@@ -123,5 +299,219 @@
   "terrain_grading": {
     "margin_m": 50,
     "blend_m": 350
-  }
+  },
+  "design_reference": {
+    "url": "https://www.wbdg.org/ffc/dod/unified-facilities-criteria-ufc/ufc-3-260-01",
+    "use": "Generic airfield component organization only; dimensions and layout are illustrative."
+  },
+  "aprons": [
+    {
+      "id": "flight_apron",
+      "center": [
+        120,
+        0,
+        -20
+      ],
+      "width_m": 300,
+      "length_m": 400
+    },
+    {
+      "id": "maintenance_apron",
+      "center": [
+        155,
+        0,
+        550
+      ],
+      "width_m": 230,
+      "length_m": 260
+    }
+  ],
+  "taxiways": [
+    {
+      "id": "parallel_taxiway",
+      "points": [
+        [
+          -100,
+          -1200
+        ],
+        [
+          -100,
+          1200
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "runway_connector_1",
+      "points": [
+        [
+          -300,
+          -1150
+        ],
+        [
+          -100,
+          -1150
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "runway_connector_2",
+      "points": [
+        [
+          -300,
+          -580
+        ],
+        [
+          -100,
+          -580
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "runway_connector_3",
+      "points": [
+        [
+          -300,
+          540
+        ],
+        [
+          -100,
+          540
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "runway_connector_4",
+      "points": [
+        [
+          -300,
+          1150
+        ],
+        [
+          -100,
+          1150
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "flight_apron_lead",
+      "points": [
+        [
+          -100,
+          -20
+        ],
+        [
+          120,
+          -20
+        ]
+      ],
+      "width_m": 23
+    },
+    {
+      "id": "maintenance_apron_lead",
+      "points": [
+        [
+          -100,
+          550
+        ],
+        [
+          155,
+          550
+        ]
+      ],
+      "width_m": 23
+    }
+  ],
+  "roads": [
+    {
+      "id": "support_road",
+      "points": [
+        [
+          340,
+          -540
+        ],
+        [
+          380,
+          -330
+        ],
+        [
+          380,
+          300
+        ],
+        [
+          350,
+          770
+        ]
+      ],
+      "width_m": 9
+    },
+    {
+      "id": "admin_access",
+      "points": [
+        [
+          380,
+          -380
+        ],
+        [
+          475,
+          -380
+        ],
+        [
+          480,
+          -120
+        ]
+      ],
+      "width_m": 7
+    },
+    {
+      "id": "hangar_access",
+      "points": [
+        [
+          340,
+          -340
+        ],
+        [
+          20,
+          -340
+        ]
+      ],
+      "width_m": 7
+    },
+    {
+      "id": "maintenance_access",
+      "points": [
+        [
+          375,
+          330
+        ],
+        [
+          85,
+          330
+        ]
+      ],
+      "width_m": 7
+    },
+    {
+      "id": "south_service_access",
+      "points": [
+        [
+          365,
+          550
+        ],
+        [
+          475,
+          550
+        ],
+        [
+          475,
+          710
+        ]
+      ],
+      "width_m": 7
+    }
+  ]
 }

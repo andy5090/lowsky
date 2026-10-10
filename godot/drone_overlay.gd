@@ -1,0 +1,46 @@
+extends Control
+## Screen-space author aids, not sensor detections or physical drone geometry.
+
+var camera: Camera3D
+var objects: Array = []
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _process(_delta: float) -> void:
+	queue_redraw()
+
+func markers() -> Array:
+	var result: Array = []
+	if not is_instance_valid(camera):
+		return result
+	for item in objects:
+		var target: Node3D = item.node
+		if not is_instance_valid(target) or camera.is_position_behind(target.global_position):
+			continue
+		var point = camera.unproject_position(target.global_position)
+		if Rect2(Vector2.ZERO, get_viewport_rect().size).has_point(point):
+			result.append({"point": point, "id": item.object_id})
+	return result
+
+func _draw() -> void:
+	var font = ThemeDB.fallback_font
+	var color = Color("edb0fb")
+	var labels: Array[Rect2] = []
+	for marker in markers():
+		var point: Vector2 = marker.point
+		var radius = 6.0 if objects.size() > 8 else 9.0
+		draw_circle(point, radius, Color(0.06, 0.03, 0.08, 0.85))
+		draw_arc(point, radius, 0, TAU, 24, color, 2, true)
+		draw_circle(point, 2, color)
+		if objects.size() > 8 and marker.id != objects[0].object_id:
+			continue
+		var box = Rect2(point + Vector2(15, -26), Vector2(128, 24))
+		for occupied in labels:
+			if box.intersects(occupied.grow(3)):
+				box.position.y = occupied.end.y + 4
+		labels.append(box)
+		draw_line(point + Vector2(10, 0), box.position + Vector2(0, 12), color, 1, true)
+		draw_rect(box, Color(0.04, 0.06, 0.08, 0.92))
+		draw_string(font, box.position + Vector2(6, 17), "SIM " + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)

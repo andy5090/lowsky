@@ -14,12 +14,12 @@ func verify() -> void:
 	var manifest = preview.read_json(preview.data_root.path_join("manifest.json"))
 	for entry in manifest["cases"]:
 		preview.load_case(entry["case_id"])
-		preview.elapsed_ms = 60000
+		preview.elapsed_ms = float(preview.world_data.duration_ms)
 		preview._process(0)
-		assert(preview.objects.size() == 3)
+		assert(preview.objects.size() == preview.world_data.objects.size())
 		for item in preview.objects:
-			assert(item["node"].position.is_equal_approx(preview.vector(item["keyframes"][2]["position"])))
-		assert(preview.status_label.text.contains("channel_b: offline") == (entry["variant"] == "missing"))
+			assert(item["node"].position.is_equal_approx(preview.vector(item["keyframes"][-1]["position"])))
+		assert(preview.objects.size() > 0)
 	var event = InputEventKey.new()
 	event.pressed = true
 	event.keycode = KEY_2
@@ -35,19 +35,19 @@ func verify() -> void:
 	assert(preview.elapsed_ms == 0)
 	assert(preview.has_node("GeographicTerrain"))
 	assert(preview.terrain.get_meta("triangle_count") == 80000)
-	assert(preview.terrain_data.origin.lat == 36.5)
-	assert(preview.terrain_data.origin.lon == 127.8)
-	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 600, 1450, preview.site_layout), -0.02))
-	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -5000, -5000, preview.site_layout), float(preview.terrain_data.heights_m[0][0]) - 373.0))
-	# The old flat plateau must now return to the original DEM outside the blend.
-	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1100, 1900, preview.site_layout), float(preview.terrain_data.heights_m[138][122]) - 373.0))
-	for facility in preview.site_layout.facilities:
-		assert(absf(facility.position[0]) + 50 < preview.site_layout.perimeter.width_m * 0.5)
-		assert(absf(facility.position[2]) + 50 < preview.site_layout.perimeter.length_m * 0.5)
+	var reference = float(preview.terrain_data.reference_elevation_m)
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -300, 0, preview.site_layout), -0.02))
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -5000, -5000, preview.site_layout), float(preview.terrain_data.heights_m[0][0]) - reference))
+	# Beyond the polygon's grading margin and blend, DEM heights are unmodified.
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1100, 1900, preview.site_layout), float(preview.terrain_data.heights_m[138][122]) - reference))
+	verify_site_geometry(preview)
 	# Terrain modes must not restart or alter replay.
 	preview.elapsed_ms = 65000
 	preview._process(0)
 	var object_position = preview.objects[0]["node"].position
+	var frames: Array = preview.objects[0].keyframes
+	var expected_midpoint = preview.vector(frames[6].position).lerp(preview.vector(frames[7].position), 0.5)
+	assert(object_position.is_equal_approx(expected_midpoint), "65s position must use 10-second keyframe intervals")
 	event.keycode = KEY_T
 	preview._unhandled_input(event)
 	assert(preview.has_node("PlainsTerrain/Fields"))
@@ -66,7 +66,7 @@ func verify() -> void:
 	assert(preview.has_node("DetailedHangar"))
 	assert(preview.has_node("DetailedTower"))
 	assert(preview.get_node("SiteInfrastructure/Runway").get_meta("length_m") == 2500)
-	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("perimeter_m") == 8200)
+	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("vertex_count") == preview.site_layout.perimeter.polygon.size())
 	var initial_camera_position = preview.camera.position
 	event.keycode = KEY_C
 	preview._unhandled_input(event)
@@ -113,10 +113,45 @@ func verify() -> void:
 			node.free()
 			imported_models += 1
 	assert(imported_models == 4)
-	print("PASS: 12 cases, playback and camera input, Korea DEM and terrain switching preserve replay, level airfield, detailed buildings, PBR mipmaps and 5 external models")
+	print("PASS: all manifest cases, playback and camera input, DEM and terrain switching preserve replay, irregular airfield, connected taxiways, detailed buildings and external models")
 	preview.queue_free()
 	await process_frame
 	quit()
+
+func verify_site_geometry(preview: Node3D) -> void:
+	var layout: Dictionary = preview.site_layout
+	var polygon = PackedVector2Array()
+	for corner in layout.perimeter.polygon:
+		polygon.append(Vector2(corner[0], corner[1]))
+	assert(polygon.size() > 4, "Site boundary must be an irregular polygon")
+	for facility in layout.facilities:
+		assert(Geometry2D.is_point_in_polygon(Vector2(facility.position[0], facility.position[2]), polygon))
+		assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, facility.position[0], facility.position[2], layout), -0.02))
+	for apron in layout.aprons:
+		for dx in [-1, 1]:
+			for dz in [-1, 1]:
+				assert(Geometry2D.is_point_in_polygon(Vector2(apron.center[0] + dx * apron.width_m * 0.5, apron.center[2] + dz * apron.length_m * 0.5), polygon))
+	var runway: Dictionary = layout.runway
+	for dx in [-1, 1]:
+		for dz in [-1, 1]:
+			assert(Geometry2D.is_point_in_polygon(Vector2(runway.center[0] + dx * runway.width_m * 0.5, runway.center[2] + dz * runway.length_m * 0.5), polygon))
+	var parallel: Dictionary = layout.taxiways[0]
+	var spine_start = Vector2(parallel.points[0][0], parallel.points[0][1])
+	var spine_end = Vector2(parallel.points[1][0], parallel.points[1][1])
+	for path in layout.taxiways + layout.roads:
+		assert(preview.has_node("SiteInfrastructure/" + path.id))
+		for point in path.points:
+			assert(Geometry2D.is_point_in_polygon(Vector2(point[0], point[1]), polygon))
+	for taxiway in layout.taxiways.slice(1):
+		var connected = false
+		for point in taxiway.points:
+			var position = Vector2(point[0], point[1])
+			connected = connected or position.distance_to(Geometry2D.get_closest_point_to_segment(position, spine_start, spine_end)) < 0.01
+		assert(connected, "Every taxi connector must meet the parallel taxiway")
+	# The removed corner of the old rectangle must no longer be a flat plateau.
+	assert(preview.Geographic.grading_distance(600, 1450, layout) > 350)
+	assert(preview.Geographic.grading_distance(-300, 0, layout) < 0)
+	print("PASS: polygon contains runway, aprons and facilities; taxiways connected; grading follows polygon")
 
 func mouse_button(button: int, pressed: bool, position: Vector2, shift: bool = false) -> void:
 	var event = InputEventMouseButton.new()

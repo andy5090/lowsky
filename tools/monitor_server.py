@@ -69,6 +69,8 @@ class Simulation:
                     row = max(rows, key=lambda r: (r['observed_at_ms'], r['available_at_ms']), default=None)
                     if row:
                         records.append(row)
+                if not records:
+                    continue  # No received evidence: do not reveal author-known objects.
                 fresh = [r for r in records if latest_health[r['source_id']] == 'online'
                          and payload['at_ms'] - r['observed_at_ms'] <= payload['freshness_ms']]
                 position_record = max(fresh or records, key=lambda r: (r['observed_at_ms'], r['available_at_ms']), default=None)
@@ -182,12 +184,6 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/briefings':
             # Deliberate operator preview; kept out of observation-only state and clock.
             self.respond(200, read_json(self.server.simulation.root / 'briefings.json'))
-        elif path == '/api/preview':
-            # Explicit author-only animation; never merged into observation state.
-            with self.server.simulation.lock:
-                case_id = self.server.simulation.case_id
-                world = read_json(self.server.simulation.root / 'cases' / case_id / 'world.json')
-                self.respond(200, dict(case_id=case_id, author_preview=True, world=world))
         elif path == '/api/clock':
             self.respond(200, self.server.simulation.clock_state())
         elif path == '/api/config':
@@ -204,7 +200,6 @@ class Handler(BaseHTTPRequestHandler):
                       '/logo-metal.png': ('logo-metal.png', 'image/png'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
-                      '/motion.mjs': ('motion.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/styles.css': ('styles.css', 'text/css; charset=utf-8')}
             if path not in assets:

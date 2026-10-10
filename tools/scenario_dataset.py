@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1] / "data" / "scenarios" / "v1"
-TIMES = (0, 30_000, 60_000, 90_000, 120_000)
+TIMES = tuple(range(0, 180_001, 10_000))
 SOURCES = ("channel_a", "channel_b")
 VARIANTS = ("consistent", "contradictory", "missing")
 TTL_MS = 45_000
@@ -28,121 +28,159 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def localized(en, ko):
+    return {"en": en, "ko": ko}
+
+
 def build(root):
-    """Rebuild only the versioned, generated fixture files; no random state."""
-    entries = []
-    briefings = []
+    """Rebuild the three deterministic representative workload fixtures."""
+    entries, briefings = [], []
     layout = read_json(Path(__file__).resolve().parents[1] / "data/site_layout.json")
-    scene = {
-        "schema_version": "1.0",
-        "synthetic": True,
+    write_json(root / "scene.json", {
+        "schema_version": "1.0", "synthetic": True,
         "coordinates": {"axes": "right-handed, Y-up", "unit": "meter"},
         "interpolation": "linear_between_keyframes",
-        "environment": [
-            {"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]},
-            *layout["facilities"],
-        ],
-    }
-    write_json(root / "scene.json", scene)
-    for group in range(4):
-        objects = [f"object_{group + 1}{i + 1}" for i in range(3)]
-        focus = objects[group % 3]
-        markers = dict(zip(objects, ("circle", "square", "triangle")))
+        "environment": [{"id": "ground", "asset_id": "ground_tile", "position": [0, 0, 0]}, *layout["facilities"]],
+    })
+    descriptions = [
+        (
+            localized("First signals in mixed traffic", "혼재된 비행체의 첫 탐지"),
+            localized("12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.", "합성 비행체 12개가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."),
+            localized("Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.", "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."),
+            localized("12 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.", "소형 비행체 12개와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."),
+        ),
+        (
+            localized("Conflicting identification and reconfirmation", "식별 상충과 재확인"),
+            localized("24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.", "합성 비행체 24개가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 6개 대상의 표식을 다르게 보고하고 이후 재확인합니다."),
+            localized("Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.", "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."),
+            localized("24 synthetic objects; six conflicting tracks, with the remaining tracks as comparison traffic.", "합성 비행체 24개. 6개 대상에서 상충 보고가 발생하고 나머지는 비교 대상입니다."),
+        ),
+        (
+            localized("Monitoring load test: source loss and recovery", "모니터링 부하 시험: 채널 단절·복구"),
+            localized("36 aerial objects exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.", "비행체 36개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."),
+            localized("Retain last evidence during loss, distinguish missing corroboration from disappearance, and verify recovery without inventing tracks.", "단절 중 마지막 근거를 보존하고 교차 확인 불가와 대상 소멸을 구분하며, 근거를 만들어내지 않고 복구를 확인합니다."),
+            localized("36 synthetic objects sharing two observation channels; the outage affects one channel, not world motion.", "합성 비행체 36개가 두 관측 채널을 공유합니다. 단절은 한 관측 채널에만 영향을 주며 실제 움직임은 계속됩니다."),
+        ),
+    ]
+    for index, (variant, count) in enumerate(zip(VARIANTS, (12, 24, 36))):
+        case_id = f"case_{index + 1:03d}"
+        objects = [f"object_{11 + i:02d}" for i in range(count)]
+        markers = {obj: ("circle", "square", "triangle")[i % 3] for i, obj in enumerate(objects)}
         world = {
             "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
             "objects": [
                 {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj]},
                  "keyframes": [
-                     {"at_ms": tick, "position": [-300 + i * 300 + group * 10, 100 + i * 10, -1700 - i * 120 + step * 475]}
-                     for step, tick in enumerate(TIMES)
-                 ]}
+                     {"at_ms": tick, "position": [
+                         -750 + (i % 6) * 300 + (tick / TIMES[-1]) * (80 if i % 2 else -80),
+                         80 + (i % 5) * 12,
+                         -1900 - (i // 6) * 80 + (tick / TIMES[-1]) * 3800,
+                     ]} for tick in TIMES]}
                 for i, obj in enumerate(objects)
             ],
         }
-        for variant_index, variant in enumerate(VARIANTS):
-            case_id = f"case_{group * 3 + variant_index + 1:03d}"
-            observations, health = [], []
-            for tick in TIMES:
-                for source in SOURCES:
-                    offline = variant == "missing" and source == "channel_b" and tick >= 60_000
-                    health.append({
-                        "id": f"health_{len(health) + 1:03d}", "source_id": source,
-                        "observed_at_ms": tick, "available_at_ms": tick,
-                        "status": "offline" if offline else "online",
-                    })
-                    if offline:
+        observations, health = [], []
+        for step, tick in enumerate(TIMES):
+            for source in SOURCES:
+                offline = variant == "missing" and source == "channel_b" and 60_000 <= tick < 130_000
+                health.append({"id": f"health_{len(health) + 1:03d}", "source_id": source,
+                               "observed_at_ms": tick, "available_at_ms": tick,
+                               "status": "offline" if offline else "online"})
+                if offline:
+                    continue
+                for i, obj in enumerate(objects):
+                    first_tick = 10_000 + (i % 6) * 10_000
+                    if tick < first_tick:
                         continue
-                    for obj in objects:
-                        marker = markers[obj]
-                        if variant == "contradictory" and tick >= 60_000 and obj == focus and source == "channel_b":
-                            marker = "diamond"
-                        observations.append({
-                            "id": f"obs_{len(observations) + 1:03d}", "object_id": obj,
-                            "source_id": source, "observed_at_ms": tick, "available_at_ms": tick,
-                            "position": next(item for item in world["objects"] if item["object_id"] == obj)["keyframes"][TIMES.index(tick)]["position"],
-                            "marker_label": marker,
-                        })
-            contexts = [
-                {"id": "context_001", "published_at_ms": 0,
-                 "valid_from_ms": 0, "valid_until_ms": 45_000, "object_ids": [focus],
-                 "text": "가상 표시 장치 점검 일정. 관측값의 정확성을 보증하는 자료는 아니다."},
-                {"id": "context_002", "published_at_ms": 90_000,
-                 "valid_from_ms": 60_000, "valid_until_ms": 120_000, "object_ids": objects,
-                 "text": "뒤늦게 공개된 가상 운영 메모. 관측 기록을 다시 확인하도록 요청한다."},
-            ]
-            public = {
-                "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
-                "object_ids": objects, "source_ids": list(SOURCES), "freshness_ms": TTL_MS,
-                "observations": observations, "source_health": health, "contexts": contexts,
-            }
-            checkpoints = []
-            for tick in TIMES[1:]:
-                for obj in objects:
-                    state = "consistent"
-                    if tick >= 60_000:
-                        if variant == "missing":
-                            state = "missing"
-                        elif variant == "contradictory" and obj == focus:
-                            state = "contradictory"
-                    checkpoints.append({
-                        "at_ms": tick, "object_id": obj, "expected_state": state,
-                        "required_topics": {
-                            "consistent": ["agreement", "source_references", "limits_of_observation"],
-                            "contradictory": ["conflicting_marker_labels", "both_sources", "needs_review"],
-                            "missing": ["unavailable_source", "last_observation_time", "limits_of_observation"],
-                        }[state],
-                        "forbidden_claims": ["hostile_intent", "unobserved_confirmation", "future_evidence"],
+                    delay = 4_000 if source == "channel_b" and tick == first_tick else 0
+                    if source == "channel_b" and tick == 40_000 and i % 4 == 0:
+                        delay = 15_000
+                    marker = markers[obj]
+                    if variant == "contradictory" and source == "channel_b" and 60_000 <= tick <= 120_000 and i % 4 == 0:
+                        marker = "diamond"
+                    observations.append({
+                        "id": f"obs_{len(observations) + 1:04d}", "object_id": obj,
+                        "source_id": source, "observed_at_ms": tick, "available_at_ms": tick + delay,
+                        "position": world["objects"][i]["keyframes"][step]["position"], "marker_label": marker,
                     })
-            write_json(root / "cases" / case_id / "world.json", world)
-            write_json(root / "cases" / case_id / "public.json", public)
-            write_json(root / "evaluation" / f"{case_id}.json", {"checkpoints": checkpoints})
-            entries.append({"case_id": case_id, "group_id": f"scene_{group + 1:02d}",
-                            "split": "development" if group < 2 else "holdout",
-                            "variant": variant, "focus_object_id": focus})
-            briefings.append({
-                "case_id": case_id, "group": group + 1, "variant": variant,
-                "object_ids": objects, "duration_ms": TIMES[-1], "sample_interval_ms": TIMES[1],
-                "source_ids": list(SOURCES),
-                "comparison_object": focus if variant == "contradictory" else None,
-                "original_marker": markers[focus] if variant == "contradictory" else None,
-                "timeline": [
-                    {"at_ms": 0, "key": "brief.start"},
-                    {"at_ms": TIMES[1], "key": "brief.samples"},
-                    {"at_ms": TIMES[2], "key": f"brief.event.{variant}"},
-                    {"at_ms": TIMES[3], "key": "brief.context"},
-                    {"at_ms": TIMES[4], "key": "brief.end"},
-                ],
-            })
+        contexts = [
+            {"id": "context_001", "published_at_ms": 0, "valid_from_ms": 0,
+             "valid_until_ms": 45_000, "object_ids": [objects[0]],
+             "text": "Synthetic display inspection notice. It does not confirm the accuracy or identity of an observed object."},
+            {"id": "context_002", "published_at_ms": 90_000, "valid_from_ms": 60_000,
+             "valid_until_ms": TIMES[-1], "object_ids": objects,
+             "text": "Delayed synthetic review notice: compare received evidence and source health; do not infer intent."},
+        ]
+        public = {
+            "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
+            "object_ids": objects, "source_ids": list(SOURCES), "freshness_ms": TTL_MS,
+            "observations": observations, "source_health": health, "contexts": contexts,
+        }
+        # Expectations are authored from the scenario events, independently of information_state.
+        checkpoints = []
+        for tick in (70_000, 90_000, 120_000, 150_000, 180_000):
+            for i, obj in enumerate(objects):
+                state = "consistent"
+                if tick <= 120_000:
+                    if variant == "missing":
+                        state = "missing"
+                    elif variant == "contradictory" and i % 4 == 0:
+                        state = "contradictory"
+                checkpoints.append({
+                    "at_ms": tick, "object_id": obj, "expected_state": state,
+                    "required_topics": {
+                        "consistent": ["agreement", "source_references", "limits_of_observation"],
+                        "contradictory": ["conflicting_marker_labels", "both_sources", "needs_review"],
+                        "missing": ["unavailable_source", "last_observation_time", "limits_of_observation"],
+                    }[state],
+                    "forbidden_claims": ["hostile_intent", "unobserved_confirmation", "future_evidence"],
+                })
+        write_json(root / "cases" / case_id / "world.json", world)
+        write_json(root / "cases" / case_id / "public.json", public)
+        write_json(root / "evaluation" / f"{case_id}.json", {"checkpoints": checkpoints})
+        entries.append({"case_id": case_id, "group_id": f"scene_{index + 1:02d}",
+                        "split": "development", "variant": variant, "focus_object_id": objects[0]})
+        name, summary, objective, composition = descriptions[index]
+        event = {
+            "consistent": localized("All 12 candidates have a first report; corroboration may still be pending.", "12개 대상의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."),
+            "contradictory": localized("Channel B begins conflicting labels on six tracks.", "채널 B에서 6개 대상의 표식 상충이 시작됩니다."),
+            "missing": localized("Channel B stops reporting. Preserve the last received evidence.", "채널 B의 보고가 중단됩니다. 마지막 수신 근거를 보존합니다."),
+        }[variant]
+        briefings.append({
+            "case_id": case_id, "group": index + 1, "variant": variant,
+            "scenario_type": "load_test" if variant == "missing" else "observation_narrative",
+            "name": name, "summary": summary, "objective": objective, "composition": composition,
+            "count_basis": localized("Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.", "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."),
+            "object_count": count, "object_ids": objects, "duration_ms": TIMES[-1],
+            "sample_interval_ms": 10_000, "source_ids": list(SOURCES),
+            "comparison_object": objects[0] if variant == "contradictory" else None,
+            "original_marker": markers[objects[0]] if variant == "contradictory" else None,
+            "timeline": [
+                {"at_ms": 0, "text": localized("Replay begins with no received tracks.", "수신된 대상 없이 재생을 시작합니다.")},
+                {"at_ms": 10_000, "text": localized("First receipt; further candidates appear in staggered batches.", "첫 탐지 수신 후 대상이 순차 등장합니다.")},
+                {"at_ms": 40_000, "text": localized("Some channel B reports arrive 15 seconds late; compare observation and receipt time.", "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다.")},
+                {"at_ms": 60_000, "text": event},
+                {"at_ms": 90_000, "text": localized("A previously unpublished review notice becomes available.", "공개되지 않았던 검토 공지가 수신됩니다.")},
+                {"at_ms": 130_000, "text": localized("Both channels provide agreeing reports; review outstanding alerts.", "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다.")},
+                {"at_ms": TIMES[-1], "text": localized("Replay ends; assess evidence references, uncertainty and source recovery.", "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다.")},
+            ],
+        })
+    # Remove only retired generated files from the original twelve-case fixture set.
+    for number in range(4, 13):
+        retired = root / "cases" / f"case_{number:03d}"
+        for filename in ("world.json", "public.json"):
+            (retired / filename).unlink(missing_ok=True)
+        if retired.exists() and not any(retired.iterdir()):
+            retired.rmdir()
+        (root / "evaluation" / f"case_{number:03d}.json").unlink(missing_ok=True)
     write_json(root / "briefings.json", {
         "schema_version": "1.0", "synthetic": True, "author_preview": True,
-        "purpose": "Operator-requested scripted scenario overview, including future events. Not live evidence or agent input.",
-        "cases": briefings,
+        "purpose": "Scripted scenario overview includes future events; not live evidence or agent input.", "cases": briefings,
     })
     write_json(root / "manifest.json", {
         "schema_version": "1.0", "synthetic": True,
-        "purpose": "3D replay and explanation-quality smoke evaluation",
-        "generation": "deterministic; tools/scenario_dataset.py; no external sources",
-        "cases": entries,
+        "purpose": "Two synthetic observation narratives and one monitoring load test; not an empirical threat model",
+        "generation": "deterministic; tools/scenario_dataset.py; no external sources", "cases": entries,
     })
 
 
@@ -152,23 +190,30 @@ def snapshot(public, at_ms):
     observation_keys = ("id", "object_id", "source_id", "observed_at_ms", "available_at_ms", "position", "marker_label")
     health_keys = ("id", "source_id", "observed_at_ms", "available_at_ms", "status")
     context_keys = ("id", "published_at_ms", "valid_from_ms", "valid_until_ms", "object_ids", "text")
+    observations = [
+        {key: record[key] for key in observation_keys} for record in public["observations"]
+        if record["available_at_ms"] <= at_ms and record["observed_at_ms"] <= at_ms
+    ]
+    received_ids = {row["object_id"] for row in observations}
+    contexts = []
+    for record in public["contexts"]:
+        if record["published_at_ms"] > at_ms:
+            continue
+        # Withhold the entire object-specific notice until every referenced ID is known;
+        # filtering IDs alone could still leak an unseen ID mentioned in its free text.
+        if not set(record["object_ids"]) <= received_ids:
+            continue
+        contexts.append({key: record[key] for key in context_keys})
     return {
         "schema_version": "1.0", "synthetic": True, "at_ms": at_ms,
-        "object_ids": list(public["object_ids"]), "source_ids": list(public["source_ids"]),
+        "object_ids": [obj for obj in public["object_ids"] if obj in received_ids], "source_ids": list(public["source_ids"]),
         "freshness_ms": public["freshness_ms"],
-        "observations": [
-            {key: record[key] for key in observation_keys} for record in public["observations"]
-            if record["available_at_ms"] <= at_ms and record["observed_at_ms"] <= at_ms
-        ],
+        "observations": observations,
         "source_health": [
             {key: record[key] for key in health_keys} for record in public["source_health"]
             if record["available_at_ms"] <= at_ms and record["observed_at_ms"] <= at_ms
         ],
-        # Known schedules may concern the future; publication time gates knowledge.
-        "contexts": [
-            {key: record[key] for key in context_keys} for record in public["contexts"]
-            if record["published_at_ms"] <= at_ms
-        ],
+        "contexts": contexts,
     }
 
 
@@ -198,7 +243,7 @@ def validate(root):
     scene = read_json(root / "scene.json")
     require(scene["coordinates"]["unit"] == "meter", "Invalid coordinate units")
     require(all(item.get("asset_id") for item in scene["environment"]), "Missing scene asset mapping")
-    require(len(entries) == 12, "Expected 12 starter cases")
+    require(len(entries) == 3, "Expected three representative cases")
     require(len({entry["case_id"] for entry in entries}) == len(entries), "Duplicate case IDs")
     groups = {}
     observation_count = checkpoint_count = 0
@@ -213,7 +258,7 @@ def validate(root):
         require(public["duration_ms"] == world["duration_ms"] == TIMES[-1], "Invalid duration")
         require(public["source_ids"] == list(SOURCES), "Unexpected source IDs")
         require(public["freshness_ms"] == TTL_MS, "Unexpected freshness setting")
-        require(len(set(public["object_ids"])) == 3, "Expected three unique objects")
+        require(len(set(public["object_ids"])) == (12, 24, 36)[VARIANTS.index(entry["variant"])], "Unexpected workload count")
         require(entry["split"] in ("development", "holdout"), "Unknown split")
         require({obj["object_id"] for obj in world["objects"]} == set(public["object_ids"]), "Object mismatch")
         ids = set()
@@ -242,8 +287,8 @@ def validate(root):
             positions.extend(row["position"] for row in obj["keyframes"])
         for position in positions:
             require(len(position) == 3 and all(type(v) in (int, float) and math.isfinite(v) for v in position), "Invalid 3D position")
-        require(len(rubric["checkpoints"]) == 12, "Expected twelve checkpoints")
-        expected_pairs = {(tick, obj) for tick in TIMES[1:] for obj in public["object_ids"]}
+        require(len(rubric["checkpoints"]) == len(public["object_ids"]) * 5, "Unexpected checkpoint count")
+        expected_pairs = {(tick, obj) for tick in (70_000, 90_000, 120_000, 150_000, 180_000) for obj in public["object_ids"]}
         require({(row["at_ms"], row["object_id"]) for row in rubric["checkpoints"]} == expected_pairs,
                 "Checkpoint coverage mismatch")
         for checkpoint in rubric["checkpoints"]:
@@ -253,12 +298,9 @@ def validate(root):
             require(checkpoint["required_topics"] and checkpoint["forbidden_claims"], "Missing review rubric")
         observation_count += len(public["observations"])
         checkpoint_count += len(rubric["checkpoints"])
-    require(len(groups) == 4, "Expected four scene groups")
-    for group, members in groups.items():
-        require(len({member["split"] for member in members}) == 1, f"Split leakage: {group}")
-        require({member["variant"] for member in members} == set(VARIANTS), f"Missing variants: {group}")
-        worlds = [read_json(root / "cases" / member["case_id"] / "world.json") for member in members]
-        require(all(world == worlds[0] for world in worlds), f"Variant changed world: {group}")
+    require(len(groups) == 3, "Expected three independent scenario groups")
+    require({entry["variant"] for entry in entries} == set(VARIANTS), "Missing representative condition")
+    require(all(entry["split"] == "development" for entry in entries), "Demo scenarios are not a holdout benchmark")
     return {"cases": len(entries), "scene_groups": len(groups),
             "observations": observation_count, "checkpoints": checkpoint_count}
 

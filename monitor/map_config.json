@@ -1,13 +1,13 @@
 {
-  "center_lat": 36.5,
-  "center_lon": 127.8,
+  "center_lat": 36.23,
+  "center_lon": 127.08,
   "zoom": 13,
   "tile_url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-  "attribution": "© OpenStreetMap contributors",
+  "attribution": "\u00a9 OpenStreetMap contributors",
   "attribution_url": "https://www.openstreetmap.org/copyright",
-  "purpose": "Arbitrary Korean map anchor for a fictional overlay; no real airbase location or surveyed terrain correspondence.",
+  "purpose": "Fictional redeveloped airfield on a lower-relief Korean map background. Shared origin with DEM; internal local roads are synthetically replaced, not a surveyed or approved airport site.",
   "site_origin": {
-    "lat": 36.5,
-    "lon": 127.8
+    "lat": 36.23,
+    "lon": 127.08
   }
 }

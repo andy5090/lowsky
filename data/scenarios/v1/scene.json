@@ -17,46 +17,169 @@
       ]
     },
     {
-      "id": "building_1",
+      "id": "hangar_1",
       "asset_id": "hangar",
       "position": [
-        410,
+        20,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "hangar_2",
+      "asset_id": "hangar",
+      "position": [
+        110,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "hangar_3",
+      "asset_id": "hangar",
+      "position": [
+        210,
+        0,
+        -260
+      ],
+      "scale": [
+        4.5,
+        2.2,
+        4.5
+      ],
+      "group": "flight_line"
+    },
+    {
+      "id": "maintenance_hangar",
+      "asset_id": "hangar",
+      "position": [
+        150,
+        0,
+        380
+      ],
+      "scale": [
+        5.5,
+        2.6,
+        4.8
+      ],
+      "group": "maintenance"
+    },
+    {
+      "id": "workshop",
+      "asset_id": "utility_building",
+      "position": [
+        295,
+        0,
+        400
+      ],
+      "scale": [
+        5,
+        2,
+        5
+      ],
+      "group": "maintenance"
+    },
+    {
+      "id": "admin_1",
+      "asset_id": "utility_building",
+      "position": [
+        455,
+        0,
+        -450
+      ],
+      "scale": [
+        6,
+        2.5,
+        4
+      ],
+      "group": "administration"
+    },
+    {
+      "id": "admin_2",
+      "asset_id": "utility_building",
+      "position": [
+        455,
+        0,
+        -290
+      ],
+      "scale": [
+        5,
+        2.5,
+        5
+      ],
+      "group": "administration"
+    },
+    {
+      "id": "support_1",
+      "asset_id": "utility_building",
+      "position": [
+        450,
         0,
         50
       ],
       "scale": [
-        4,
+        5,
         2,
-        4
-      ]
+        6
+      ],
+      "group": "support"
     },
     {
-      "id": "building_2",
+      "id": "support_2",
+      "asset_id": "utility_building",
+      "position": [
+        470,
+        0,
+        370
+      ],
+      "scale": [
+        5,
+        2,
+        4
+      ],
+      "group": "support"
+    },
+    {
+      "id": "support_3",
       "asset_id": "utility_building",
       "position": [
         440,
         0,
-        -100
+        650
       ],
       "scale": [
-        4,
+        6,
         2,
-        4
-      ]
+        5
+      ],
+      "group": "support"
     },
     {
       "id": "tower",
       "asset_id": "control_tower",
       "position": [
-        450,
+        320,
         0,
-        -220
+        230
       ],
       "scale": [
-        1.5,
-        1.5,
-        1.5
-      ]
+        1.8,
+        1.8,
+        1.8
+      ],
+      "group": "flight_line"
     },
     {
       "id": "station_a",
@@ -70,7 +193,8 @@
         1,
         1,
         1
-      ]
+      ],
+      "group": "demo_sensor"
     },
     {
       "id": "station_b",
@@ -84,7 +208,8 @@
         1,
         1,
         1
-      ]
+      ],
+      "group": "demo_sensor"
     }
   ]
 }

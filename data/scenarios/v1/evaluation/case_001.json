@@ -1,7 +1,7 @@
 {
   "checkpoints": [
     {
-      "at_ms": 30000,
+      "at_ms": 70000,
       "object_id": "object_11",
       "expected_state": "consistent",
       "required_topics": [
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "at_ms": 30000,
+      "at_ms": 70000,
       "object_id": "object_12",
       "expected_state": "consistent",
       "required_topics": [
@@ -31,7 +31,7 @@
       ]
     },
     {
-      "at_ms": 30000,
+      "at_ms": 70000,
       "object_id": "object_13",
       "expected_state": "consistent",
       "required_topics": [
@@ -46,8 +46,8 @@
       ]
     },
     {
-      "at_ms": 60000,
-      "object_id": "object_11",
+      "at_ms": 70000,
+      "object_id": "object_14",
       "expected_state": "consistent",
       "required_topics": [
         "agreement",
@@ -61,8 +61,8 @@
       ]
     },
     {
-      "at_ms": 60000,
-      "object_id": "object_12",
+      "at_ms": 70000,
+      "object_id": "object_15",
       "expected_state": "consistent",
       "required_topics": [
         "agreement",
@@ -76,8 +76,98 @@
       ]
     },
     {
-      "at_ms": 60000,
-      "object_id": "object_13",
+      "at_ms": 70000,
+      "object_id": "object_16",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_17",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_18",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_19",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_20",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_21",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 70000,
+      "object_id": "object_22",
       "expected_state": "consistent",
       "required_topics": [
         "agreement",
@@ -136,6 +226,141 @@
       ]
     },
     {
+      "at_ms": 90000,
+      "object_id": "object_14",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_15",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_16",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_17",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_18",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_19",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_20",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_21",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 90000,
+      "object_id": "object_22",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
       "at_ms": 120000,
       "object_id": "object_11",
       "expected_state": "consistent",
@@ -168,6 +393,501 @@
     {
       "at_ms": 120000,
       "object_id": "object_13",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_14",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_15",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_16",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_17",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_18",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_19",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_20",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_21",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 120000,
+      "object_id": "object_22",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_11",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_12",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_13",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_14",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_15",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_16",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_17",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_18",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_19",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_20",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_21",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 150000,
+      "object_id": "object_22",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_11",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_12",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_13",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_14",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_15",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_16",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_17",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_18",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_19",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_20",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_21",
+      "expected_state": "consistent",
+      "required_topics": [
+        "agreement",
+        "source_references",
+        "limits_of_observation"
+      ],
+      "forbidden_claims": [
+        "hostile_intent",
+        "unobserved_confirmation",
+        "future_evidence"
+      ]
+    },
+    {
+      "at_ms": 180000,
+      "object_id": "object_22",
       "expected_state": "consistent",
       "required_topics": [
         "agreement",

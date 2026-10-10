@@ -56,14 +56,12 @@
         <div class="map-column">
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
-            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button><button type="button" id="motion-toggle" class="is-active" aria-pressed="true" data-i18n="motion.toggle">Simulation motion</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
+            <div class="map-mode-bar"><div class="map-mode-buttons" aria-label="Map type" data-i18n-aria-label="mapType"><button type="button" id="site-plan-button" class="is-active" aria-pressed="true" data-i18n="sitePlan">Site plan</button><button type="button" id="region-map-button" aria-pressed="false" data-i18n="regionalMap">Map + synthetic site</button><button type="button" id="radar-toggle" class="is-active" aria-pressed="true" data-i18n="radar.toggle">Radar overlay</button></div><span data-i18n="mapNote">Fictional site replaces map features inside its marked footprint. Surrounding map is real.</span></div>
             <div id="map" class="map" aria-label="Synthetic site plan or synthetic overlay on a real map" data-i18n-aria-label="mapLabel">
               <div id="map-tiles" aria-hidden="true"></div>
               <svg id="map-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
               <svg id="radar-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
               <div id="map-markers"></div>
-              <svg id="motion-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
-              <div id="motion-status" class="motion-status" role="status"></div>
               <div id="radar-status" class="radar-status" role="status"></div>
               <div class="map-label"><span class="live-dot" aria-hidden="true"></span><span data-i18n="syntheticSite">Synthetic site · Not a real facility location</span></div>
               <div class="map-controls" aria-label="Map controls" data-i18n-aria-label="mapControls">
@@ -78,7 +76,7 @@
 
           <section class="panel playback-panel" aria-label="Scenario playback" data-i18n-aria-label="scenarioPlayback">
             <div class="playback-top"><div class="playback-title"><span class="eyebrow" data-i18n="scenarioTime">SCENARIO TIME</span><output id="time-label" for="timeline">--:--</output></div><div class="playback-actions"><button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button><button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button></div></div>
-            <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="120000" step="1000" value="0">
+            <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="180000" step="1000" value="0">
             <div class="playback-bottom"><span data-i18n="timelineHelp">Scrub the timeline to compare observations.</span><div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div></div>
           </section>
         </div>

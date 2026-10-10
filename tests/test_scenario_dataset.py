@@ -17,32 +17,53 @@ class DatasetTests(unittest.TestCase):
 
     def test_all_fixtures_match_rubric(self):
         self.assertEqual(validate(self.root), {
-            "cases": 12, "scene_groups": 4, "observations": 324, "checkpoints": 144,
+            "cases": 3, "scene_groups": 3, "observations": 1980, "checkpoints": 360,
         })
 
-    def test_briefings_match_case_objects_timing_and_actual_branch_behavior(self):
+    def test_briefings_match_distinct_scenarios(self):
         document = read_json(self.root / "briefings.json")
         self.assertTrue(document["author_preview"])
-        self.assertEqual(len(document["cases"]), 12)
-        self.assertEqual(len({b["case_id"] for b in document["cases"]}), 12)
-        for brief in document["cases"]:
+        self.assertEqual(len(document["cases"]), 3)
+        self.assertEqual([b["case_id"] for b in document["cases"] if b["scenario_type"] == "load_test"], ["case_003"])
+        for brief, count in zip(document["cases"], (12, 24, 36)):
             public = self.public(brief["case_id"])
             self.assertEqual(brief["object_ids"], public["object_ids"])
-            self.assertEqual(brief["duration_ms"], public["duration_ms"])
-            self.assertEqual([s["at_ms"] for s in brief["timeline"]], [0, 30000, 60000, 90000, 120000])
-            self.assertEqual(brief["sample_interval_ms"], 30000)
-            for at_ms in (60000, 90000, 120000):
-                observed = snapshot(public, at_ms)
-                if brief["variant"] == "contradictory":
-                    obj = brief["comparison_object"]
-                    self.assertEqual(information_state(observed, obj), "contradictory")
-                    labels = {r["source_id"]: r["marker_label"] for r in observed["observations"]
-                              if r["object_id"] == obj and r["observed_at_ms"] == at_ms}
-                    self.assertEqual(labels, {"channel_a": brief["original_marker"], "channel_b": "diamond"})
-                else:
-                    for obj in brief["object_ids"]:
-                        self.assertEqual(information_state(observed, obj), brief["variant"])
-            self.assertEqual(public["contexts"][1]["published_at_ms"], 90000)
+            self.assertEqual(brief["object_count"], count)
+            self.assertEqual(brief["duration_ms"], 180000)
+            self.assertEqual(brief["sample_interval_ms"], 10000)
+            for field in ("name", "summary", "objective", "composition", "count_basis"):
+                self.assertEqual(set(brief[field]), {"en", "ko"})
+            self.assertTrue(all(set(step["text"]) == {"en", "ko"} for step in brief["timeline"]))
+
+    def test_initial_receipts_are_staggered_and_no_unknown_ids_or_context_leak(self):
+        for case in ("case_001", "case_002", "case_003"):
+            public = self.public(case)
+            empty = snapshot(public, 9999)
+            self.assertEqual(empty["object_ids"], [])
+            self.assertEqual(empty["contexts"], [])
+            first = snapshot(public, 10000)
+            self.assertGreater(len(first["object_ids"]), 0)
+            self.assertLess(len(first["object_ids"]), len(public["object_ids"]))
+            self.assertEqual(set(first["object_ids"]), {r["object_id"] for r in first["observations"]})
+            self.assertEqual(information_state(first, "object_11"), "missing")
+            self.assertEqual(information_state(snapshot(public, 14000), "object_11"), "consistent")
+
+    def test_delayed_older_report_does_not_replace_newer_observation(self):
+        public = self.public()
+        delayed = next(r for r in public["observations"] if r["object_id"] == "object_11"
+                       and r["source_id"] == "channel_b" and r["observed_at_ms"] == 40000)
+        self.assertEqual(delayed["available_at_ms"], 55000)
+        self.assertEqual(information_state(snapshot(public, 40000), "object_11"), "not_comparable")
+        self.assertEqual(information_state(snapshot(public, 55000), "object_11"), "consistent")
+
+    def test_outage_and_conflicting_labels_recover(self):
+        for case in ("case_002", "case_003"):
+            payload = snapshot(self.public(case), 130000)
+            self.assertTrue(all(information_state(payload, obj) == "consistent" for obj in payload["object_ids"]))
+        payload = snapshot(self.public("case_002"), 90000)
+        states = [information_state(payload, obj) for obj in payload["object_ids"]]
+        self.assertEqual(states.count("contradictory"), 6)
+        self.assertEqual(states.count("consistent"), 18)
 
     def test_regeneration_is_byte_identical(self):
         before = {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob("*.json")}
@@ -60,14 +81,14 @@ class DatasetTests(unittest.TestCase):
     def test_observation_waits_for_arrival(self):
         public = self.public()
         public["observations"][0]["available_at_ms"] = 40_000
-        self.assertNotIn("obs_001", [row["id"] for row in snapshot(public, 30_000)["observations"]])
-        self.assertIn("obs_001", [row["id"] for row in snapshot(public, 40_000)["observations"]])
+        self.assertNotIn("obs_0001", [row["id"] for row in snapshot(public, 30_000)["observations"]])
+        self.assertIn("obs_0001", [row["id"] for row in snapshot(public, 40_000)["observations"]])
 
     def test_export_uses_allowlist(self):
         public = self.public()
         public["expected_state"] = "secret"
         public["observations"][0]["ground_truth"] = "secret"
-        payload = snapshot(public, 0)
+        payload = snapshot(public, 10000)
         self.assertNotIn("expected_state", payload)
         self.assertNotIn("ground_truth", payload["observations"][0])
 
@@ -76,7 +97,7 @@ class DatasetTests(unittest.TestCase):
         obj = payload["object_ids"][0]
         self.assertEqual(information_state(payload, obj), "missing")
         self.assertEqual(max(row["observed_at_ms"] for row in payload["observations"]
-                             if row["source_id"] == "channel_b"), 30_000)
+                             if row["source_id"] == "channel_b"), 50_000)
 
     def test_each_branch_has_independently_expected_state(self):
         expected = {"case_001": "consistent", "case_002": "contradictory", "case_003": "missing"}
@@ -92,15 +113,15 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(information_state(payload, "object_11"), "not_comparable")
 
     def test_stale_health_and_observations_cannot_confirm(self):
-        payload = snapshot(self.public(), 0)
-        payload["at_ms"] = 45_001
+        payload = snapshot(self.public(), 14000)
+        payload["at_ms"] = 55_001
         self.assertEqual(information_state(payload, "object_11"), "missing")
 
-    def test_split_leakage_is_rejected(self):
+    def test_demo_cannot_claim_holdout_validation(self):
         manifest = read_json(self.root / "manifest.json")
         manifest["cases"][0]["split"] = "holdout"
         write_json(self.root / "manifest.json", manifest)
-        with self.assertRaisesRegex(ValueError, "Split leakage"):
+        with self.assertRaisesRegex(ValueError, "not a holdout"):
             validate(self.root)
 
     def test_duplicate_evidence_is_rejected(self):
@@ -111,7 +132,7 @@ class DatasetTests(unittest.TestCase):
             validate(self.root)
 
     def test_invalid_time_is_rejected(self):
-        for at_ms in (-1, 120_001, 1.5, True):
+        for at_ms in (-1, 180_001, 1.5, True):
             with self.assertRaises(ValueError):
                 snapshot(self.public(), at_ms)
 

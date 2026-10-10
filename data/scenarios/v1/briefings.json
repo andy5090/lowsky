@@ -2,19 +2,50 @@
   "schema_version": "1.0",
   "synthetic": true,
   "author_preview": true,
-  "purpose": "Operator-requested scripted scenario overview, including future events. Not live evidence or agent input.",
+  "purpose": "Scripted scenario overview includes future events; not live evidence or agent input.",
   "cases": [
     {
       "case_id": "case_001",
       "group": 1,
       "variant": "consistent",
+      "scenario_type": "observation_narrative",
+      "name": {
+        "en": "First signals in mixed traffic",
+        "ko": "혼재된 비행체의 첫 탐지"
+      },
+      "summary": {
+        "en": "12 synthetic aerial objects arrive in the observation feed gradually. Initial single-source and delayed reports require cautious review.",
+        "ko": "합성 비행체 12개가 관측 피드에 순차 등장합니다. 초기 단일 채널과 지연 보고를 신중하게 검토합니다."
+      },
+      "objective": {
+        "en": "Separate first receipt, observation time and corroboration; an observed track does not establish identity or intent.",
+        "ko": "최초 수신·관측 시각·교차 확인을 구분합니다. 탐지만으로 정체나 의도를 확정하지 않습니다."
+      },
+      "composition": {
+        "en": "12 small aerial objects with three synthetic marker classes; labels are observations, not hostile or civilian classifications.",
+        "ko": "소형 비행체 12개와 세 가지 합성 표식. 표식은 관측값이며 적대·민간 분류가 아닙니다."
+      },
+      "count_basis": {
+        "en": "Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.",
+        "ko": "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."
+      },
+      "object_count": 12,
       "object_ids": [
         "object_11",
         "object_12",
-        "object_13"
+        "object_13",
+        "object_14",
+        "object_15",
+        "object_16",
+        "object_17",
+        "object_18",
+        "object_19",
+        "object_20",
+        "object_21",
+        "object_22"
       ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
+      "duration_ms": 180000,
+      "sample_interval_ms": 10000,
       "source_ids": [
         "channel_a",
         "channel_b"
@@ -24,37 +55,109 @@
       "timeline": [
         {
           "at_ms": 0,
-          "key": "brief.start"
+          "text": {
+            "en": "Replay begins with no received tracks.",
+            "ko": "수신된 대상 없이 재생을 시작합니다."
+          }
         },
         {
-          "at_ms": 30000,
-          "key": "brief.samples"
+          "at_ms": 10000,
+          "text": {
+            "en": "First receipt; further candidates appear in staggered batches.",
+            "ko": "첫 탐지 수신 후 대상이 순차 등장합니다."
+          }
+        },
+        {
+          "at_ms": 40000,
+          "text": {
+            "en": "Some channel B reports arrive 15 seconds late; compare observation and receipt time.",
+            "ko": "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
+          }
         },
         {
           "at_ms": 60000,
-          "key": "brief.event.consistent"
+          "text": {
+            "en": "All 12 candidates have a first report; corroboration may still be pending.",
+            "ko": "12개 대상의 최초 보고가 수신되며 일부 교차 확인은 대기 중입니다."
+          }
         },
         {
           "at_ms": 90000,
-          "key": "brief.context"
+          "text": {
+            "en": "A previously unpublished review notice becomes available.",
+            "ko": "공개되지 않았던 검토 공지가 수신됩니다."
+          }
         },
         {
-          "at_ms": 120000,
-          "key": "brief.end"
+          "at_ms": 130000,
+          "text": {
+            "en": "Both channels provide agreeing reports; review outstanding alerts.",
+            "ko": "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다."
+          }
+        },
+        {
+          "at_ms": 180000,
+          "text": {
+            "en": "Replay ends; assess evidence references, uncertainty and source recovery.",
+            "ko": "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다."
+          }
         }
       ]
     },
     {
       "case_id": "case_002",
-      "group": 1,
+      "group": 2,
       "variant": "contradictory",
+      "scenario_type": "observation_narrative",
+      "name": {
+        "en": "Conflicting identification and reconfirmation",
+        "ko": "식별 상충과 재확인"
+      },
+      "summary": {
+        "en": "24 synthetic aerial objects provide mixed background traffic. Channel B reports different labels for six tracks from 01:00 to 02:00, followed by reconfirmation.",
+        "ko": "합성 비행체 24개가 혼재된 배경을 구성합니다. 01:00~02:00 동안 채널 B가 6개 대상의 표식을 다르게 보고하고 이후 재확인합니다."
+      },
+      "objective": {
+        "en": "Preserve both sources and compare timestamps before resolving a label disagreement; review the return to agreement.",
+        "ko": "표식 불일치를 판단하기 전에 양측 근거와 시각을 보존하고, 보고가 다시 일치하는 과정을 검토합니다."
+      },
+      "composition": {
+        "en": "24 synthetic objects; six conflicting tracks, with the remaining tracks as comparison traffic.",
+        "ko": "합성 비행체 24개. 6개 대상에서 상충 보고가 발생하고 나머지는 비교 대상입니다."
+      },
+      "count_basis": {
+        "en": "Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.",
+        "ko": "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."
+      },
+      "object_count": 24,
       "object_ids": [
         "object_11",
         "object_12",
-        "object_13"
+        "object_13",
+        "object_14",
+        "object_15",
+        "object_16",
+        "object_17",
+        "object_18",
+        "object_19",
+        "object_20",
+        "object_21",
+        "object_22",
+        "object_23",
+        "object_24",
+        "object_25",
+        "object_26",
+        "object_27",
+        "object_28",
+        "object_29",
+        "object_30",
+        "object_31",
+        "object_32",
+        "object_33",
+        "object_34"
       ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
+      "duration_ms": 180000,
+      "sample_interval_ms": 10000,
       "source_ids": [
         "channel_a",
         "channel_b"
@@ -64,317 +167,121 @@
       "timeline": [
         {
           "at_ms": 0,
-          "key": "brief.start"
+          "text": {
+            "en": "Replay begins with no received tracks.",
+            "ko": "수신된 대상 없이 재생을 시작합니다."
+          }
         },
         {
-          "at_ms": 30000,
-          "key": "brief.samples"
+          "at_ms": 10000,
+          "text": {
+            "en": "First receipt; further candidates appear in staggered batches.",
+            "ko": "첫 탐지 수신 후 대상이 순차 등장합니다."
+          }
+        },
+        {
+          "at_ms": 40000,
+          "text": {
+            "en": "Some channel B reports arrive 15 seconds late; compare observation and receipt time.",
+            "ko": "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
+          }
         },
         {
           "at_ms": 60000,
-          "key": "brief.event.contradictory"
+          "text": {
+            "en": "Channel B begins conflicting labels on six tracks.",
+            "ko": "채널 B에서 6개 대상의 표식 상충이 시작됩니다."
+          }
         },
         {
           "at_ms": 90000,
-          "key": "brief.context"
+          "text": {
+            "en": "A previously unpublished review notice becomes available.",
+            "ko": "공개되지 않았던 검토 공지가 수신됩니다."
+          }
         },
         {
-          "at_ms": 120000,
-          "key": "brief.end"
+          "at_ms": 130000,
+          "text": {
+            "en": "Both channels provide agreeing reports; review outstanding alerts.",
+            "ko": "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다."
+          }
+        },
+        {
+          "at_ms": 180000,
+          "text": {
+            "en": "Replay ends; assess evidence references, uncertainty and source recovery.",
+            "ko": "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다."
+          }
         }
       ]
     },
     {
       "case_id": "case_003",
-      "group": 1,
+      "group": 3,
       "variant": "missing",
+      "scenario_type": "load_test",
+      "name": {
+        "en": "Monitoring load test: source loss and recovery",
+        "ko": "모니터링 부하 시험: 채널 단절·복구"
+      },
+      "summary": {
+        "en": "36 aerial objects exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.",
+        "ko": "비행체 36개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."
+      },
+      "objective": {
+        "en": "Retain last evidence during loss, distinguish missing corroboration from disappearance, and verify recovery without inventing tracks.",
+        "ko": "단절 중 마지막 근거를 보존하고 교차 확인 불가와 대상 소멸을 구분하며, 근거를 만들어내지 않고 복구를 확인합니다."
+      },
+      "composition": {
+        "en": "36 synthetic objects sharing two observation channels; the outage affects one channel, not world motion.",
+        "ko": "합성 비행체 36개가 두 관측 채널을 공유합니다. 단절은 한 관측 채널에만 영향을 주며 실제 움직임은 계속됩니다."
+      },
+      "count_basis": {
+        "en": "Object counts are synthetic scene assumptions, not measured attack sizes; only case_003 is a load test.",
+        "ko": "대상 수는 장면 구성을 위한 합성 가정이며 실측 공격 규모가 아닙니다. 부하 시험은 case_003만 해당합니다."
+      },
+      "object_count": 36,
       "object_ids": [
         "object_11",
         "object_12",
-        "object_13"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.missing"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_004",
-      "group": 2,
-      "variant": "consistent",
-      "object_ids": [
+        "object_13",
+        "object_14",
+        "object_15",
+        "object_16",
+        "object_17",
+        "object_18",
+        "object_19",
+        "object_20",
         "object_21",
         "object_22",
-        "object_23"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.consistent"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_005",
-      "group": 2,
-      "variant": "contradictory",
-      "object_ids": [
-        "object_21",
-        "object_22",
-        "object_23"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": "object_22",
-      "original_marker": "square",
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.contradictory"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_006",
-      "group": 2,
-      "variant": "missing",
-      "object_ids": [
-        "object_21",
-        "object_22",
-        "object_23"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.missing"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_007",
-      "group": 3,
-      "variant": "consistent",
-      "object_ids": [
+        "object_23",
+        "object_24",
+        "object_25",
+        "object_26",
+        "object_27",
+        "object_28",
+        "object_29",
+        "object_30",
         "object_31",
         "object_32",
-        "object_33"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.consistent"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_008",
-      "group": 3,
-      "variant": "contradictory",
-      "object_ids": [
-        "object_31",
-        "object_32",
-        "object_33"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": "object_33",
-      "original_marker": "triangle",
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.contradictory"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_009",
-      "group": 3,
-      "variant": "missing",
-      "object_ids": [
-        "object_31",
-        "object_32",
-        "object_33"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.missing"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_010",
-      "group": 4,
-      "variant": "consistent",
-      "object_ids": [
+        "object_33",
+        "object_34",
+        "object_35",
+        "object_36",
+        "object_37",
+        "object_38",
+        "object_39",
+        "object_40",
         "object_41",
         "object_42",
-        "object_43"
+        "object_43",
+        "object_44",
+        "object_45",
+        "object_46"
       ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
+      "duration_ms": 180000,
+      "sample_interval_ms": 10000,
       "source_ids": [
         "channel_a",
         "channel_b"
@@ -384,103 +291,52 @@
       "timeline": [
         {
           "at_ms": 0,
-          "key": "brief.start"
+          "text": {
+            "en": "Replay begins with no received tracks.",
+            "ko": "수신된 대상 없이 재생을 시작합니다."
+          }
         },
         {
-          "at_ms": 30000,
-          "key": "brief.samples"
+          "at_ms": 10000,
+          "text": {
+            "en": "First receipt; further candidates appear in staggered batches.",
+            "ko": "첫 탐지 수신 후 대상이 순차 등장합니다."
+          }
         },
         {
-          "at_ms": 60000,
-          "key": "brief.event.consistent"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_011",
-      "group": 4,
-      "variant": "contradictory",
-      "object_ids": [
-        "object_41",
-        "object_42",
-        "object_43"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": "object_41",
-      "original_marker": "circle",
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
-        },
-        {
-          "at_ms": 30000,
-          "key": "brief.samples"
+          "at_ms": 40000,
+          "text": {
+            "en": "Some channel B reports arrive 15 seconds late; compare observation and receipt time.",
+            "ko": "일부 채널 B 보고가 15초 늦게 도착합니다. 관측·수신 시각을 비교합니다."
+          }
         },
         {
           "at_ms": 60000,
-          "key": "brief.event.contradictory"
+          "text": {
+            "en": "Channel B stops reporting. Preserve the last received evidence.",
+            "ko": "채널 B의 보고가 중단됩니다. 마지막 수신 근거를 보존합니다."
+          }
         },
         {
           "at_ms": 90000,
-          "key": "brief.context"
+          "text": {
+            "en": "A previously unpublished review notice becomes available.",
+            "ko": "공개되지 않았던 검토 공지가 수신됩니다."
+          }
         },
         {
-          "at_ms": 120000,
-          "key": "brief.end"
-        }
-      ]
-    },
-    {
-      "case_id": "case_012",
-      "group": 4,
-      "variant": "missing",
-      "object_ids": [
-        "object_41",
-        "object_42",
-        "object_43"
-      ],
-      "duration_ms": 120000,
-      "sample_interval_ms": 30000,
-      "source_ids": [
-        "channel_a",
-        "channel_b"
-      ],
-      "comparison_object": null,
-      "original_marker": null,
-      "timeline": [
-        {
-          "at_ms": 0,
-          "key": "brief.start"
+          "at_ms": 130000,
+          "text": {
+            "en": "Both channels provide agreeing reports; review outstanding alerts.",
+            "ko": "두 채널이 일치하는 보고를 제공합니다. 남은 경고를 검토합니다."
+          }
         },
         {
-          "at_ms": 30000,
-          "key": "brief.samples"
-        },
-        {
-          "at_ms": 60000,
-          "key": "brief.event.missing"
-        },
-        {
-          "at_ms": 90000,
-          "key": "brief.context"
-        },
-        {
-          "at_ms": 120000,
-          "key": "brief.end"
+          "at_ms": 180000,
+          "text": {
+            "en": "Replay ends; assess evidence references, uncertainty and source recovery.",
+            "ko": "재생 종료 후 근거 참조·불확실성·채널 복구를 평가합니다."
+          }
         }
       ]
     }

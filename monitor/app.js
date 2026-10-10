@@ -1,5 +1,4 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
-import {motionFrame} from './motion.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 const $ = id => document.getElementById(id);
@@ -7,6 +6,7 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 let language = 'en';
 try { language = readLanguage(localStorage); } catch { /* Storage may be unavailable. */ }
 const t = (key, values) => translate(language, key, values);
+const localized = value => value?.[language] || value?.en || '';
 const qualityLabel = quality => t(`quality.${quality}`);
 const sourceLabel = status => t(`source.${status}`);
 let connected = null, connectionMessage = '';
@@ -14,7 +14,6 @@ const fmt = ms => `${String(Math.floor(ms / 60000)).padStart(2,'0')}:${String(Ma
 let briefings = [], briefingSignature = '';
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
-let motionVisible = true, preview = null, previewLoading = false;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
@@ -56,7 +55,6 @@ function render(data) {
   state = data; clockReceivedAt = performance.now(); connection(true);
   renderPlayback(data);
   renderBriefing();
-  loadPreview();
   const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews]);
   if (signature !== dataSignature) {
     dataSignature = signature;
@@ -70,9 +68,10 @@ function renderPlayback(data) {
   $('sim-status').classList.toggle('running', data.playing);
   $('play-button').textContent = data.playing ? t('pause') : t('play');
   $('time-label').textContent = `${fmt(data.at_ms)} / ${fmt(data.duration_ms)}`;
+  $('timeline').max = data.duration_ms;
   if(document.activeElement !== $('timeline')) $('timeline').value = data.at_ms;
   $('speed-select').value = data.speed;
-  drawRadar(data.at_ms); drawMotion(data.at_ms);
+  drawRadar(data.at_ms);
 }
 function select(id) { selected = id; renderDetails(); drawMap(); }
 function renderDetails() {
@@ -85,6 +84,8 @@ function renderDetails() {
     $('track-detail').innerHTML = `<h3>${escape(track.object_id)}</h3><p>${qualityLabel(track.quality)} · ${t('sampleInterval')}</p><dl class="detail-grid"><dt>${t('lastObservation')}</dt><dd>${track.observed_at_ms===null?t('none'):fmt(track.observed_at_ms)}</dd><dt>${t('positionSource')}</dt><dd>${escape(track.position_source || t('none'))}</dd><dt>${t('localXZ')}</dt><dd>${track.position ? `${track.position[0].toFixed(0)} / ${track.position[2].toFixed(0)} m` : t('none')}</dd></dl><button class="button button-secondary" id="focus-track">${t('focusTrack')}</button><div class="evidence-rows">${track.records.map(r=>`<p><strong>${escape(r.source_id)}</strong> · ${fmt(r.observed_at_ms)} · ${escape(t(`marker.${r.marker_label}`))}<br><small>${t('evidence')} ${escape(r.id)}</small></p>`).join('')}</div>`;
     $('focus-track').onclick = () => { if(track.position){plan.x=track.position[0];plan.z=track.position[2];plan.zoom=8;setMode('site');} };
   }
+  if(!track) $('track-detail').innerHTML = `<p class="empty-state">${t('awaitingDetection')}</p>`;
+  if(!state.tracks.length) $('track-list').innerHTML = `<p class="empty-state">${t('awaitingDetection')}</p>`;
   const pending = state.alerts.filter(a=>!a.acknowledged).length;
   $('alert-count').textContent = pending;
   const alertHTML = state.alerts.map(a=>{
@@ -146,20 +147,27 @@ function drawSite() {
     const active=z.positive_sources>0,color=active?'#dfb86a':'#8bc9cf';
     svg+=`<circle cx="${cx}" cy="${cy}" r="${z.radius_m*s}" fill="${color}18" stroke="${color}" stroke-width="1.5" stroke-dasharray="4 5"/>`;
   }
+  const boundary=site.perimeter.polygon.map(([x,z])=>point(x,z).join(',')).join(' ');
   if(mode==='region'){
-    const margin=site.terrain_grading.margin_m;
-    svg+=rect(0,0,site.perimeter.width_m+margin*2,site.perimeter.length_m+margin*2,'#263c32','#c4d39a','stroke-width="2"');
-    const [zx,zy]=point(-site.perimeter.width_m/2-margin,site.perimeter.length_m/2+margin);
+    svg+=`<polygon points="${boundary}" fill="#263c32" stroke="#263c32" stroke-width="${site.terrain_grading.margin_m*2*s}" stroke-linejoin="round"/>`;
+    const [zx,zy]=point(-site.perimeter.width_m/2,site.perimeter.length_m/2+site.terrain_grading.margin_m);
     svg+=`<text x="${zx+5}" y="${zy+17}" fill="#e2eacb" stroke="#14261c" stroke-width="3" paint-order="stroke" font-size="11">${t('site.modified')}</text>`;
   }
-  svg+=rect(0,0,site.perimeter.width_m,site.perimeter.length_m,mode==='region'?'#263c32':'#172b2e',mode==='region'?'#c4d39a':'#b3c38b','stroke-width="2.5" stroke-dasharray="6 4"');
+  svg+=`<polygon points="${boundary}" fill="${mode==='region'?'#263c32':'#172b2e'}" stroke="#b3c38b" stroke-width="2" stroke-dasharray="6 4"/>`;
+  for(const [paths,color] of [[site.roads,'#697569'],[site.taxiways,'#435b60']]){
+    for(const path of paths){
+      const pts=path.points.map(([x,z])=>point(x,z).join(',')).join(' ');
+      svg+=`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${Math.max(1,path.width_m*s)}" stroke-linejoin="round"/>`;
+      if(paths===site.taxiways)svg+=`<polyline points="${pts}" fill="none" stroke="#c5b77a" stroke-width="0.6"/>`;
+    }
+  }
   const [sx,sy]=point(-site.perimeter.width_m/2,-site.perimeter.length_m/2);
   svg+=`<text x="${sx+8}" y="${sy+17}" fill="#c4d39a" font-size="11" font-weight="600">${t('sitePlan')}</text>`;
-  const r=site.runway,a=site.apron;
+  const r=site.runway;
   svg+=rect(r.center[0],r.center[2],r.width_m,r.length_m,'#354c58','#8fa5ad');
   const [rx,y1]=point(r.center[0],r.center[2]-r.length_m/2+80),[,y2]=point(r.center[0],r.center[2]+r.length_m/2-80);
   svg+=`<line x1="${rx}" y1="${y1}" x2="${rx}" y2="${y2}" stroke="#d9e4e3" stroke-width="1" stroke-dasharray="8 8"/>`;
-  svg+=rect(a.center[0],a.center[2],a.width_m,a.length_m,'#314743','#78938d');
+  for(const a of site.aprons)svg+=rect(a.center[0],a.center[2],a.width_m,a.length_m,'#314743','#78938d');
   const [lx,ly]=point(r.center[0]+80,r.center[2]+r.length_m/2);
   svg+=`<text x="${lx}" y="${ly}" fill="#acc2c8" font-size="10">${t('runway',{length:r.length_m.toLocaleString(language),width:r.width_m})}</text>`;
   for(const f of site.facilities){
@@ -218,7 +226,7 @@ function drawRegion() {
   }
   for(const [key,img] of tileImages) if(!needed.has(key)){img.remove();tileImages.delete(key);}
 }
-function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion(); drawRadar(state?.at_ms || 0); drawMotion(state?.at_ms || 0);}
+function drawMap(){if(!config)return; if(mode==='site')drawSite();else drawRegion(); drawRadar(state?.at_ms || 0);}
 function drawRadar(atMs) {
   if(!config || !state)return;
   const layer=$('radar-overlay');layer.toggleAttribute('hidden',!radarVisible);$('radar-status').hidden=!radarVisible;
@@ -242,41 +250,9 @@ function drawRadar(atMs) {
   if($('radar-status').textContent!==status)$('radar-status').textContent=status;
 }
 $('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
-async function loadPreview() {
-  if(!motionVisible || !state || preview?.case_id===state.case_id || previewLoading)return;
-  previewLoading=true;
-  try {
-    const data=await api('/api/preview');
-    if(data.case_id===state.case_id)preview=data;
-  } catch { preview=null; }
-  finally { previewLoading=false; drawMotion(state?.at_ms || 0); }
-}
-function drawMotion(atMs) {
-  const layer=$('motion-overlay');
-  layer.toggleAttribute('hidden',!motionVisible);
-  $('motion-status').hidden=!motionVisible;
-  if(!config || !state || !motionVisible)return;
-  const ready=preview?.case_id===state.case_id;
-  $('motion-status').textContent=t(ready?'motion.note':'motion.loading');
-  layer.setAttribute('viewBox',`0 0 ${map.clientWidth} ${map.clientHeight}`);
-  layer.innerHTML=ready?motionFrame(preview.world,atMs).map(drone=>{
-    const [x,y]=point(drone.position[0],drone.position[2]);
-    const trail=drone.trail.map(p=>point(p[0],p[2]).join(',')).join(' ');
-    return `<polyline points="${trail}" fill="none" stroke="#edb0fb" stroke-width="2" opacity=".65"/>
-      <g class="sim-drone" data-object="${escape(drone.object_id)}" transform="translate(${x} ${y})"><g transform="rotate(${drone.heading})" fill="#edb0fb" stroke="#2b1537" stroke-width="1.5"><path d="M-6 -6L6 6M6 -6L-6 6" stroke="#edb0fb" stroke-width="2"/><circle cx="-6" cy="-6" r="3"/><circle cx="6" cy="-6" r="3"/><circle cx="-6" cy="6" r="3"/><circle cx="6" cy="6" r="3"/><path d="M0 -5L3 3H-3Z"/></g>${drone.object_id===selected?`<text x="12" y="24" fill="#f1c9fa" font-size="10" stroke="#201729" stroke-width="3" paint-order="stroke">SIM ${escape(drone.object_id)}</text>`:''}</g>`;
-  }).join(''):'';
-}
-$('motion-toggle').onclick=()=>{
-  motionVisible=!motionVisible;
-  $('motion-toggle').classList.toggle('is-active',motionVisible);
-  $('motion-toggle').setAttribute('aria-pressed',motionVisible);
-  loadPreview();drawMotion(state?.at_ms || 0);
-};
 function animateRadar(now) {
   if(state?.playing && radarVisible && connected && !$('monitor-view').hidden)
     drawRadar(replayTime(state,clockReceivedAt,now,connected));
-  if(state?.playing && motionVisible && connected && !$('monitor-view').hidden)
-    drawMotion(replayTime(state,clockReceivedAt,now,connected));
   requestAnimationFrame(animateRadar);
 }
 requestAnimationFrame(animateRadar);
@@ -308,7 +284,7 @@ $('reset-button').onclick=()=>control({action:'reset'});
 $('case-select').onchange=e=>control({action:'case',case_id:e.target.value});
 $('speed-select').onchange=e=>control({action:'speed',speed:Number(e.target.value)});
 $('timeline').onchange=e=>control({action:'seek',at_ms:Number(e.target.value)});
-$('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.value))} / 02:00`;
+$('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.value))} / ${fmt(state?.duration_ms || 0)}`;
 for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>{
   const monitor=tab.dataset.view==='monitor';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
   for(const b of document.querySelectorAll('[data-view]')){b.classList.toggle('is-active',b===tab);if(b===tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();
@@ -321,18 +297,18 @@ function renderBriefing() {
   if(signature===briefingSignature)return;
   briefingSignature=signature;
   const values={group:brief.group,object:brief.comparison_object || '',marker:brief.original_marker?t(`marker.${brief.original_marker}`):'',seconds:brief.sample_interval_ms/1000};
-  $('brief-title').textContent=`${brief.case_id} · ${t(`brief.title.${brief.variant}`,values)}`;
-  $('brief-purpose').textContent=t(`brief.purpose.${brief.variant}`,values);
+  $('brief-title').textContent=`${brief.case_id} · ${localized(brief.name) || t(`brief.title.${brief.variant}`,values)}`;
+  $('brief-purpose').textContent=localized(brief.summary) || t(`brief.purpose.${brief.variant}`,values);
   $('brief-meta').textContent=t('brief.meta',{duration:fmt(brief.duration_ms),objects:brief.object_ids.length,sources:brief.source_ids.length});
-  $('brief-timeline').innerHTML=brief.timeline.map(step=>`<li><time>${fmt(step.at_ms)}</time><span>${escape(t(step.key,values))}</span></li>`).join('');
-  $('brief-review').textContent=t(`brief.review.${brief.variant}`,values);
-  $('brief-objects').textContent=t('brief.objects',{objects:brief.object_ids.join(', '),sources:brief.source_ids.join(', ')});
+  $('brief-timeline').innerHTML=brief.timeline.map(step=>`<li><time>${fmt(step.at_ms)}</time><span>${escape(localized(step.text) || t(step.key,values))}</span></li>`).join('');
+  $('brief-review').textContent=localized(brief.objective) || t(`brief.review.${brief.variant}`,values);
+  $('brief-objects').textContent=[localized(brief.composition),localized(brief.count_basis)].filter(Boolean).join(' ');
 }
 
 function renderCases() {
   if (!config) return;
   const current = state?.case_id || $('case-select').value;
-  $('case-select').innerHTML = config.cases.map(c => `<option value="${escape(c.case_id)}">${escape(c.case_id)} · ${t(`variant.${c.variant}`)}</option>`).join('');
+  $('case-select').innerHTML = config.cases.map(c => `<option value="${escape(c.case_id)}">${escape(c.case_id)} · ${escape(localized(briefings.find(b=>b.case_id===c.case_id)?.name) || t(`variant.${c.variant}`))}</option>`).join('');
   if (current) $('case-select').value = current;
 }
 function applyLanguage(next, persist = false) {
@@ -362,5 +338,5 @@ try{
   renderCases();
   Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});
   setMode('site');poll();
-  api('/api/briefings').then(data=>{briefings=data.cases;renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
+  api('/api/briefings').then(data=>{briefings=data.cases;renderCases();renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
 }catch(error){connection(false,'startServer');$('map-status').textContent=t('requestFailed');}

@@ -32,17 +32,36 @@ static func make(layout: Dictionary, materials: Dictionary) -> Node3D:
 			Detailed.box(marks, Vector3(1.7, 0.025, 30), center + Vector3(x, 0.155, side * (length * 0.5 - 30)), paint)
 	for index in range(floori((length - 140) / 60)):
 		Detailed.box(marks, Vector3(0.9, 0.025, 30), center + Vector3(0, 0.155, -length * 0.5 + 85 + index * 60), paint)
-	var apron: Dictionary = layout.apron
-	var apron_center = vector(apron.center)
-	var apron_surface = Detailed.box(root, Vector3(apron.width_m, 0.12, apron.length_m), apron_center + Vector3(0, 0.04, 0), materials.concrete)
-	apron_surface.name = "Apron"
-	# A simple visual connecting strip, not a taxi routing simulation.
-	var strip_start = center.x + width * 0.5
-	var strip_end = apron_center.x - float(apron.width_m) * 0.5
-	var strip = Detailed.box(root, Vector3(absf(strip_end - strip_start), 0.12, 23), Vector3((strip_start + strip_end) * 0.5, 0.04, apron_center.z), materials.asphalt)
-	strip.name = "ApronConnection"
+	var taxi_paint = StandardMaterial3D.new()
+	taxi_paint.albedo_color = Color("d4b64d")
+	taxi_paint.roughness = 1.0
+	for apron in layout.aprons:
+		var apron_surface = Detailed.box(root, Vector3(apron.width_m, 0.12, apron.length_m), vector(apron.center) + Vector3(0, 0.04, 0), materials.concrete)
+		apron_surface.name = apron.id
+		# Thin expansion joints make the scale of the paved apron legible.
+		for offset in range(20, int(apron.width_m), 20):
+			Detailed.box(apron_surface, Vector3(0.08, 0.012, apron.length_m), Vector3(-apron.width_m * 0.5 + offset, 0.067, 0), materials.dark_metal)
+	for taxiway in layout.taxiways:
+		add_path(root, taxiway, materials.asphalt, 0.115)
+		var line: Dictionary = taxiway.duplicate(true)
+		line.id += "_centerline"
+		line.width_m = 0.2
+		add_path(root, line, taxi_paint, 0.155)
+	for road in layout.roads:
+		add_path(root, road, materials.asphalt, 0.04)
 	add_perimeter(root, layout.perimeter, materials)
 	return root
+
+static func add_path(root: Node3D, path: Dictionary, material: Material, height: float) -> void:
+	var group = Node3D.new()
+	group.name = path.id
+	root.add_child(group)
+	for index in range(path.points.size() - 1):
+		var start = Vector3(path.points[index][0], height, path.points[index][1])
+		var end = Vector3(path.points[index + 1][0], height, path.points[index + 1][1])
+		var direction = end - start
+		var strip = Detailed.box(group, Vector3(direction.length(), 0.04, path.width_m), (start + end) * 0.5, material)
+		strip.rotation.y = -atan2(direction.z, direction.x)
 
 static func instances(root: Node3D, node_name: String, mesh: Mesh, transforms: Array[Transform3D], material: Material) -> MultiMeshInstance3D:
 	var multimesh = MultiMesh.new()
@@ -68,18 +87,21 @@ static func add_perimeter(root: Node3D, perimeter: Dictionary, materials: Dictio
 	fence.set_meta("width_m", width)
 	fence.set_meta("length_m", length)
 	fence.set_meta("height_m", height)
-	fence.set_meta("perimeter_m", 2 * (width + length))
-	var corners: Array[Vector3] = [Vector3(-width / 2, 0, -length / 2), Vector3(width / 2, 0, -length / 2), Vector3(width / 2, 0, length / 2), Vector3(-width / 2, 0, length / 2)]
+	var corners: Array[Vector3] = []
+	for point in perimeter.polygon:
+		corners.append(Vector3(point[0], 0, point[1]))
+	var perimeter_length = 0.0
 	var posts: Array[Transform3D] = []
 	var panels: Array[Transform3D] = []
 	var edge_material = StandardMaterial3D.new()
 	edge_material.albedo_color = Color("b4aa8e")
 	edge_material.roughness = 1.0
-	for side in range(4):
+	for side in range(corners.size()):
 		var start = corners[side]
-		var end = corners[(side + 1) % 4]
+		var end = corners[(side + 1) % corners.size()]
 		var direction = (end - start).normalized()
 		var side_length = start.distance_to(end)
+		perimeter_length += side_length
 		var segments = ceili(side_length / 10.0)
 		var step = side_length / segments
 		var center = (start + end) * 0.5
@@ -117,5 +139,7 @@ void fragment() {
 	panel_mesh.size = Vector2.ONE
 	var mesh_node = instances(fence, "WireMesh", panel_mesh, panels, mesh_material)
 	mesh_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	fence.set_meta("perimeter_m", perimeter_length)
+	fence.set_meta("vertex_count", corners.size())
 	fence.set_meta("post_count", posts.size())
 	fence.set_meta("panel_count", panels.size())

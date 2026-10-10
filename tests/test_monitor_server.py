@@ -55,12 +55,12 @@ class SimulationTests(SimulationFixture):
         self.assertEqual(self.sim.clock_state()["at_ms"], 15000)
 
     def test_end_clamps_and_play_starts_a_new_run(self):
-        self.sim.control({"action": "seek", "at_ms": 119000})
+        self.sim.control({"action": "seek", "at_ms": 179000})
         self.sim.control({"action": "play"})
         run_id = self.sim.clock_state()["run_id"]
         self.clock.advance(10)
         ended = self.sim.clock_state()
-        self.assertEqual(ended["at_ms"], 120000)
+        self.assertEqual(ended["at_ms"], 180000)
         self.assertFalse(ended["playing"])
         restarted = self.sim.control({"action": "play"})
         self.assertEqual(restarted["at_ms"], 0)
@@ -81,7 +81,7 @@ class SimulationTests(SimulationFixture):
     def test_invalid_controls_do_not_change_clock_revision_or_run(self):
         invalid = [
             {"action": "seek", "at_ms": value}
-            for value in (-1, 120001, True, 1.5, "3000", None)
+            for value in (-1, 180001, True, 1.5, "3000", None)
         ] + [
             {"action": "speed", "speed": value}
             for value in (0, 3, True, "2", None, float("nan"))
@@ -120,14 +120,14 @@ class SimulationTests(SimulationFixture):
     def test_delayed_arrival_never_leaks_into_track_or_history(self):
         public = self.sim.public[self.sim.case_id]
         for row in public["observations"]:
-            if row["observed_at_ms"] == 30000:
-                row["available_at_ms"] = 40000
+            if row["observed_at_ms"] >= 30000:
+                row["available_at_ms"] = max(row["available_at_ms"], 40000)
         before = self.sim.control({"action": "seek", "at_ms": 39999})
-        self.assertTrue(all(track["observed_at_ms"] == 0 for track in before["tracks"]))
-        self.assertTrue(all(row["observed_at_ms"] == 0
+        self.assertTrue(all(track["observed_at_ms"] == 20000 for track in before["tracks"]))
+        self.assertTrue(all(row["observed_at_ms"] <= 20000
                             for track in before["tracks"] for row in track["history"]))
         after = self.sim.control({"action": "seek", "at_ms": 40000})
-        self.assertTrue(all(track["observed_at_ms"] == 30000 for track in after["tracks"]))
+        self.assertTrue(all(track["observed_at_ms"] >= 30000 for track in after["tracks"]))
 
     def test_world_truth_and_author_annotations_are_not_exported(self):
         public = self.sim.public[self.sim.case_id]
@@ -147,11 +147,11 @@ class SimulationTests(SimulationFixture):
         public = self.sim.public[self.sim.case_id]
         for row in public["observations"]:
             if row["object_id"] == "object_11":
-                row["position"] = [100, 10, 200] if row["observed_at_ms"] == 0 else [300, 10, 400]
+                row["position"] = [100, 10, 200] if row["observed_at_ms"] == 10000 else [300, 10, 400]
         state = self.sim.control({"action": "seek", "at_ms": 15000})
         track = next(track for track in state["tracks"] if track["object_id"] == "object_11")
         self.assertEqual(track["position"], [100, 10, 200])
-        self.assertEqual(track["observed_at_ms"], 0)
+        self.assertEqual(track["observed_at_ms"], 10000)
         self.assertFalse(track["last_known"])
 
     def test_missing_channel_preserves_its_evidence_but_uses_online_position(self):
@@ -163,23 +163,26 @@ class SimulationTests(SimulationFixture):
             self.assertEqual(track["position_source"], "channel_a")
             self.assertEqual(track["observed_at_ms"], 90000)
             self.assertFalse(track["last_known"])
-            missing_record = next(r for r in track["records"] if r["source_id"] == "channel_b")
-            self.assertEqual(missing_record["observed_at_ms"], 30000)
+            missing_record = next((r for r in track["records"] if r["source_id"] == "channel_b"), None)
+            if (int(track["object_id"].split("_")[1]) - 11) % 6 == 5:
+                self.assertIsNone(missing_record)  # First seen after channel B went offline.
+            else:
+                self.assertEqual(missing_record["observed_at_ms"], 50000)
         self.assertIn("channel_b:offline", {a["id"] for a in state["alerts"]})
 
     def test_stale_sources_leave_last_known_position_instead_of_prediction(self):
         public = self.sim.public[self.sim.case_id]
-        public["observations"] = [r for r in public["observations"] if r["observed_at_ms"] == 0]
-        public["source_health"] = [r for r in public["source_health"] if r["observed_at_ms"] == 0]
+        public["observations"] = [r for r in public["observations"] if r["observed_at_ms"] == 10000]
+        public["source_health"] = [r for r in public["source_health"] if r["observed_at_ms"] == 10000]
         for row in public["observations"]:
             row["position"] = [100, 10, 200]
-        fresh = self.sim.control({"action": "seek", "at_ms": 45000})
+        fresh = self.sim.control({"action": "seek", "at_ms": 55000})
         self.assertFalse(fresh["tracks"][0]["last_known"])
-        stale = self.sim.control({"action": "seek", "at_ms": 45001})
+        stale = self.sim.control({"action": "seek", "at_ms": 55001})
         self.assertTrue(all(s["status"] == "stale" for s in stale["sources"]))
         for track in stale["tracks"]:
             self.assertTrue(track["last_known"])
-            self.assertEqual(track["observed_at_ms"], 0)
+            self.assertEqual(track["observed_at_ms"], 10000)
             self.assertEqual(track["quality"], "missing")
         self.assertEqual(stale["tracks"][0]["position"], [100, 10, 200])
         self.assertIn("object_11:stale", {a["id"] for a in stale["alerts"]})
@@ -189,14 +192,23 @@ class SimulationTests(SimulationFixture):
         public["observations"] = []
         public["source_health"] = []
         state = self.sim.state()
-        for track in state["tracks"]:
-            self.assertIsNone(track["position"])
-            self.assertIsNone(track["observed_at_ms"])
-            self.assertIsNone(track["position_source"])
-            self.assertEqual(track["records"], [])
-            self.assertEqual(track["history"], [])
-            self.assertTrue(track["last_known"])
+        self.assertEqual(state["tracks"], [])
+        self.assertFalse(any("object_id" in alert for alert in state["alerts"]))
         self.assertTrue(all(s["status"] == "unknown" for s in state["sources"]))
+
+    def test_unreceived_first_detection_does_not_reveal_an_object(self):
+        public = self.sim.public[self.sim.case_id]
+        # One candidate arrives late; other world objects have never been observed.
+        row = dict(public["observations"][0], observed_at_ms=10000, available_at_ms=15000)
+        public["observations"] = [row]
+        before = self.sim.control({"action": "seek", "at_ms": 14999})
+        self.assertEqual(before["tracks"], [])
+        self.assertFalse(any("object_id" in a for a in before["alerts"]))
+        after = self.sim.control({"action": "seek", "at_ms": 15000})
+        self.assertEqual([t["object_id"] for t in after["tracks"]], [row["object_id"]])
+        self.assertEqual(after["tracks"][0]["observed_at_ms"], 10000)
+        rewind = self.sim.control({"action": "seek", "at_ms": 0})
+        self.assertEqual(rewind["tracks"], [])
 
     def test_different_observation_times_raise_comparison_alert_with_evidence(self):
         public = self.sim.public[self.sim.case_id]
@@ -285,18 +297,10 @@ class HTTPTests(SimulationFixture):
         return self.request("POST", "/api/control", json.dumps(command),
                             {"Content-Type": "application/json", "Origin": self.origin, **(headers or {})})
 
-    def test_animation_preview_is_separate_and_tracks_case_selection(self):
-        self.post({"action": "case", "case_id": "case_005"})
-        status, _, raw = self.request("GET", "/api/preview")
-        self.assertEqual(status, 200)
-        preview = json.loads(raw)
-        self.assertTrue(preview["author_preview"])
-        self.assertEqual(preview["case_id"], "case_005")
-        self.assertEqual(len(preview["world"]["objects"]), 3)
-        for endpoint in ("/api/state", "/api/clock"):
-            _, _, raw = self.request("GET", endpoint)
-            self.assertNotIn("keyframes", raw.decode())
-            self.assertNotIn("author_preview", raw.decode())
+    def test_monitor_cannot_fetch_author_motion(self):
+        for path in ("/api/preview", "/motion.mjs"):
+            status, _, _ = self.request("GET", path)
+            self.assertEqual(status, 404)
 
     def test_state_and_control_share_replay_clock(self):
         status, _, raw = self.post({"action": "seek", "at_ms": 60000})
@@ -354,7 +358,7 @@ class HTTPTests(SimulationFixture):
         payload = json.loads(raw)
         self.assertEqual(payload["site"], {"synthetic": True})
         self.assertEqual(payload["regional_map"], {"reference_only": True})
-        self.assertEqual(len(payload["cases"]), 12)
+        self.assertEqual(len(payload["cases"]), 3)
         self.assertEqual(set(payload["cases"][0]), {"case_id", "variant"})
         self.assertNotIn("focus_object_id", raw.decode())
 
@@ -363,7 +367,7 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(status, 200)
         payload = json.loads(raw)
         self.assertTrue(payload["author_preview"])
-        self.assertEqual(len(payload["cases"]), 12)
+        self.assertEqual(len(payload["cases"]), 3)
         self.assertEqual(payload["cases"][1]["comparison_object"], "object_11")
         state = json.loads(self.request("GET", "/api/state")[2])
         self.assertNotIn("briefings", state)

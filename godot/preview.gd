@@ -4,6 +4,7 @@ extends Node3D
 const Detailed = preload("res://detailed_environment.gd")
 const Geographic = preload("res://geographic_environment.gd")
 const Site = preload("res://site_environment.gd")
+const DroneOverlay = preload("res://drone_overlay.gd")
 const Plains = preload("res://plains_environment.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
@@ -28,6 +29,7 @@ var display_profiles: Dictionary = {}
 var site_layout: Dictionary = {}
 var camera_target = Vector3.ZERO
 var monitor_mode = false
+var monitor_base_url = "http://127.0.0.1:8765"
 var monitor_connected = false
 var monitor_request: HTTPRequest
 var monitor_clock = 0.0
@@ -36,6 +38,9 @@ var monitor_speed = 1.0
 var monitor_playing = false
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
+var follow_drone = false
+var follow_button: Button
+var drone_overlay: Control
 
 func solid_material(color: Color, metallic: float = 0.0, roughness: float = 0.8) -> StandardMaterial3D:
 	var material = StandardMaterial3D.new()
@@ -163,6 +168,11 @@ func _ready() -> void:
 	site_layout = read_json(data_root.path_join("../../site_layout.json"))
 	camera_target = vector(site_layout.camera.target)
 	monitor_mode = "--monitor" in OS.get_cmdline_user_args()
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--monitor-port="):
+			var port = argument.trim_prefix("--monitor-port=")
+			assert(port.is_valid_int() and int(port) > 0 and int(port) <= 65535)
+			monitor_base_url = "http://127.0.0.1:%d" % int(port)
 	display_profiles = read_json("res://assets/display_profiles.json")
 	use_external_assets = not "--blockout" in OS.get_cmdline_user_args()
 	realistic = use_external_assets and not "--stylized" in OS.get_cmdline_user_args()
@@ -227,6 +237,7 @@ func _ready() -> void:
 	build_ui()
 	load_case("case_001")
 	if monitor_mode:
+		show_overview()
 		start_monitor()
 	if "--capture" in OS.get_cmdline_user_args():
 		playing = false
@@ -284,6 +295,11 @@ func build_ui() -> void:
 	var column = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
 	panel.add_child(column)
+	drone_overlay = DroneOverlay.new()
+	drone_overlay.camera = camera
+	drone_overlay.objects = objects
+	layer.add_child(drone_overlay)
+	layer.move_child(drone_overlay, 0)
 	var title = Label.new()
 	title.text = "LOW SKY / SCENE LAB"
 	title.add_theme_font_size_override("font_size", 24)
@@ -311,6 +327,15 @@ func build_ui() -> void:
 	playback.pressed.connect(func(): playing = not playing)
 	playback.disabled = monitor_mode
 	column.add_child(playback)
+	follow_button = Button.new()
+	follow_button.text = "Follow first drone  [F]"
+	follow_button.pressed.connect(toggle_follow)
+	column.add_child(follow_button)
+	var aids = CheckButton.new()
+	aids.text = "SIM markers (not sensor evidence)"
+	aids.button_pressed = true
+	aids.toggled.connect(func(enabled: bool): drone_overlay.visible = enabled)
+	column.add_child(aids)
 	time_label = Label.new()
 	column.add_child(time_label)
 	status_label = Label.new()
@@ -319,7 +344,7 @@ func build_ui() -> void:
 	var hint = Label.new()
 	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: http://127.0.0.1:8765\n3D author view · monitor shows observations"
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\n3D author view · monitor shows observations\nF: follow drone / overview · Model span 0.6 m" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	column.add_child(hint)
 
@@ -361,7 +386,7 @@ func load_case(id: String) -> void:
 		label.pixel_size = 0.015 if realistic else 0.03
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		instance.add_child(label)
-		objects.append({"node": instance, "keyframes": item["keyframes"]})
+		objects.append({"object_id": item.object_id, "node": instance, "keyframes": item["keyframes"]})
 	elapsed_ms = 0
 
 func _process(delta: float) -> void:
@@ -370,16 +395,21 @@ func _process(delta: float) -> void:
 		var age = Time.get_ticks_msec() - monitor_received_at
 		monitor_connected = monitor_connected and age <= 1500
 		if monitor_connected:
-			elapsed_ms = minf(monitor_clock + (minf(age, 500) * monitor_speed if monitor_playing else 0.0), 120000)
+			elapsed_ms = minf(monitor_clock + (minf(age, 500) * monitor_speed if monitor_playing else 0.0), float(world_data.duration_ms))
 	elif playing:
-		elapsed_ms = minf(elapsed_ms + delta * 1000, 120000)
+		elapsed_ms = minf(elapsed_ms + delta * 1000, float(world_data.duration_ms))
 	for item in objects:
 		var frames = item["keyframes"]
-		var index = mini(int(elapsed_ms / 30000), frames.size() - 2)
-		var ratio = clampf((elapsed_ms - frames[index]["at_ms"]) / 30000.0, 0, 1)
+		var index = 0
+		while index < frames.size() - 2 and elapsed_ms >= float(frames[index + 1].at_ms):
+			index += 1
+		var interval = float(frames[index + 1].at_ms) - float(frames[index].at_ms)
+		var ratio = clampf((elapsed_ms - float(frames[index].at_ms)) / interval, 0, 1)
 		item["node"].position = vector(frames[index]["position"]).lerp(vector(frames[index + 1]["position"]), ratio)
+	if follow_drone:
+		update_follow_camera()
 	if time_label:
-		time_label.text = "%s  |  %03d / 120 s" % [case_id, elapsed_ms / 1000]
+		time_label.text = "%s  |  %03d / %03d s" % [case_id, elapsed_ms / 1000, int(world_data.duration_ms) / 1000]
 		var lines = PackedStringArray()
 		for source in public_data.get("source_ids", []):
 			var state = "unknown"
@@ -389,7 +419,37 @@ func _process(delta: float) -> void:
 			lines.append("%s: %s" % [source, state])
 		status_label.text = ("MONITOR: connected" if monitor_connected else "MONITOR: disconnected · replay frozen") if monitor_mode else "\n".join(lines)
 
+func show_overview() -> void:
+	stop_follow()
+	camera_target = Vector3(0, 0, -300)
+	camera.position = vector(site_layout.camera.overview)
+	camera.size = 5200
+	camera.look_at(camera_target)
+
+func stop_follow() -> void:
+	follow_drone = false
+	if follow_button:
+		follow_button.text = "Follow first drone  [F]"
+
+func toggle_follow() -> void:
+	if follow_drone:
+		show_overview()
+	elif not objects.is_empty():
+		follow_drone = true
+		follow_button.text = "Return to overview  [F]"
+		update_follow_camera()
+
+func update_follow_camera() -> void:
+	if objects.is_empty():
+		return
+	camera_target = objects[0].node.position
+	camera.position = camera_target + Vector3(4, 2.5, 6)
+	camera.size = 5
+	camera.near = 0.1
+	camera.look_at(camera_target)
+
 func pan_camera(relative: Vector2) -> void:
+	stop_follow()
 	var offset = camera.position - camera_target
 	var span = camera.size if camera.projection == Camera3D.PROJECTION_ORTHOGONAL else 2.0 * offset.length() * tan(deg_to_rad(camera.fov * 0.5))
 	var scale = span / maxf(get_viewport().get_visible_rect().size.y, 1)
@@ -403,6 +463,7 @@ func pan_camera(relative: Vector2) -> void:
 	camera_target = target
 
 func orbit_camera(relative: Vector2) -> void:
+	stop_follow()
 	var offset = camera.position - camera_target
 	var distance = offset.length()
 	var yaw = atan2(offset.x, offset.z) - relative.x * 0.006
@@ -442,12 +503,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2: load_case("case_002")
 			KEY_3: load_case("case_003")
 			KEY_T: toggle_terrain()
+			KEY_F: toggle_follow()
 			KEY_H:
+				stop_follow()
 				camera_target = vector(site_layout.camera.target)
 				camera.position = vector(site_layout.camera.close)
 				camera.size = 500
 				camera.look_at(camera_target)
 			KEY_C:
+				stop_follow()
 				if camera.position.y < 1000:
 					camera_target = Vector3.ZERO
 					camera.position = vector(site_layout.camera.overview)
@@ -458,6 +522,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					camera.size = 500
 				camera.look_at(camera_target)
 			KEY_LEFT, KEY_RIGHT:
+				stop_follow()
 				camera.position = camera_target + (camera.position - camera_target).rotated(Vector3.UP, 0.12 if event.keycode == KEY_LEFT else -0.12)
 				camera.look_at(camera_target)
 	if event is InputEventMouseButton and event.pressed:
@@ -466,11 +531,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			drag_orbit = event.button_index == MOUSE_BUTTON_RIGHT or (event.button_index == MOUSE_BUTTON_LEFT and event.shift_pressed)
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			stop_follow()
 			if realistic:
 				camera.position = camera_target + (camera.position - camera_target).normalized() * maxf(18, camera.position.distance_to(camera_target) * 0.88)
 			else:
 				camera.size = maxf(40, camera.size * 0.88)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			stop_follow()
 			if realistic:
 				camera.position = camera_target + (camera.position - camera_target).normalized() * minf(10000, camera.position.distance_to(camera_target) * 1.12)
 			else:
@@ -491,7 +558,7 @@ func start_monitor() -> void:
 
 func poll_monitor() -> void:
 	if monitor_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
-		monitor_request.request("http://127.0.0.1:8765/api/clock")
+		monitor_request.request(monitor_base_url + "/api/clock")
 
 func receive_monitor_clock(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:

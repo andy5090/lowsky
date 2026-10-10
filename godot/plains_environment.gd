@@ -1,9 +1,11 @@
 extends RefCounted
+
+const Geographic = preload("res://geographic_environment.gd")
 ## Art-direction test: fictional plains, fields and shelterbelts. No map data.
 
 static func elevation(x: float, z: float, noise: FastNoiseLite, layout: Dictionary) -> float:
 	# Share the fence dimensions and grading margin with the map and DEM.
-	var outside_site = maxf(absf(x) - float(layout.perimeter.width_m) * 0.5 - float(layout.terrain_grading.margin_m), absf(z) - float(layout.perimeter.length_m) * 0.5 - float(layout.terrain_grading.margin_m))
+	var outside_site = Geographic.grading_distance(x, z, layout)
 	return noise.get_noise_2d(x, z) * 18.0 * smoothstep(0, float(layout.terrain_grading.blend_m), outside_site) - 0.02
 
 static func patch(rect: Rect2, material: Material, noise: FastNoiseLite, layout: Dictionary, lift: float = 0.0) -> MeshInstance3D:

@@ -8,7 +8,7 @@ Mapzen Terrain Tiles. Global SRTM and GMTED2010 terrain data courtesy of the U.S
 USGS global elevation inputs are distributed as public-domain data; see source attribution for original distribution notices.
 
 Modifications: bilinear sampling onto a 50m local grid over 10km x 10km around
-36.5N, 127.8E. Godot subtracts the center reference elevation and flattens the
+36.23N, 127.08E. Godot subtracts the center reference elevation and flattens the
 fictional base, with a 350m transition to the surrounding DEM. Horizontal and
 vertical units are meters, with no vertical exaggeration. PBR ground materials
 are illustrative; no satellite imagery, real buildings or land-cover survey
