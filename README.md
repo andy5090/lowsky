@@ -1,10 +1,10 @@
-# LOW SKY — Fictional Airfield Scenario Lab
+# LOW SKY — Fictional Airfield Simulation Test Lab
 
 [한국어](README.ko.md)
 
 <img src="monitor/logo-metal.png" alt="LOW SKY metallic aviation emblem" width="144" height="144">
 
-LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one replay clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents uses OpenAI by default; the interface reports missing server credentials explicitly. An offline rule-based overview remains an explicit option.
+LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one simulation clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents uses OpenAI by default; the interface reports missing server credentials explicitly. An offline rule-based overview remains an explicit option.
 
 Original planning documents remain local and are excluded from the public repository. See [MVP direction](docs/mvp-direction.md) for scope and the folders under `godot/third_party/` for asset licenses and provenance.
 
@@ -39,9 +39,9 @@ python3 tools/monitor_server.py
 /Applications/Godot.app/Contents/MacOS/Godot --path godot -- --monitor
 ```
 
-Open http://127.0.0.1:8765. The language selector stores the choice in this browser. Monitor play, pause, seek, case selection, and speed control the shared replay. `--monitor` disables Godot's replay controls while keeping camera and terrain controls available. Godot pauses on disconnection and resynchronizes when the connection returns. The web play button does not launch Godot; open the 3D window separately.
+Open http://127.0.0.1:8765. The language selector stores the choice in this browser. Run a new simulation test with an optional seed; pause, resume, seek, template selection, and speed control the shared simulation. `--monitor` disables Godot's replay controls while keeping camera and terrain controls available. Godot pauses on disconnection and resynchronizes when the connection returns. The web play button does not launch Godot; open the 3D window separately.
 
-The synchronized view starts at the overview. By default, 3D labels and screen markers appear only for fresh received detections. **Show drone positions (SIM)** is off initially; turn it on to label every simulated drone in purple, including undetected objects. Physical drone bodies continue moving in the 3D simulation. The map has its own **Show drone positions** switch, also off initially, with a separate purple truth layer and warning. These switches are independent display preferences. **F / Follow first drone** toggles between following the first drone and the overview; manual camera movement cancels follow mode. The drone model keeps its provisional **0.6 m maximum horizontal span, including propellers**. Profiles live in `godot/assets/display_profiles.json`, selected by each object's `visual.size_profile`.
+The synchronized view starts at the overview. By default, 3D labels and screen markers appear only for fresh received detections. **Show drone positions (SIM)** is off initially; turn it on to label every simulated drone in purple, including undetected objects. Physical drone bodies continue moving in the 3D simulation. The map has its own **Show drone positions** switch, also off initially, with a separate purple truth layer and warning. These switches are independent display preferences. **Previous drone / Next drone** or **[ / ]** selects and follows any drone, wrapping at the ends. **F / Follow selected drone** toggles that selection and the overview; manual camera movement cancels follow mode. The `CAMERA / SIM` ID and index describe author-camera selection, not detection; received-only world labels remain unchanged. Selecting another template resets the camera selection. The drone model keeps its provisional **0.6 m maximum horizontal span, including propellers**. Profiles live in `godot/assets/display_profiles.json`, selected by each object's `visual.size_profile`.
 
 Without the server, Godot runs independently:
 
@@ -53,17 +53,38 @@ Without the server, Godot runs independently:
 | Right or Shift + left drag | Orbit |
 | Mouse wheel / left-right arrows | Zoom / rotate |
 | C / H | Close-up or overview / reset camera |
+| [ / ] | Select and follow previous / next drone |
+| F | Follow selected drone / overview |
 | T / Terrain | Korean DEM → synthetic plains → synthetic hills |
 
 Start drags outside the control panel. `-- --plains` and `-- --hills` choose synthetic terrain presets; `-- --stylized` and `-- --blockout` select alternative assets. Terrain switching preserves the replay. The scene is an early photorealistic prototype; final environment art and aircraft replacement remain unfinished.
 
-## Observations and replay
+## Seeded simulation tests
 
-Godot is an **authoring view** showing simulated object movement even when observations stop. By default, the map and 3D labels show only fresh received detections. When evidence expires or its sources go offline, map markers and 3D labels disappear; the evidence list retains the last report and timestamp. Explicit negative detection rows (`detected: false`) do not reveal objects. The optional **Show drone positions** layer requests `/api/state?show_positions=1`, which returns separate `simulation_positions` at that same replay time. Truth never becomes an observation, alert, or review input; switching off or reloading hides it. Positions come from synthetic samples, normally ten seconds apart; delayed reports remain hidden until `available_at_ms`. All cases begin with no received tracks; first reports arrive at 00:10, and objects appear progressively through 01:00. Detection does not establish hostile intent.
+**Run new test** creates a fresh run of the selected template and starts the shared clock. Leave **Seed** blank for a new random seed, or supply an integer from 0 to 2147483647. **Run again with same seed** regenerates the current template with the displayed seed, independent of edits in the seed field. Pause/resume, seek and **Reset current test** retain the generated input schedule. Restarting a completed test also retains its seed; use **Run new test** with a blank field for new variation. Selecting a template returns to its stopped baseline preview; opening or refreshing the page never starts a test.
+
+The standard-library generator in [simulation_test.py](tools/simulation_test.py) copies the fixtures once at test start:
+
+| Variable | Synthetic variation |
+| --- | --- |
+| Object observation delivery | 2–6% run-level probability of omitting each report; 0–3 seconds additional delay for retained reports |
+| Observation-source health delivery | 0–2.5 seconds additional delay |
+| Community / fixed-phone reports | 3% probability of omitting each report; 0–4 seconds additional delay |
+| Virtual fleet health | Receipt delay of 0.5–2.5 seconds; existing load-case interruption boundaries vary by up to 5 seconds |
+
+These bounds are **demo assumptions**, not measured detection performance. Object counts, 3D paths, measurement timestamps and measured positions remain fixed. The three template themes remain, and only `case_003` is a load test. No physical flight, acoustic propagation or radar detection model is introduced. Template descriptions contain nominal milestones, not forecasts of the generated run; timestamp columns are hidden during seeded tests. Static context notices remain separate reference inputs.
+
+`/api/state` and `/api/clock` expose `test_run` with the seed, generator version and input SHA-256 digest, but no future generated schedule. Godot uses the same received detections and displays the seed. Agent evidence exports and confirmed decision snapshots retain this provenance; track reviews also store it. Same template + seed + generator version + unchanged fixture files reproduces received inputs at the same simulation time, including after server restart. It does **not** guarantee identical LLM prose, wall-clock checkpoint sampling or human choices. New runs invalidate old decisions. Active runs are in memory; retain the seed/digest or exported journal before restarting the server.
+
+API: `POST /api/control` with `{"action":"start_test","case_id":"case_003","seed":42}`. Omit `seed` for randomness. Existing `play`, `pause`, `seek`, `reset`, and `case` remain compatible. Generated inputs do not modify the checked-in fixtures or their baseline evaluation expectations.
+
+## Observations and simulation time
+
+Godot is an **authoring view** showing simulated object movement even when observations stop. By default, the map and 3D labels show only fresh received detections. When evidence expires or its sources go offline, map markers and 3D labels disappear; the evidence list retains the last report and timestamp. Explicit negative detection rows (`detected: false`) do not reveal objects. The optional **Show drone positions** layer requests `/api/state?show_positions=1`, which returns separate `simulation_positions` at that same replay time. Truth never becomes an observation, alert, or review input; switching off or reloading hides it. Positions come from synthetic samples, normally ten seconds apart; delayed reports remain hidden until `available_at_ms`. All templates begin with no received tracks. In the baseline fixtures, first reports arrive at 00:10 and objects appear progressively through 01:00; seeded tests add delivery variation. Detection does not establish hostile intent.
 
 Contradiction, channel loss, and stale-position alerts describe observation quality. Channels A/B are not physical RF or fiber models. Acknowledgements apply to the current run, clear on seek/reset/case change, and disappear when the server restarts. At most 1,000 acknowledgement records remain in server memory; this is not a permanent audit log.
 
-**Scenario briefing** and **Timeline & review points** explain purpose, object count, milestones, and review criteria. The cases cover first reports (12 objects), conflicting evidence and review (24), and monitoring load with channel interruption/recovery (240). Counts and routes are synthetic assumptions, not measured attack sizes. Briefings contain future events for the operator and are served separately by `/api/briefings`; received-only state and clock use `/api/state` and `/api/clock`. Area early signals are a separate feed shared by all cases.
+**Test template** and **Template reference & review points** explain purpose, object count, milestones, and review criteria. The cases cover first reports (12 objects), conflicting evidence and review (24), and monitoring load with channel interruption/recovery (240). Counts and routes are synthetic assumptions, not measured attack sizes. Briefings contain future events for the operator and are served separately by `/api/briefings`; received-only state and clock use `/api/state` and `/api/clock`. Area early signals are a separate feed shared by all cases.
 
 **Radar overlay** animates received observations from A/B. Scans follow the shared clock and stop for paused or interrupted channels. New returns appear only as observations arrive. The [display configuration](data/radar_display.json)—12-second sweep, 1,000 m circle, 2.5-second return—is a visual convention, not a detection range or physical radar model. Godot uses `/api/state` to receive detection visibility and the clock atomically.
 
@@ -99,11 +120,11 @@ Triggers are first received tracks, the onset/clearance of conflicting or stale 
 | Hold for evidence review | Record the choice and keep playback paused for inspection. |
 | Defer for further review | Record an unresolved local follow-up and resume playback. |
 
-Resume starts a new replay if the previous one is complete. No external task, recipient, sensor control or operational action is invoked. A recommendation never preselects an option: select one, review its effect, enter a reviewer alias and reason, then **Confirm and apply**. Cancel has no effect. Changed run/time/evidence invalidates the proposal and disables stale confirmation while retaining draft text. New important events pause immediately even if an older provider call must finish first. A failed model call leaves the clock paused with an explicit retry; it never executes an option or pretends a rule result is a successful model assessment.
+Resume starts a new replay if the previous one is complete. No external task, recipient, sensor control or operational action is invoked. In the default manual mode, a recommendation never preselects an option: select one, review its effect, then **Confirm and apply**. No typing is required. Expand **Add a comment (optional)** to submit a comment and/or reviewer alias with the selection; blank fields remain blank in the journal. Cancel has no effect. Changed run/time/evidence invalidates the proposal and disables stale confirmation while retaining draft text. New important events pause immediately even if an older provider call must finish first. A failed model call leaves the clock paused with an explicit retry; it never executes an option or pretends a rule result is a successful model assessment.
 
 Confirmed decisions are flushed to `.local/event-decisions.jsonl` before applying their local effect, including the event, received evidence bundle, exact report, evidence version, reviewer alias, reason and timestamp. **Export decision journal** / `/api/decisions/audit` exports all runs; the panel history shows the current run. This is a local journal, not authenticated identity or tamper-proof remote storage. Unconfirmed event cards are in memory (last 100); restarting the server clears them. The CLI accepts `--decision-audit-path` for isolated tests.
 
-For a deterministic shared-clock integration check, start an isolated rules server, then run:
+For a seeded shared-clock integration check, start an isolated rules server, then run:
 
 ```sh
 LOW_SKY_AGENT_MODEL='' .local/agent-venv/bin/python tools/monitor_server.py --port 8766 --audit-path .local/test-track-reviews.jsonl --decision-audit-path .local/test-decisions.jsonl
@@ -113,7 +134,21 @@ LOW_SKY_AGENT_MODEL='' .local/agent-venv/bin/python tools/monitor_server.py --po
 
 The credentialed Sol integration was verified on an automatically paused `case_003` source-loss event: all required evidence tools were consulted, three cited choices passed validation, and the UI required explicit confirmation. This verifies software behavior in the synthetic scenario, not real-world decision quality.
 
+## Optional Codex virtual test operator
+
+Start a **Run new test**, then expand the compact **Codex virtual test operator** tool at the bottom of the workspace and use **Start automatic test decisions** when you want Codex to act as a simulated reviewer. It is off by default and applies only to the current seeded test. The normal situation-assessment agent still produces the evidence and choices; a separate actual Codex CLI call chooses one, explains why, and the server validates and records it before applying its local effect. **Stop and take over** cancels an in-flight answer and pauses the test.
+
+This requires an installed, authenticated `codex` CLI (`codex login status`). Its authentication is separate from the situation agent's project `.env` API key; that key is not passed to the subprocess. The adapter uses `gpt-6.1-sol` with medium reasoning, an ephemeral temporary directory, read-only sandbox, strict output schema, and disabled shell/browser/delegation tools. It follows [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive). Codex usage applies. Missing CLI/authentication, timeout or invalid output stops the test explicitly; there is no rules fallback for automatic choices. The subprocess adapter currently targets POSIX/macOS/Linux.
+
+The default limit is 3 decisions, adjustable from 1 to 10. A hold choice, decision limit, 10-minute session deadline, assessment/selection failure or manual override ends automation; each Codex call has a 120-second deadline. Pause, seek, reset, case changes and new tests cancel pending choices. New tests can start normally after cancellation; automatic decisions must be enabled again. Speed changes alone do not cancel it.
+
+Automatic records carry `actor.type=automated_test`, provider, model and operator-session ID, and appear as **AUTOMATED TEST** in the UI and exported journal. They are never presented as human approvals. Codex receives only the displayed received-evidence report and the three local choices; hidden positions and future inputs are excluded. A hold decision stays paused until the user acts. Seed reproducibility covers generated inputs, not identical model decisions. The HTTP interface is `GET/POST /api/test-operator`; start requires `action: "start"`, the current `run_id`, `confirm: true` and optional `max_decisions`.
+
+An end-to-end browser test with seed 42 used the real Codex CLI to choose **Hold for evidence review**, store its reason as an automated test and keep the shared clock paused. The preceding situation report in that isolated check used the explicit rules baseline; the credentialed situation-agent integration was verified separately above.
+
 ## Workload, sensor fleet and durable evidence reviews
+
+Received events sit directly below the map controls, independently of the evidence column height. Long observation evidence scrolls within its own panel; switching to Current alerts retains the event log.
 
 The received-track queue shows 12 rows per page with all/evidence-gap/unreviewed filters. Counts cover all received tracks. Large map views keep position symbols but show history only for the selected track; optional SIM truth remains off by default.
 

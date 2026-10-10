@@ -2,6 +2,7 @@ import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue} from './review.mjs';
 import {selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
+import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
@@ -24,6 +25,7 @@ let assessmentSignature = '';
 let decisions = null, decisionBusy = false, decisionDraft = null, decisionError = '', decisionSignature = '';
 let decisionLanguagePending = false, decisionAvailable = false;
 let decisionNoticeRun = null;
+let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
 let trackReviewBusy = false, reviewTargetKey = '', reviewTargetVersion = '';
 let showPositions = false;
@@ -47,7 +49,8 @@ function connection(ok, message='') {
   $('connection-status').textContent = ok ? t('connected') : t('disconnected');
   $('connection-status').classList.toggle('is-connected', ok);
   $('connection-status').classList.toggle('disconnected', !ok);
-  for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
+  for (const id of ['play-button','reset-button','case-select','timeline','speed-select','test-run-button','test-seed']) $(id).disabled = !ok;
+  $('test-repeat-button').disabled = !ok || !repeatTestRequest(state || {});
   updateReviewAvailability();
   updateTrackReviewAvailability();
   renderNotificationSettings();
@@ -87,7 +90,12 @@ function renderPlayback(data) {
   $('case-select').value = data.case_id;
   $('sim-status').textContent = data.playing ? t('playing') : data.at_ms >= data.duration_ms ? t('finished') : t('paused');
   $('sim-status').classList.toggle('running', data.playing);
-  $('play-button').textContent = data.playing ? t('pause') : t('play');
+  $('play-button').textContent = data.playing ? t('pause') : t(data.test_run?.mode === 'seeded' ? (data.at_ms >= data.duration_ms ? 'test.restart' : 'play') : 'test.start');
+  const run = data.test_run;
+  $('test-run-summary').textContent = run?.mode === 'seeded' ? t('test.summary', {seed:run.seed,version:run.generator_version}) : t('test.fixture');
+  $('test-run-summary').title = run?.input_digest ? t('test.digest',{digest:run.input_digest}) : '';
+  $('test-current-seed').textContent = $('test-run-summary').textContent;
+  $('test-current-seed').title = $('test-run-summary').title;
   $('time-label').textContent = `${fmt(data.at_ms)} / ${fmt(data.duration_ms)}`;
   $('timeline').max = data.duration_ms;
   if(document.activeElement !== $('timeline')) $('timeline').value = data.at_ms;
@@ -172,6 +180,7 @@ function currentDecision() {
   return (decisions.events || []).find(event=>!['decided','superseded'].includes(event.status)) || null;
 }
 function renderDecisions() {
+  renderOperator();
   if (decisionNoticeRun !== state?.run_id) {
     if (decisionError === 'decision.saved') decisionError = '';
     decisionNoticeRun = state?.run_id;
@@ -183,20 +192,20 @@ function renderDecisions() {
   $('decision-enabled').disabled = !connected || decisionBusy;
   $('decision-assess').disabled = !connected || !state || decisionBusy || event?.status === 'evaluating';
   const statusKey = decisionStatusKey(event, decisions?.enabled, decisionError);
-  $('decision-status').textContent = t(statusKey);
+  $('decision-status').textContent = operatorActive() ? t('operator.autoNotice') : t(statusKey);
   $('decision-attention').hidden = !event;
-  $('decision-attention-text').textContent = event ? t(statusKey) : '';
+  $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : '';
   const report = event?.report;
-  const signature = JSON.stringify([language,event,decisionBusy,decisionDraft?.event_id,decisionDraft?.option_id]);
+  const signature = JSON.stringify([language,event,decisionBusy,operatorActive(),decisionDraft?.event_id,decisionDraft?.option_id]);
   if (signature !== decisionSignature) {
     decisionSignature = signature;
     $('decision-event').innerHTML = event ? `<p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p>
       <ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul>
-      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${t(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${t(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${t(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${t(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
       decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
-      $('decision-reason').focus();
+      $('decision-confirm').focus();
     });
     if ($('decision-retry')) $('decision-retry').onclick=()=>decisionAction({action:'retry',event_id:event.id,language});
   }
@@ -205,9 +214,9 @@ function renderDecisions() {
     const status = decisionDraftStatus(decisionDraft,event,state,language);
     $('decision-confirm-summary').textContent = `${t(`decision.option.${decisionDraft.option_id}`)} · ${t(`decision.effect.${decisionDraft.option_id}`)} · ${fmt(decisionDraft.at_ms)} · ${decisionDraft.event_id}`;
     $('decision-draft-status').textContent = status === 'stale' ? t('decision.stale') : t('decision.confirmNote');
-    $('decision-confirm').disabled = !connected || !decisionAvailable || decisionBusy || status !== 'ready';
+    $('decision-confirm').disabled = !connected || !decisionAvailable || decisionBusy || operatorActive() || status !== 'ready';
   }
-  $('decision-history').innerHTML = (decisions && state && decisions.run_id===state.run_id ? decisions.history || [] : []).map(record=>`<li>${fmt(record.at_ms || 0)} · ${escape(t(`decision.option.${record.option_id}`))}<p>${escape(record.reason || '')}</p></li>`).join('') || `<li>${t('none')}</li>`;
+  $('decision-history').innerHTML = (decisions && state && decisions.run_id===state.run_id ? decisions.history || [] : []).map(record=>`<li>${record.actor?.type==='automated_test'?`<strong>${t('operator.automated')}</strong> · `:''}${fmt(record.at_ms || 0)} · ${escape(t(`decision.option.${record.option_id}`))}<p>${escape(record.reason || '')}</p></li>`).join('') || `<li>${t('none')}</li>`;
 }
 async function decisionAction(body) {
   if (!connected || !state || decisionBusy) return false;
@@ -232,6 +241,8 @@ async function pollDecisions() {
     const result=await api('/api/decisions');
     if(state?.run_id===run){decisions=result;decisionAvailable=true;if(decisionError==='decision.unavailable')decisionError='';renderDecisions();renderAssessment();await syncDecisionLanguage();}
   } catch {decisionAvailable=false;decisionError='decision.unavailable';renderDecisions();}
+  try { testOperator=await api('/api/test-operator'); operatorError=''; renderDecisions(); }
+  catch { operatorError='operator.unavailable'; renderOperator(); }
   setTimeout(pollDecisions,1500);
 }
 $('decision-enabled').onchange=()=>decisionAction({action:'configure',enabled:$('decision-enabled').checked,language});
@@ -240,9 +251,32 @@ $('decision-cancel').onclick=()=>{decisionDraft=null;decisionError='';renderDeci
 $('decision-form').onsubmit=async event=>{
   event.preventDefault();
   const body=decisionConfirmation(decisionDraft,currentDecision(),state,language,$('decision-reviewer').value,$('decision-reason').value,true);
-  if(!body || !decisionAvailable){renderDecisions();return;}
-  if(await decisionAction(body)){decisionDraft=null;$('decision-reason').value='';decisionError='decision.saved';renderDecisions();}
+  if(!body || !decisionAvailable || operatorActive()){renderDecisions();return;}
+  if(await decisionAction(body)){decisionDraft=null;$('decision-reason').value='';$('decision-extra').open=false;decisionError='decision.saved';renderDecisions();}
 };
+
+function operatorActive() { return Boolean(testOperator?.active && testOperator.run_id === state?.run_id); }
+function renderOperator() {
+  const active = operatorActive();
+  const config = testOperator?.configuration;
+  $('operator-start').disabled = !connected || operatorBusy || active || !config?.available || state?.test_run?.mode !== 'seeded' || !decisions?.enabled || state?.at_ms >= state?.duration_ms;
+  $('operator-stop').disabled = !connected || operatorBusy || !active;
+  $('operator-stop').hidden = !active;
+  $('operator-limit').disabled = active || operatorBusy;
+  $('operator-status').textContent = `${t(`operator.status.${testOperator?.status || 'idle'}`)}${testOperator?.session_id ? ` · ${testOperator.completed} / ${testOperator.max_decisions}` : ''}${config?.model ? ` · Codex / ${config.model}` : ''}`;
+  $('operator-error').textContent = operatorError ? t(operatorError) : !config?.available ? t('operator.unavailable') : state?.test_run?.mode !== 'seeded' ? t('operator.seededRequired') : '';
+  $('operator-log').innerHTML = (testOperator?.decisions || []).map(item=>`<li><strong>${t('operator.automated')}</strong> · ${fmt(item.at_ms)} · ${escape(t(`decision.option.${item.option_id}`))}<p>${escape(item.reason)}</p></li>`).join('');
+}
+async function operatorCommand(action) {
+  if (!state || operatorBusy) return;
+  if(action==='start' && !$('operator-limit').reportValidity()) return;
+  operatorBusy=true; operatorError=''; renderOperator();
+  try { testOperator=await api('/api/test-operator',{action,run_id:state.run_id,confirm:action==='start',max_decisions:Number($('operator-limit').value)}); }
+  catch { operatorError='operator.requestFailed'; }
+  finally { operatorBusy=false; renderDecisions(); }
+}
+$('operator-start').onclick=()=>operatorCommand('start');
+$('operator-stop').onclick=()=>operatorCommand('stop');
 
 function renderWorkload() {
   if (!state) return;
@@ -623,7 +657,24 @@ map.addEventListener('pointerup',()=>drag=null);map.addEventListener('pointercan
 map.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1:-1);},{passive:false});
 map.addEventListener('keydown',e=>{if(e.key==='+'||e.key==='=')zoom(1);else if(e.key==='-')zoom(-1);});
 new ResizeObserver(drawMap).observe(map);
-$('play-button').onclick=()=>control({action:state.playing?'pause':'play'});
+function runTestRequest(makeBody) {
+  try {
+    const body = makeBody();
+    if (!body) return;
+    $('test-run-error').textContent = '';
+    return control(body);
+  } catch {
+    $('test-run-error').textContent = t('test.invalidSeed');
+    $('test-seed').focus();
+  }
+}
+$('test-run-form').onsubmit=event=>{event.preventDefault();runTestRequest(()=>testRunRequest($('test-seed').value,state?.case_id));};
+$('test-repeat-button').onclick=()=>runTestRequest(()=>repeatTestRequest(state));
+$('test-seed').oninput=()=>{$('test-run-error').textContent='';};
+$('play-button').onclick=()=>{
+  if (!state.playing && state.test_run?.mode !== 'seeded' && !$('test-seed').reportValidity()) return;
+  return runTestRequest(()=>playbackRequest(state,$('test-seed').value));
+};
 $('reset-button').onclick=()=>control({action:'reset'});
 $('case-select').onchange=e=>control({action:'case',case_id:e.target.value});
 $('speed-select').onchange=e=>control({action:'speed',speed:Number(e.target.value)});
@@ -631,6 +682,7 @@ $('timeline').onchange=e=>control({action:'seek',at_ms:Number(e.target.value)});
 $('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.value))} / ${fmt(state?.duration_ms || 0)}`;
 function showView(view) {
   const monitor=view!=='alerts';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
+  $(monitor?'map-events-host':'alerts-events-host').append($('received-events-panel'));
   for(const b of document.querySelectorAll('[data-view]')){const active=b.dataset.view===(monitor?'monitor':'alerts');b.classList.toggle('is-active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();
 }
 for(const tab of document.querySelectorAll('[data-view]'))tab.onclick=()=>showView(tab.dataset.view);
@@ -692,14 +744,17 @@ function renderBriefing() {
   const caseId=state?.case_id || $('case-select').value;
   const brief=briefings.find(b=>b.case_id===caseId);
   if(!brief)return;
-  const signature=`${caseId}:${language}`;
+  const seeded = state?.test_run?.mode === 'seeded';
+  const signature=`${caseId}:${language}:${seeded}`;
   if(signature===briefingSignature)return;
   briefingSignature=signature;
   const values={group:brief.group,object:brief.comparison_object || '',marker:brief.original_marker?t(`marker.${brief.original_marker}`):'',seconds:brief.sample_interval_ms/1000};
   $('brief-title').textContent=`${brief.case_id} · ${localized(brief.name) || t(`brief.title.${brief.variant}`,values)}`;
   $('brief-purpose').textContent=localized(brief.summary) || t(`brief.purpose.${brief.variant}`,values);
   $('brief-meta').textContent=t('brief.meta',{duration:fmt(brief.duration_ms),objects:brief.object_ids.length,sources:brief.source_ids.length});
-  $('brief-timeline').innerHTML=brief.timeline.map(step=>`<li><time>${fmt(step.at_ms)}</time><span>${escape(localized(step.text) || t(step.key,values))}</span></li>`).join('');
+  $('brief-preview-note').textContent=t(seeded?'test.templateReference':'brief.preview');
+  $('brief-timeline').classList.toggle('reference-timeline',seeded);
+  $('brief-timeline').innerHTML=brief.timeline.map(step=>`<li>${seeded?'':`<time>${fmt(step.at_ms)}</time>`}<span>${escape(localized(step.text) || t(step.key,values))}</span></li>`).join('');
   $('brief-review').textContent=localized(brief.objective) || t(`brief.review.${brief.variant}`,values);
   $('brief-objects').textContent=[localized(brief.composition),localized(brief.count_basis)].filter(Boolean).join(' ');
 }

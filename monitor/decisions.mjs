@@ -24,7 +24,8 @@ export function decisionDraftStatus(draft, event, state, language) {
 
 export function decisionConfirmation(draft, event, state, language, reviewer, reason, confirmed = false) {
   if (!confirmed || decisionDraftStatus(draft,event,state,language) !== 'ready'
-      || !reviewer.trim() || reviewer.trim().length > 80 || !reason.trim() || reason.trim().length > 1000) return null;
+      || typeof reviewer !== 'string' || reviewer.trim().length > 80
+      || typeof reason !== 'string' || reason.trim().length > 1000) return null;
   return {action:'confirm',run_id:draft.run_id,event_id:draft.event_id,
     evidence_version:draft.evidence_version,option_id:draft.option_id,
     reviewer:reviewer.trim(),reason:reason.trim(),confirm:true};

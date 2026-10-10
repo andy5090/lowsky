@@ -41,7 +41,7 @@
     <section class="scenario-bar" aria-label="Scenario settings" data-i18n-aria-label="scenarioSettings">
       <div class="scenario-field"><label for="case-select" data-i18n="scenario">Synthetic scenario</label><select id="case-select" aria-label="Select synthetic scenario" data-i18n-aria-label="chooseScenario"></select></div>
       <div class="scenario-status"><span class="status-label" data-i18n="playbackState">Playback</span><span id="sim-status" class="status-pill" data-i18n="waiting">Waiting</span></div>
-      <div class="scenario-help"><span data-i18n="scenarioHelp">Explore positions, observation quality and alerts in the same scenario.</span></div>
+      <div class="scenario-help"><span data-i18n="scenarioHelp">Received inputs vary with each scenario run.</span><span id="test-run-summary" class="test-run-summary"></span></div>
     </section>
 
     <aside id="decision-attention" class="decision-attention" hidden><span id="decision-attention-text"></span><a href="#decision-title" class="button button-primary" data-i18n="decision.viewChoices">View choices</a></aside>
@@ -49,13 +49,16 @@
       <div class="panel-heading"><div><span class="section-number">DECIDE</span><h2 id="decision-title" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
       <div class="agent-controls"><label><input id="decision-enabled" type="checkbox" checked> <span data-i18n="decision.guided">Pause and assess important events</span></label><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button><a href="/api/decisions/audit" download="lowsky-decisions.json" class="button button-secondary" data-i18n="decision.export">Export decision journal</a></div>
       <p class="agent-scope" data-i18n="decision.scope">Important received events pause shared playback for assessment and your decision. Selecting an option does not execute it.</p>
+
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
       <div id="decision-event" class="decision-event"></div>
       <form id="decision-form" class="decision-form" hidden>
         <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
         <p id="decision-confirm-summary"></p><p id="decision-draft-status" role="status" aria-live="polite"></p>
-        <label for="decision-reviewer" data-i18n="review.actor">Reviewer alias</label><input id="decision-reviewer" maxlength="80" required autocomplete="off">
-        <label for="decision-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="decision-reason" rows="3" maxlength="1000" required></textarea>
+        <details id="decision-extra"><summary data-i18n="decision.extra">Add a comment (optional)</summary>
+          <label for="decision-reason" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="decision-reason" rows="3" maxlength="1000"></textarea>
+          <label for="decision-reviewer" data-i18n="decision.alias">Reviewer alias (optional)</label><input id="decision-reviewer" maxlength="80" autocomplete="off">
+        </details>
         <p class="muted" data-i18n="decision.local">This records a local simulation decision. The reviewer alias is self-entered.</p>
         <div class="decision-form-actions"><button id="decision-confirm" type="submit" class="button button-primary" data-i18n="decision.confirm">Confirm and apply</button><button id="decision-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
       </form>
@@ -72,7 +75,7 @@
     <section class="panel scenario-brief" aria-labelledby="brief-heading">
       <div class="brief-summary"><div><p class="eyebrow" id="brief-heading" data-i18n="brief.heading">SCENARIO BRIEFING</p><h2 id="brief-title"></h2><p id="brief-purpose"></p></div><span id="brief-meta" class="muted"></span></div>
       <details id="brief-details"><summary data-i18n="brief.expand">Timeline &amp; review points</summary>
-        <p class="brief-preview-note" data-i18n="brief.preview">Scripted overview — includes future events. This is not live observation evidence.</p>
+        <p id="brief-preview-note" class="brief-preview-note" data-i18n="brief.preview">Scenario reference — includes nominal future events. This is not live observation evidence.</p>
         <div class="brief-body"><div><h3 data-i18n="brief.timeline">Scenario timeline</h3><ol id="brief-timeline"></ol></div>
         <div><h3 data-i18n="brief.review">What to check</h3><p id="brief-review"></p><h3 data-i18n="brief.sharedHeading">Shared early-signal feed</h3><p data-i18n="brief.shared">The same independent community and fixed-phone feeds play in every case. Their alerts do not confirm or identify these tracked objects.</p><p class="muted" id="brief-objects"></p></div></div>
       </details>
@@ -106,7 +109,7 @@
       </section>
       <section class="panel early-warning-panel" aria-labelledby="early-title">
         <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Area early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
-        <p class="early-note" data-i18n="early.note">Independent demo feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
+        <p class="early-note" data-i18n="early.note">Independent simulated feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
         <div id="early-zones" class="early-zones"></div>
       </section>
       <div class="monitor-grid">
@@ -133,10 +136,17 @@
           </section>
 
           <section class="panel playback-panel" aria-label="Scenario playback" data-i18n-aria-label="scenarioPlayback">
+            <form id="test-run-form" class="test-run-controls">
+              <div class="test-seed-field"><label for="test-seed" data-i18n="test.seedLabel">Seed (optional)</label><input id="test-seed" type="number" min="0" max="2147483647" step="1" inputmode="numeric" aria-describedby="test-seed-help test-run-error"><small id="test-seed-help" data-i18n="test.seedHelp">Blank = a new random seed</small></div>
+              <button id="test-run-button" type="submit" class="button button-primary" data-i18n="test.start">Run new test</button><button id="test-repeat-button" type="button" class="button button-secondary" disabled data-i18n="test.repeat">Run again with same seed</button>
+              <output id="test-current-seed" class="test-run-summary"></output>
+            </form>
+            <p id="test-run-error" class="test-run-error" role="status" aria-live="polite"></p><p class="test-run-note" data-i18n="test.scope">Varies observation delays, missing reports and sensor-health timing. Routes stay fixed. The same seed reproduces inputs; agent assessments and human decisions may differ.</p>
             <div class="playback-top"><div class="playback-title"><span class="eyebrow" data-i18n="scenarioTime">SCENARIO TIME</span><output id="time-label" for="timeline">--:--</output></div><div class="playback-actions"><button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button><button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button></div></div>
             <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="180000" step="1000" value="0">
             <div class="playback-bottom"><span data-i18n="timelineHelp">Scrub the timeline to compare observations.</span><div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div></div>
           </section>
+          <div id="map-events-host"><section id="received-events-panel" class="panel events-panel" aria-labelledby="events-title"><div class="panel-heading"><div><h2 id="events-title" data-i18n="eventsTitle">Scenario events</h2></div><span class="eyebrow" data-i18n="eventsEyebrow">EVENT LOG</span></div><ol id="events-list" data-empty="Waiting for data." class="events-list"></ol></section></div>
         </div>
 
         <aside class="observation-sidebar" aria-label="Observation details" data-i18n-aria-label="observationDetails">
@@ -151,8 +161,10 @@
           </section>
           <section class="panel detail-panel" aria-labelledby="detail-title">
             <div class="panel-heading"><div><span class="section-number">03</span><h2 id="detail-title" data-i18n="evidenceTitle">Observation evidence</h2></div><span class="eyebrow" data-i18n="evidenceEyebrow">EVIDENCE</span></div>
+            <div class="evidence-scroll" tabindex="0" role="region" aria-label="Observation evidence" data-i18n-aria-label="evidenceTitle">
             <div id="track-detail" class="track-detail"><p class="empty-state" data-i18n="selectTrack">Select a track to see its observation evidence.</p></div>
             <div id="evidence-explanation" class="evidence-explanation"></div>
+            </div>
             <form id="track-review-form" class="track-review-form">
               <h3 data-i18n="review.title">Review received evidence</h3><p class="muted" data-i18n="review.note">Human review only. Reviewer is a self-entered alias, not authenticated identity.</p>
               <label for="reviewer" data-i18n="review.actor">Reviewer alias</label><input id="reviewer" maxlength="80" required autocomplete="off">
@@ -170,8 +182,20 @@
       <div class="panel alerts-panel"><div class="panel-heading"><div><span class="section-number">01</span><h2 id="alerts-title" data-i18n="qualityAlerts">Current observation quality alerts</h2></div><span class="eyebrow" data-i18n="alertsEyebrow">CURRENT ALERTS</span></div><div class="alerts-intro"><p data-i18n="alertsIntro">Review observation quality at the current replay time.</p><span data-i18n="alertsNote">Shown for the selected scenario and replay time.</span></div><ul id="alert-list" data-empty="Waiting for data." class="alert-list" aria-label="Current observation quality alerts" data-i18n-aria-label="qualityAlerts"></ul></div>
     </section>
 
-    <section class="panel events-panel" aria-labelledby="events-title"><div class="panel-heading"><div><h2 id="events-title" data-i18n="eventsTitle">Scenario events</h2></div><span class="eyebrow" data-i18n="eventsEyebrow">EVENT LOG</span></div><ol id="events-list" data-empty="Waiting for data." class="events-list"></ol></section>
-    <footer class="workspace-footer"><div><span class="footer-mark" aria-hidden="true"></span><span id="source-status" data-i18n="sourceLoading">Checking data sources</span></div><span>LOW SKY <span class="footer-divider">/</span> <span data-i18n="demoFooter">Synthetic observation demo</span></span></footer>
+
+    <div id="alerts-events-host"></div>
+    <section class="test-operator" aria-labelledby="operator-title">
+      <div class="operator-bar"><details id="operator-details">
+        <summary id="operator-title" data-i18n="operator.title">Codex virtual test operator</summary>
+        <div class="operator-body">
+          <p data-i18n="operator.scope">Optional automatic selection and confirmation for the current seeded test. Records are automated tests, not human approvals. Codex usage applies.</p>
+          <div class="agent-controls"><label for="operator-limit" data-i18n="operator.limit">Maximum decisions</label><input id="operator-limit" type="number" min="1" max="10" value="3"><button id="operator-start" class="button button-secondary" type="button" data-i18n="operator.start">Start automatic test decisions</button></div>
+          <p id="operator-error" role="status"></p><ol id="operator-log"></ol>
+        </div>
+      </details><button id="operator-stop" class="button button-secondary" type="button" hidden disabled data-i18n="operator.stop">Stop and take over</button></div>
+      <p id="operator-status" role="status" aria-live="polite"></p>
+    </section>
+    <footer class="workspace-footer"><div><span class="footer-mark" aria-hidden="true"></span><span id="source-status" data-i18n="sourceLoading">Checking data sources</span></div><span>LOW SKY <span class="footer-divider">/</span> <span data-i18n="demoFooter">Observation workspace</span></span></footer>
   </main>
   <script type="module" src="/app.js"></script>
 </body>

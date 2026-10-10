@@ -394,7 +394,7 @@ class HTTPTests(SimulationFixture):
         self.assets = {"/": ("index.html", b"<!doctype html><title>test monitor</title>"),
                        "/app.js": ("app.js", b"export const synthetic = true;"),
                        "/styles.css": ("styles.css", b"body { color: navy; }")}
-        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg'):
+        for name in ('manifest.webmanifest', 'notifications.mjs', 'sw.js', 'pwa-icon.svg', 'test_runs.mjs'):
             self.assets['/' + name] = (name, (monitor_server.PROJECT / 'monitor' / name).read_bytes())
         for filename, content in self.assets.values():
             (self.project / "monitor" / filename).write_bytes(content)
@@ -437,6 +437,52 @@ class HTTPTests(SimulationFixture):
         for path in ("/api/preview", "/motion.mjs"):
             status, _, _ = self.request("GET", path)
             self.assertEqual(status, 404)
+
+    def test_operator_http_requires_explicit_same_origin_start_and_get_is_passive(self):
+        operator = self.sim.test_operator
+        operator.configuration = lambda: dict(available=True, model='test', provider='codex_cli')
+        calls = []
+        operator.runner = lambda *args: calls.append(args)
+        status, _, raw = self.request('GET', '/api/test-operator')
+        self.assertEqual(status, 200)
+        self.assertFalse(json.loads(raw)['active'])
+        self.post(dict(action='start_test', seed=42))
+        body = dict(action='start', run_id=self.sim.run_id, confirm=True, max_decisions=1)
+        headers = {'Content-Type': 'application/json', 'Origin': self.origin}
+        status, _, _ = self.request('POST', '/api/test-operator', json.dumps(body),
+                                     {**headers, 'Origin': 'https://unrelated.example'})
+        self.assertEqual(status, 403)
+        status, _, _ = self.request('POST', '/api/test-operator', json.dumps({**body, 'confirm': False}), headers)
+        self.assertEqual(status, 400)
+        status, _, raw = self.request('POST', '/api/test-operator', json.dumps(body), headers)
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(raw)['active'])
+        self.assertEqual(calls, [])
+        status, _, raw = self.request('POST', '/api/test-operator',
+                                     json.dumps(dict(action='stop', run_id=self.sim.run_id)), headers)
+        self.assertEqual(status, 200)
+        self.assertFalse(json.loads(raw)['active'])
+        self.assertFalse(self.sim.playing)
+
+    def test_seeded_test_http_contract_and_invalid_requests(self):
+        status, _, raw = self.post(dict(action='start_test', case_id='case_003', seed=42))
+        self.assertEqual(status, 200)
+        first = json.loads(raw)
+        self.assertEqual(first['test_run']['seed'], 42)
+        self.assertTrue(first['playing'])
+        self.post(dict(action='pause'))
+        status, _, raw = self.request('GET', '/api/clock')
+        self.assertEqual(json.loads(raw)['test_run'], first['test_run'])
+        before = self.sim.clock_state()
+        status, _, _ = self.post(dict(action='start_test', seed=True))
+        self.assertEqual(status, 400)
+        self.assertEqual(self.sim.clock_state(), before)
+        status, _, _ = self.post(dict(action='start_test', seed=43), headers={'Origin':'https://untrusted.example'})
+        self.assertEqual(status, 403)
+        self.assertEqual(self.sim.clock_state(), before)
+        status, _, raw = self.request('GET', '/test_runs.mjs')
+        self.assertEqual(status, 200)
+        self.assertIn(b'testRunRequest', raw)
 
     def test_truth_query_is_explicit_separate_and_not_cached(self):
         for query in ('', '?show_positions=0', '?show_positions=true'):
@@ -573,7 +619,7 @@ class HTTPTests(SimulationFixture):
     def test_only_explicit_static_assets_are_served(self):
         expected_types = {"/": "text/html", "/app.js": "text/javascript", "/styles.css": "text/css"}
         expected_types.update({'/manifest.webmanifest': 'application/manifest+json',
-                               '/notifications.mjs': 'text/javascript', '/sw.js': 'text/javascript',
+                               '/notifications.mjs': 'text/javascript', '/sw.js': 'text/javascript', '/test_runs.mjs': 'text/javascript',
                                '/pwa-icon.svg': 'image/svg+xml'})
         for path, (_, expected) in self.assets.items():
             with self.subTest(path=path):

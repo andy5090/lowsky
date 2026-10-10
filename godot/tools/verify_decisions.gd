@@ -31,7 +31,7 @@ func verify() -> void:
 	root.add_child(preview)
 	await create_timer(0.8).timeout
 	assert(preview.monitor_connected)
-	await api("/api/control", {"action":"play"})
+	await api("/api/control", {"action":"start_test", "seed":42})
 	var event: Dictionary = {}
 	for _attempt in range(60):
 		await create_timer(0.2).timeout
@@ -42,6 +42,7 @@ func verify() -> void:
 	assert(not event.is_empty(), "First received event must create a decision checkpoint")
 	await create_timer(0.5).timeout
 	assert(not preview.monitor_playing)
+	assert(preview.monitor_test_run.get("seed") == 42, "Godot must identify the shared seeded test")
 	assert(int(preview.elapsed_ms) == int(event.at_ms))
 	var frozen: float = preview.elapsed_ms
 	await create_timer(0.4).timeout
@@ -53,7 +54,14 @@ func verify() -> void:
 	assert(preview.elapsed_ms > frozen, "Godot must follow confirmed resume")
 	await api("/api/control", {"action":"pause"})
 	await api("/api/control", {"action":"speed", "speed":1})
-	print("PASS: important received event pauses Godot, holds before confirmation, and confirmed choice resumes shared clock")
+	var state = await api("/api/state")
+	await create_timer(0.5).timeout
+	var received_ids: Dictionary = {}
+	for track in state.tracks:
+		if not track.last_known:
+			received_ids[str(track.object_id)] = true
+	assert(preview.detected_ids == received_ids, "Godot labels must match generated received evidence")
+	print("PASS: seeded test matches Godot seed and received labels, pauses on an event, holds for confirmation, and resumes")
 	preview.queue_free()
 	await process_frame
 	quit()

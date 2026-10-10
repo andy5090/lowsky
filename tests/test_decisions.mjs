@@ -31,10 +31,12 @@ test('drafts cannot confirm after evidence, event, replay time, run or language 
  assert.equal(decisionDraftStatus(draft,event,state,'ko'),'stale');
  assert.equal(draft.evidence_version,'v1');
 });
-test('confirmation needs a bounded reviewer and reason',()=>{
+test('confirmation accepts optional comments but bounds submitted text',()=>{
  const draft=selectDecision(event,'defer');
- for(const [reviewer,reason] of [['','reason'],['alias',' '],['x'.repeat(81),'reason'],['alias','x'.repeat(1001)]]){
+ for(const [reviewer,reason] of [['x'.repeat(81),'reason'],['alias','x'.repeat(1001)],[null,'reason'],['alias',null]]){
   assert.equal(decisionConfirmation(draft,event,state,'en',reviewer,reason,true),null);
  }
  assert.equal(decisionConfirmation(draft,event,state,'en','alias','Further evidence needed',true).option_id,'defer');
+ const empty=decisionConfirmation(draft,event,state,'en','',' ',true);
+ assert.equal(empty.option_id,'defer');assert.equal(empty.reason,'');assert.equal(empty.reviewer,'');
 });

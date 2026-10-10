@@ -133,6 +133,9 @@ def build_bundle(state):
                                'Sensor heartbeat health is not detection evidence.',
                                'Derived summaries are computed from received records; no world truth or future paths are provided.'])
     ids = {track_summary['id'], review_summary['id']}
+    # Run provenance is retained for reproduction, with no generated future schedule.
+    bundle['test_run'] = {key: copy.deepcopy(state.get('test_run', {}).get(key))
+                          for key in ('mode', 'seed', 'generator_version', 'input_digest')}
     ids.update(row['evidence_id'] for row in sources if row['evidence_id'])
     ids.update(row['id'] for row in fleet + early)
     ids.update(row['id'] for track in examples for row in track['records'])

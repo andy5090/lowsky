@@ -2,6 +2,7 @@
 import argparse
 import copy
 import json
+import secrets
 import threading
 import time
 import uuid
@@ -18,6 +19,8 @@ try:
     from .decision_engine import DecisionEngine, DecisionBusy
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
+    from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
+    from .test_operator import TestOperator
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
     from evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
@@ -27,6 +30,8 @@ except ImportError:
     from decision_engine import DecisionEngine, DecisionBusy
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
+    from simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
+    from test_operator import TestOperator
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -38,9 +43,12 @@ class AssessmentBusy(ValueError):
 class Simulation:
     def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None, audit_path=None,
                  assessment_evaluator=None, assessment_configuration=None,
-                 decision_evaluator=None, decision_audit_path=None):
+                 decision_evaluator=None, decision_audit_path=None, operator_runner=None, operator_configuration=None):
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
+        self.fleet_feed = read_json(PROJECT / 'data' / 'sensor_fleet_demo.json')
+        self.test_public = self.test_early = self.test_fleet = None
+        self.test_run = fixture_metadata()
         self.audit = AuditLog(audit_path)
         self.reviews = []
         self.context_reviews = []
@@ -61,6 +69,7 @@ class Simulation:
         self.assessment_error = None
         self.assessment_thread = None
         self.decisions = DecisionEngine(self, decision_evaluator, decision_audit_path)
+        self.test_operator = TestOperator(self, operator_runner, operator_configuration)
 
     def _time(self):
         elapsed = (self.clock() - self.anchor_wall) * 1000 * self.speed if self.playing else 0
@@ -70,7 +79,11 @@ class Simulation:
         at_ms = self._time()
         duration = self.public[self.case_id]['duration_ms']
         return dict(case_id=self.case_id, run_id=self.run_id, revision=self.revision,
-                    at_ms=at_ms, duration_ms=duration, playing=self.playing and at_ms < duration, speed=self.speed)
+                    at_ms=at_ms, duration_ms=duration, playing=self.playing and at_ms < duration, speed=self.speed,
+                    test_run=copy.deepcopy(self.test_run))
+
+    def _public_input(self):
+        return self.test_public if self.test_public is not None else self.public[self.case_id]
 
     def clock_state(self):
         with self.lock:
@@ -79,7 +92,7 @@ class Simulation:
     def state(self, show_positions=False):
         with self.lock:
             clock = self._clock_state()
-            payload = snapshot(self.public[self.case_id], clock['at_ms'])
+            payload = snapshot(self._public_input(), clock['at_ms'])
             health = []
             latest_health = {}
             for source in payload['source_ids']:
@@ -133,7 +146,7 @@ class Simulation:
                     alerts.append(dict(id=f"{channel['source_id']}:{channel['status']}", kind='channel',
                                        source_id=channel['source_id'], title='관측 채널 갱신 중단',
                                        evidence_ids=[row['id']] if row else []))
-            early_warning, early_alerts = early_snapshot(self.early_feed, clock['at_ms'])
+            early_warning, early_alerts = early_snapshot(self.test_early if self.test_early is not None else self.early_feed, clock['at_ms'])
             alerts = early_alerts + alerts
             for alert in alerts:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
@@ -142,7 +155,7 @@ class Simulation:
             track_reviews = self.audit.current(self.run_id)
             result = dict(**clock, situation=situation, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
                         contexts=payload['contexts'], early_warning=early_warning,
-                        sensor_fleet=fleet_snapshot(self.case_id, clock['at_ms']),
+                        sensor_fleet=fleet_snapshot(self.case_id, clock['at_ms'], self.test_fleet if self.test_fleet is not None else self.fleet_feed),
                         track_reviews=track_reviews,
                         review_summary=dict(total_saved=len(self.audit.records), current_run=len(track_reviews),
                             by_decision={decision: sum(r['decision'] == decision for r in track_reviews)
@@ -231,7 +244,23 @@ class Simulation:
         with self.lock:
             action = command.get('action')
             now_ms = self._time()
-            if action == 'play':
+            if action == 'start_test':
+                case_id = command.get('case_id', self.case_id)
+                if not isinstance(case_id, str) or case_id not in self.public:
+                    raise ValueError('Unknown case')
+                if 'seed' in command:
+                    seed = validate_seed(command['seed'])
+                else:
+                    previous_seed = self.test_run['seed']
+                    seed = secrets.randbelow(MAX_SEED if previous_seed is not None else MAX_SEED + 1)
+                    if previous_seed is not None and seed >= previous_seed:
+                        seed += 1  # A fresh random test never repeats the active seed.
+                inputs = generate_test(case_id, seed, self.public[case_id], self.early_feed, self.fleet_feed)
+                self.test_public, self.test_early, self.test_fleet, self.test_run = inputs
+                self.case_id, now_ms, self.playing = case_id, 0, True
+                self.run_id = uuid.uuid4().hex
+                self.acknowledged.clear()
+            elif action == 'play':
                 self.playing = True
                 if now_ms >= self.public[self.case_id]['duration_ms']:
                     now_ms = 0
@@ -243,6 +272,9 @@ class Simulation:
                 case_id = command.get('case_id', self.case_id)
                 if case_id not in self.public:
                     raise ValueError('Unknown case')
+                if action == 'case' or case_id != self.case_id:
+                    self.test_public = self.test_early = self.test_fleet = None
+                    self.test_run = fixture_metadata()
                 self.case_id, now_ms, self.playing = case_id, 0, False
                 self.run_id = uuid.uuid4().hex
                 self.acknowledged.clear()
@@ -261,7 +293,7 @@ class Simulation:
             elif action == 'review_track':
                 state = self.state()
                 track = next((item for item in state['tracks'] if item['object_id'] == command.get('object_id')), None)
-                payload = snapshot(self.public[self.case_id], state['at_ms'])
+                payload = snapshot(self._public_input(), state['at_ms'])
                 rows = [row for row in payload['observations'] if row['object_id'] == command.get('object_id')]
                 basis = evidence_snapshot(command.get('object_id'), rows, state['sources'],
                                           track['quality'] if track else None,
@@ -288,6 +320,8 @@ class Simulation:
                 raise ValueError('Unknown action')
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
+            if not self.test_operator.applying and action in ('start_test', 'case', 'reset', 'seek', 'pause', 'play'):
+                self.test_operator.cancel('manual_override', pause=False)
             self.decisions.observe_control()
             return self.state()
 
@@ -324,6 +358,8 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(200, self.server.simulation.assessment_state())
         elif path == '/api/decisions':
             self.respond(200, self.server.simulation.decisions.snapshot())
+        elif path == '/api/test-operator':
+            self.respond(200, self.server.simulation.test_operator.snapshot())
         elif path == '/api/decisions/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.decisions.audit.export())
@@ -350,6 +386,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/logo-metal.png': ('logo-metal.png', 'image/png'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
                       '/decisions.mjs': ('decisions.mjs', 'text/javascript; charset=utf-8'),
+                      '/test_runs.mjs': ('test_runs.mjs', 'text/javascript; charset=utf-8'),
                       '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
@@ -372,7 +409,7 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(403, {'error': 'Same-origin requests only'})
             return
         path = urlsplit(self.path).path
-        if path not in ('/api/control', '/api/assessment', '/api/decisions'):
+        if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator'):
             self.respond(404, {'error': 'Not found'})
             return
         if self.headers.get_content_type() != 'application/json':
@@ -385,7 +422,9 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
                 raise ValueError('Expected an object')
-            if path == '/api/decisions':
+            if path == '/api/test-operator':
+                self.respond(200, self.server.simulation.test_operator.command(body))
+            elif path == '/api/decisions':
                 self.respond(202 if body.get('action') in ('assess_current', 'retry') else 200,
                              self.server.simulation.decisions.command(body))
             elif path == '/api/assessment':

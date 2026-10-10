@@ -113,6 +113,7 @@ def make_track_review(command, state, basis, review_id, reviewed_at_unix_ms):
     if command.get('decision') not in ('noted', 'needs_review', 'dismissed'):
         raise ValueError('Invalid review decision')
     return dict(schema_version=1, id=review_id, run_id=state['run_id'], case_id=state['case_id'],
+                test_run=copy.deepcopy(state.get('test_run')),
                 object_id=track['object_id'], at_ms=state['at_ms'], reviewed_at_unix_ms=reviewed_at_unix_ms,
                 reviewer=reviewer.strip(), decision=command['decision'], reason=reason.strip(),
                 evidence_version=track['evidence_version'], evidence_snapshot=copy.deepcopy(basis))

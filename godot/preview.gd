@@ -37,10 +37,15 @@ var monitor_clock = 0.0
 var monitor_received_at = 0
 var monitor_speed = 1.0
 var monitor_playing = false
+var monitor_test_run: Dictionary = {}
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
+var selected_drone_index = 0
 var follow_button: Button
+var previous_drone_button: Button
+var next_drone_button: Button
+var selected_drone_label: Label
 var drone_overlay: Control
 var show_drone_positions = false
 var detected_ids: Dictionary = {}
@@ -315,11 +320,11 @@ func build_ui() -> void:
 	layer.add_child(drone_overlay)
 	layer.move_child(drone_overlay, 0)
 	var title = Label.new()
-	title.text = "LOW SKY / SCENE LAB"
+	title.text = "LOW SKY / 3D SIMULATION"
 	title.add_theme_font_size_override("font_size", 24)
 	column.add_child(title)
 	var subtitle = Label.new()
-	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\nPBR material study · synthetic scenario replay" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
+	subtitle.text = "FICTIONAL AIRFIELD  /  AUTHOR VIEW\n3D simulation · fictional facility" if realistic else "ASSET STUDY  /  SYNTHETIC AUTHOR VIEW\nBuilding samples + procedural placeholders"
 	subtitle.modulate = Color("91b6b8")
 	column.add_child(subtitle)
 	if realistic:
@@ -342,9 +347,24 @@ func build_ui() -> void:
 	playback.disabled = monitor_mode
 	column.add_child(playback)
 	follow_button = Button.new()
-	follow_button.text = "Follow first drone  [F]"
+	follow_button.text = "Follow selected drone  [F]"
 	follow_button.pressed.connect(toggle_follow)
 	column.add_child(follow_button)
+	var drone_selection = HBoxContainer.new()
+	column.add_child(drone_selection)
+	previous_drone_button = Button.new()
+	previous_drone_button.text = "Previous drone  ["
+	previous_drone_button.pressed.connect(func(): select_drone(-1))
+	drone_selection.add_child(previous_drone_button)
+	next_drone_button = Button.new()
+	next_drone_button.text = "Next drone  ]"
+	next_drone_button.pressed.connect(func(): select_drone(1))
+	drone_selection.add_child(next_drone_button)
+	selected_drone_label = Label.new()
+	selected_drone_label.add_theme_font_size_override("font_size", 14)
+	selected_drone_label.modulate = Color("edb0fb")
+	column.add_child(selected_drone_label)
+	update_follow_controls()
 	var aids = CheckButton.new()
 	aids.text = "Show drone positions (SIM)"
 	aids.button_pressed = false
@@ -356,9 +376,9 @@ func build_ui() -> void:
 	status_label.add_theme_font_size_override("font_size", 16)
 	column.add_child(status_label)
 	var hint = Label.new()
-	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\nSynthetic observations. No LLM connected."
+	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\nLabels: received detections / SIM switch\nF: follow drone / overview · Model span 0.6 m" % monitor_base_url
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nSimulation control: %s\nLabels: received detections / SIM switch\n[ / ]: previous / next drone   F: follow / overview\nModel span 0.6 m · Camera selection is SIM context" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	column.add_child(hint)
 
@@ -415,6 +435,8 @@ func toggle_terrain() -> void:
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
+	stop_follow()
+	selected_drone_index = 0
 	detected_ids.clear()
 	for item in objects:
 		item["node"].queue_free()
@@ -424,6 +446,7 @@ func load_case(id: String) -> void:
 	public_data = read_json(data_root.path_join("cases/%s/public.json" % id))
 	for item in world_data["objects"]:
 		var instance = asset_instance(item["visual"]["asset_id"], item["visual"].get("size_profile", ""))
+		instance.position = vector(item["keyframes"][0]["position"])
 		add_child(instance)
 		var label = Label3D.new()
 		label.text = item["object_id"]
@@ -436,6 +459,7 @@ func load_case(id: String) -> void:
 		objects.append({"object_id": item.object_id, "node": instance, "label": label, "sim": false, "keyframes": item["keyframes"]})
 	elapsed_ms = 0
 	update_drone_labels()
+	update_follow_controls()
 
 func set_drone_positions(enabled: bool) -> void:
 	show_drone_positions = enabled
@@ -498,6 +522,8 @@ func _process(delta: float) -> void:
 		update_follow_camera()
 	if time_label:
 		time_label.text = "%s  |  %03d / %03d s" % [case_id, elapsed_ms / 1000, int(world_data.duration_ms) / 1000]
+		if monitor_mode and monitor_test_run.get("mode") == "seeded":
+			time_label.text += "  |  Seed %s" % str(monitor_test_run.get("seed"))
 		var lines = PackedStringArray()
 		for source in public_data.get("source_ids", []):
 			var state = "unknown"
@@ -516,21 +542,47 @@ func show_overview() -> void:
 
 func stop_follow() -> void:
 	follow_drone = false
+	update_follow_controls()
+
+func update_follow_controls() -> void:
+	var empty = objects.is_empty()
+	selected_drone_index = 0 if empty else clampi(selected_drone_index, 0, objects.size() - 1)
+	for index in objects.size():
+		# The screen overlay supplies readable text in the close camera view.
+		# Reduce only its duplicate world label; detection visibility stays intact.
+		objects[index].label.pixel_size = (0.015 if realistic else 0.03) * (0.1 if follow_drone and index == selected_drone_index else 1.0)
 	if follow_button:
-		follow_button.text = "Follow first drone  [F]"
+		follow_button.disabled = empty
+		follow_button.text = "Return to overview  [F]" if follow_drone else "Follow selected drone  [F]"
+	if previous_drone_button:
+		previous_drone_button.disabled = empty
+	if next_drone_button:
+		next_drone_button.disabled = empty
+	if selected_drone_label:
+		# This is author-camera context, never a received detection or world label.
+		selected_drone_label.text = "CAMERA / SIM: No drones" if empty else "CAMERA / SIM: %s  (%d / %d)" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size()]
+
+func select_drone(offset: int) -> void:
+	if objects.is_empty():
+		stop_follow()
+		return
+	selected_drone_index = posmod(selected_drone_index + offset, objects.size())
+	follow_drone = true
+	update_follow_controls()
+	update_follow_camera()
 
 func toggle_follow() -> void:
 	if follow_drone:
 		show_overview()
 	elif not objects.is_empty():
 		follow_drone = true
-		follow_button.text = "Return to overview  [F]"
+		update_follow_controls()
 		update_follow_camera()
 
 func update_follow_camera() -> void:
 	if objects.is_empty():
 		return
-	camera_target = objects[0].node.position
+	camera_target = objects[selected_drone_index].node.position
 	camera.position = camera_target + Vector3(4, 2.5, 6)
 	camera.size = 5
 	camera.near = 0.1
@@ -592,6 +644,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3: load_case("case_003")
 			KEY_T: toggle_terrain()
 			KEY_F: toggle_follow()
+			KEY_BRACKETLEFT: select_drone(-1)
+			KEY_BRACKETRIGHT: select_drone(1)
 			KEY_H:
 				stop_follow()
 				camera_target = vector(site_layout.camera.target)
@@ -678,6 +732,7 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 		if track is Dictionary and track.has("object_id") and not track.get("last_known", true):
 			detected_ids[str(track.object_id)] = true
 	monitor_clock = float(state.at_ms)
+	monitor_test_run = state.get("test_run", {})
 	monitor_speed = float(state.speed)
 	monitor_playing = bool(state.playing)
 	monitor_received_at = Time.get_ticks_msec()

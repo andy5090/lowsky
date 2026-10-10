@@ -88,7 +88,7 @@ class DecisionEngineTests(unittest.TestCase):
     def test_confirmation_required_and_options_have_only_local_effects(self):
         event = self.assess()
         command = self.confirmation(event, 'continue_monitoring')
-        for invalid in ({'confirm': False}, {'reason': ''}, {'reviewer': ''}, {'option_id': 'send_alert'},
+        for invalid in ({'confirm': False}, {'reason': None}, {'reviewer': None}, {'reason': 'x' * 1001}, {'reviewer': 'x' * 81}, {'option_id': 'send_alert'},
                         {'evidence_version': 'wrong'}, {'run_id': 'other'}):
             with self.assertRaises(ValueError):
                 self.engine.command({**command, **invalid})
@@ -145,6 +145,18 @@ class DecisionEngineTests(unittest.TestCase):
         newer = self.assess()
         self.assertEqual(newer['at_ms'], 5000)
         self.assertNotEqual(newer['id'], event['id'])
+
+    def test_option_only_confirmation_records_human_without_inventing_a_comment(self):
+        event = self.assess()
+        command = self.confirmation(event)
+        command.pop('reviewer')
+        command.pop('reason')
+        command['actor'] = {'type': 'automated_test'}
+        self.engine.command(command)
+        row = self.engine.audit.records[-1]
+        self.assertEqual(row['reason'], '')
+        self.assertEqual(row['reviewer'], '')
+        self.assertEqual(row['actor'], {'type': 'human'})
 
     def test_play_drift_invalidates_old_card_even_without_new_observation(self):
         event = self.assess()

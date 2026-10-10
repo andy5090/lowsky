@@ -155,6 +155,7 @@ class DecisionEngine:
 
     def stop(self):
         self.stopping.set()
+        self.sim.test_operator.cancel('stopped')
         if self.scheduler and self.scheduler is not threading.current_thread():
             self.scheduler.join(timeout=2)
         # Provider work is bounded by its adapter; stop invalidates late results.
@@ -163,6 +164,7 @@ class DecisionEngine:
         while not self.stopping.wait(.25):
             try:
                 self.tick()
+                self.sim.test_operator.tick()
             except Exception:
                 # Do not terminate replay or leak provider/private data into server logs.
                 pass
@@ -256,6 +258,8 @@ class DecisionEngine:
                 if type(enabled) is not bool or language not in ('en', 'ko'):
                     raise ValueError('Invalid event configuration')
                 self.enabled, self.language = enabled, language
+                if not enabled:
+                    self.sim.test_operator.cancel('manual_override')
                 bundle = self._bundle()
                 self._reconcile(bundle)
                 self.previous = semantic_state(bundle)
@@ -272,12 +276,13 @@ class DecisionEngine:
                                current='requested', evidence_ids=[bundle['observations']['id']])
                 self._capture(state, bundle, [trigger], language)
             elif action == 'confirm':
+                self.sim.test_operator.cancel('manual_override', pause=False)
                 self._confirm(command)
             else:
                 raise ValueError('Unknown decision action')
             return self.snapshot()
 
-    def _confirm(self, command):
+    def _confirm(self, command, actor=None):
         self._reconcile(self._bundle())
         event = next((e for e in self.events if e['id'] == command.get('event_id')), None)
         if event is None or event['run_id'] != self.sim.run_id or event['status'] != 'ready':
@@ -289,14 +294,15 @@ class DecisionEngine:
         option = command.get('option_id')
         if option not in {item['id'] for item in event['report']['decision_options']}:
             raise ValueError('Invalid decision option')
-        reviewer, reason = command.get('reviewer'), command.get('reason')
-        if not isinstance(reviewer, str) or not 1 <= len(reviewer.strip()) <= 80:
-            raise ValueError('Reviewer alias is required (1-80 characters)')
-        if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
-            raise ValueError('Decision reason is required (1-1000 characters)')
+        reviewer, reason = command.get('reviewer', ''), command.get('reason', '')
+        if not isinstance(reviewer, str) or len(reviewer.strip()) > 80:
+            raise ValueError('Reviewer alias must be text up to 80 characters')
+        if not isinstance(reason, str) or len(reason.strip()) > 1000:
+            raise ValueError('Additional comment must be text up to 1000 characters')
         frozen = {k: copy.deepcopy(v) for k, v in event.items() if k != '_frozen'}
         snapshot = dict(event=frozen, evidence=build_bundle(event['_frozen']), report=copy.deepcopy(event['report']))
         row = dict(schema_version=1, kind='event_decision', id=uuid.uuid4().hex,
+                   actor=copy.deepcopy(actor or {'type': 'human'}),
                    run_id=event['run_id'], case_id=event['case_id'], event_id=event['id'],
                    at_ms=event['at_ms'], evidence_version=event['evidence_version'],
                    option_id=option, outcome='deferred' if option == 'defer' else 'confirmed',
