@@ -172,7 +172,7 @@ impl Drop for Runtime {
 fn show_error(app: &tauri::AppHandle, message: &str) {
     if let Some(window) = app.get_webview_window("launcher") {
         let text = serde_json::to_string(message).unwrap();
-        let _ = window.eval(&format!("document.getElementById('status').textContent={text};document.getElementById('help').textContent='Open LOW SKY → Application data for logs. Quit and reopen after correcting the problem.';"));
+        let _ = window.eval(format!("document.getElementById('status').textContent={text};document.getElementById('help').textContent='Open LOW SKY → Application data for logs. Quit and reopen after correcting the problem.';"));
         let _ = window.show();
     }
     eprintln!("{message}");
