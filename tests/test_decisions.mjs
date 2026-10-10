@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {selectDecision,decisionDraftStatus,decisionConfirmation,decisionStatusKey} from '../monitor/decisions.mjs';
+import {activeDecision,selectDecision,decisionDraftStatus,decisionConfirmation,decisionStatusKey} from '../monitor/decisions.mjs';
 const event={id:'event_1',run_id:'run_1',at_ms:5000,evidence_version:'v1',status:'ready',report:{language:'en',decision_options:[{id:'hold_review'},{id:'defer'}]}};
 const state={run_id:'run_1',at_ms:5000};
 test('a previous confirmation notice never hides a new pending or ready event',()=>{
@@ -56,4 +56,13 @@ test('standard choices remain selectable before an agent report and after failur
   assert.equal(draft.option_id,'hold_review');
   assert.equal(decisionConfirmation(draft,pending,state,'en','','',true).confirm,true);
  }
+});
+
+test('latest overall situation is shown unless a valid human choice is in progress',()=>{
+ const newest={...event,id:'newest',at_ms:8000};
+ assert.equal(activeDecision([newest,event]).id,'newest');
+ const draft=selectDecision(event,'hold_review');
+ assert.equal(activeDecision([newest,event],draft).id,event.id);
+ assert.equal(activeDecision([newest,{...event,status:'expired'}],draft).id,'newest');
+ assert.equal(activeDecision([{...event,status:'decided'}]),null);
 });

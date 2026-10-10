@@ -3,7 +3,7 @@ import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
 import {indicationOverview, earlyIndicationSummary, decisionCopyKey, DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
 import {exerciseConfirmation, exerciseMissionRows} from './exercise.mjs';
-import {decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
+import {activeDecision, decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createAlertPriorityPolicy, priorityAlertKey, createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
@@ -197,7 +197,7 @@ $('decision-bilingual').onchange=()=>{decisionSignature='';renderDecisions();};
 
 function currentDecision() {
   if (!decisions || !state || decisions.run_id !== state.run_id) return null;
-  return [...(decisions.events || [])].reverse().find(event=>!['decided','superseded','expired'].includes(event.status)) || null;
+  return activeDecision(decisions.events || [], decisionDraft);
 }
 function renderIndications() {
   const summary=earlyIndicationSummary(state);

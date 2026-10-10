@@ -8,6 +8,12 @@ export function decisionStatusKey(event, enabled, notice = '') {
 export function decisionReport(event) { return event?.report || event?.choice_report; }
 export function decisionOpen(event) { return ['pending','evaluating','ready','failed'].includes(event?.status); }
 
+export function activeDecision(events = [], draft = null) {
+  // API events are newest first. Preserve an open user selection, otherwise show the latest situation.
+  return events.find(event => event.id === draft?.event_id && decisionOpen(event))
+    || events.find(decisionOpen) || null;
+}
+
 export function selectDecision(event, optionId) {
   if (!decisionOpen(event) || !DECISION_OPTIONS.includes(optionId)
       || !decisionReport(event)?.decision_options?.some(option => option.id === optionId)) return null;
