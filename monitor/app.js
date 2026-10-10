@@ -126,7 +126,7 @@ function renderDetails() {
   const track = state.tracks.find(t => t.object_id === selected);
   if(track) {
     $('track-detail').innerHTML = `<h3>${escape(track.object_id)}</h3><p>${qualityLabel(track.quality)} · ${t('sampleInterval')}</p><dl class="detail-grid"><dt>${t('lastObservation')}</dt><dd>${track.observed_at_ms===null?t('none'):fmt(track.observed_at_ms)}</dd><dt>${t('positionSource')}</dt><dd>${escape(track.position_source || t('none'))}</dd><dt>${t('localXZ')}</dt><dd>${track.position ? `${track.position[0].toFixed(0)} / ${track.position[2].toFixed(0)} m` : t('none')}</dd></dl><button class="button button-secondary" id="focus-track">${t('focusTrack')}</button><div class="evidence-rows">${track.records.map(r=>`<p><strong>${escape(r.source_id)}</strong> · ${translate(language,'lastObservation')} ${fmt(r.observed_at_ms)} · ${translate(language,'early.received')} ${fmt(r.available_at_ms)} · ${escape(t(`marker.${r.marker_label}`))}<br><small>${t('evidence')} ${escape(r.id)}</small></p>`).join('')}</div>`;
-    $('focus-track').onclick = () => { if(track.position){plan.x=track.position[0];plan.z=track.position[2];plan.zoom=8;setMode('site');} };
+    $('focus-track').onclick = () => { if(track.position){plan.x=track.position[0];plan.z=track.position[2];plan.zoom=8;revealMap();setMode('site');} };
   }
   if(!track) $('track-detail').innerHTML = `<p class="empty-state">${t('awaitingDetection')}</p>`;
   if(!queue.items.length) $('track-list').innerHTML = `<p class="empty-state">${t(state.tracks.length?'queue.empty':'awaitingDetection')}</p>`;
@@ -212,6 +212,8 @@ function renderDecisions() {
   if(decisionDraft && decisions?.events?.some(item=>item.id===decisionDraft.event_id && item.status==='expired')) {decisionDraft=null;$('decision-reason').value='';}
   const waiting = (decisions && state && decisions.run_id === state.run_id ? decisions.events || [] : []).filter(item=>!['decided','superseded','expired'].includes(item.status));
   $('decision-count').textContent = waiting.length;
+  $('panel-decision-count').textContent = waiting.length;
+  $('panel-decision-count').hidden = !waiting.length;
   if (decisions) $('decision-enabled').checked = decisions.enabled;
   $('decision-enabled').disabled = !connected || decisionBusy;
   $('decision-assess').disabled = !connected || !state || decisionBusy || event?.status === 'evaluating';
@@ -491,7 +493,7 @@ function renderExercise() {
     $('exercise-assets').innerHTML = assets.map(asset=>`<li><strong>${escape(localized(asset.label))}</strong><span>${escape(localized(asset.role))}</span><span>${escape(t(`exercise.status.${asset.status}`))}</span><button type="button" class="button button-secondary" data-focus-asset="${escape(asset.id)}">${escape(t('exercise.focus'))}</button></li>`).join('');
     $('exercise-assets').querySelectorAll('[data-focus-asset]').forEach(button=>button.onclick=()=>{
       const asset=state?.exercise?.assets.find(item=>item.id===button.dataset.focusAsset);
-      if(asset?.position){plan.x=asset.position[0];plan.z=asset.position[2];plan.zoom=8;setMode('site');}
+      if(asset?.position){plan.x=asset.position[0];plan.z=asset.position[2];plan.zoom=8;revealMap();setMode('site');}
     });
   }
   const canChoose = !disabled && objects.includes($('exercise-object').value) && assets.some(asset=>asset.id===$('exercise-asset').value);
@@ -710,7 +712,7 @@ function focusZone(id) {
   const zone = state?.early_warning?.zones.find(z=>z.id===id);
   if(!zone)return;
   const [lat,lon]=localToGeo(zone.center[0],zone.center[2],config.regional_map.site_origin);
-  Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:14});setMode('region');
+  Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:14});revealMap();setMode('region');
 }
 function deviceHealthHTML(evidence) {
   if (!evidence.device_health) return '';
@@ -723,6 +725,8 @@ function renderEarlyWarning() {
   const feed=state?.early_warning;
   if(!feed)return;
   $('early-count').textContent=feed.zones.filter(z=>z.positive_sources>0).length;
+  $('panel-signal-count').textContent=$('early-count').textContent;
+  $('panel-signal-count').hidden=Number($('early-count').textContent)===0;
   // Preserve expanded evidence while incoming data refreshes the cards.
   const open=new Set([...$('early-zones').querySelectorAll('details[open]')].map(d=>d.dataset.zone));
   $('early-zones').innerHTML=feed.zones.map(z=>`<article class="early-zone${z.deployment_type==='fixed_phone'?' fixed-phone-zone':''}">
@@ -829,7 +833,7 @@ function drawSite() {
     marker.title=`${t.object_id} · ${translate(language,'lastObservation')} ${fmt(t.observed_at_ms)}`;
     marker.classList.toggle('is-stale', Boolean(t.last_known));
     marker.innerHTML=`<span>${escape(t.object_id)}</span>`;
-    marker.onclick=()=>select(t.object_id); markers.append(marker);
+    marker.onclick=()=>{select(t.object_id);showPanel('evidence');}; markers.append(marker);
   }
   if(showPositions && connected) for(const drone of state?.simulation_positions || []){
     const [x,y]=point(drone.position[0],drone.position[2]);
@@ -904,7 +908,7 @@ $('positions-toggle').onclick=async()=>{
 };
 $('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
 function animateRadar(now) {
-  if(state?.playing && radarVisible && connected && !$('monitor-view').hidden)
+  if(state?.playing && radarVisible && connected && !$('monitor-view').hidden && map.clientWidth > 0)
     drawRadar(replayTime(state,clockReceivedAt,now,connected));
   requestAnimationFrame(animateRadar);
 }
@@ -955,7 +959,33 @@ $('case-select').onchange=e=>control({action:'case',case_id:e.target.value});
 $('speed-select').onchange=e=>control({action:'speed',speed:Number(e.target.value)});
 $('timeline').onchange=e=>control({action:'seek',at_ms:Number(e.target.value)});
 $('timeline').oninput=e=>$('time-label').textContent=`${fmt(Number(e.target.value))} / ${fmt(state?.duration_ms || 0)}`;
+// Panel navigation changes only presentation; the simulation clock keeps running.
+const compactWorkspace = window.matchMedia('(max-width: 1099px)');
+let activePanel = compactWorkspace.matches ? 'map' : 'decision';
+function showPanel(panel) {
+  activePanel = panel === 'map' && !compactWorkspace.matches ? 'decision' : panel;
+  $('workbench').dataset.panel = activePanel;
+  for (const button of document.querySelectorAll('[data-panel].panel-tab')) {
+    button.setAttribute('aria-pressed', String(button.dataset.panel === activePanel));
+  }
+  for (const pane of document.querySelectorAll('.workspace-pane')) pane.hidden = pane.id !== `pane-${activePanel}`;
+  drawMap();
+}
+for (const button of document.querySelectorAll('[data-panel].panel-tab')) button.onclick = () => showPanel(button.dataset.panel);
+compactWorkspace.addEventListener('change', () => showPanel(activePanel));
+showPanel(activePanel);
+document.querySelector('#decision-attention a').onclick = event => {
+  event.preventDefault();
+  showPanel('decision');
+  $('decision-title').scrollIntoView({block:'nearest'});
+  $('decision-title').focus({preventScroll:true});
+};
+function revealMap() {
+  showView('monitor');
+  if (compactWorkspace.matches) showPanel('map');
+}
 function showView(view) {
+  if (compactWorkspace.matches) showPanel('map');
   const monitor=view!=='alerts';$('monitor-view').hidden=!monitor;$('alerts-view').hidden=monitor;
   $(monitor?'map-events-host':'alerts-events-host').append($('received-events-panel'));
   for(const b of document.querySelectorAll('[data-view]')){const active=b.dataset.view===(monitor?'monitor':'alerts');b.classList.toggle('is-active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}drawMap();

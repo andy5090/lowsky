@@ -307,6 +307,9 @@ The windowed preview check covers real GUI drag, orbit, and button interactions;
 
 ## Judgment dashboard
 
-The top **Decision dashboard** summarizes received evidence, remaining review time, available review actions, the cost of waiting, and the local decision maker for the selected object. Actions use explicit confirmation; comments are optional and dismissal requires a suggested reason. The simulation keeps moving while a confirmation is open, and changed or expired choices cannot be applied.
+Scenario selection, description, and expandable reference timeline share the top section beside the simulation controls. On desktop (at least 1100px wide and 700px tall), the map and received events stay visible while the adjacent inspector scrolls independently. Switch between **Decisions**, **Evidence**, **Signals**, and **Tools & records**; on narrower screens, **Map** is another panel. Pending decision and signal counts remain on the panel buttons. Panel changes do not pause the simulation.
+
+
+The **Decision dashboard** in the **Decisions** panel summarizes received evidence, remaining review time, available review actions, the cost of waiting, and the local decision maker for the selected object. Actions use explicit confirmation; comments are optional and dismissal requires a suggested reason. The simulation keeps moving while a confirmation is open, and changed or expired choices cannot be applied.
 
 **Continue observing** or **Request sensor review** schedules a clearly labeled, predetermined visual-review receipt after 30 simulation seconds. The 90-second per-object review window continues counting down. These are review deadlines and scripted receipts, not target arrival estimates or real EO measurements. Follow-up arrival also triggers the existing situation agent. The seven-field dashboard journal exports at `/api/dashboard/audit` and persists to `.local/dashboard-decisions.jsonl`; restart/reset starts a fresh active run without deleting saved records. See [decision dashboard adoption](docs/decision-dashboard-adoption.md) for state semantics, limitations, and the proposal mapping.
