@@ -247,13 +247,15 @@ class DecisionEngine:
             raise DecisionBusy('An event assessment is already running')
         stage = evidence_stage(bundle)
         window = review_window(state, stage)
+        choice_report_i18n = {locale: standard_decision_report(bundle, locale) for locale in ('en', 'ko')}
         event = dict(id=uuid.uuid4().hex, run_id=state['run_id'], case_id=state['case_id'],
                      at_ms=state['at_ms'], expires_at_ms=min(state['at_ms'] + window, state['duration_ms']),
                      stage=stage, review_window_ms=window, receipt_version=receipt_signature(bundle),
                      new_evidence_available=False, latest_evidence_at_ms=latest_receipt(bundle),
                      evidence_version=bundle['input_version'],
                      triggers=copy.deepcopy(triggers), status='pending', language=language,
-                     report=None, choice_report=standard_decision_report(bundle, language), error=None, decision=None,
+                     report=None, choice_report=copy.deepcopy(choice_report_i18n[language]),
+                     choice_report_i18n=choice_report_i18n, error=None, decision=None,
                      created_at_unix_ms=int(time.time() * 1000), _frozen=copy.deepcopy(state))
         self.events.append(event)
         # Keep current review cards bounded; confirmed snapshots live in the journal.

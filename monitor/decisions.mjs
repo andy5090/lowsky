@@ -5,7 +5,7 @@ export function decisionStatusKey(event, enabled, notice = '') {
   return notice || (event ? `decision.${event.status}` : enabled ? 'decision.watching' : 'decision.disabled');
 }
 
-export function decisionReport(event) { return event?.report || event?.choice_report; }
+export function decisionReport(event, language) { return event?.report || event?.choice_report_i18n?.[language] || event?.choice_report; }
 export function decisionOpen(event) { return ['pending','evaluating','ready','failed'].includes(event?.status); }
 
 export function activeDecision(events = [], draft = null) {
@@ -14,11 +14,11 @@ export function activeDecision(events = [], draft = null) {
     || events.find(decisionOpen) || null;
 }
 
-export function selectDecision(event, optionId) {
+export function selectDecision(event, optionId, language) {
   if (!decisionOpen(event) || !DECISION_OPTIONS.includes(optionId)
-      || !decisionReport(event)?.decision_options?.some(option => option.id === optionId)) return null;
+      || !decisionReport(event,language)?.decision_options?.some(option => option.id === optionId)) return null;
   return {run_id:event.run_id,event_id:event.id,evidence_version:event.evidence_version,
-    option_id:optionId,at_ms:event.at_ms,language:decisionReport(event).language};
+    option_id:optionId,at_ms:event.at_ms,language:decisionReport(event,language).language};
 }
 
 export function decisionDraftStatus(draft, event, state, language) {
@@ -27,8 +27,8 @@ export function decisionDraftStatus(draft, event, state, language) {
       || draft.run_id !== event.run_id || draft.event_id !== event.id
       || draft.evidence_version !== event.evidence_version || draft.at_ms !== event.at_ms
       || (Number.isFinite(event.expires_at_ms) && state.at_ms >= event.expires_at_ms)
-      || draft.language !== language || decisionReport(event)?.language !== language
-      || !decisionReport(event)?.decision_options?.some(option => option.id === draft.option_id)) return 'stale';
+      || draft.language !== language || decisionReport(event,language)?.language !== language
+      || !decisionReport(event,language)?.decision_options?.some(option => option.id === draft.option_id)) return 'stale';
   return 'ready';
 }
 

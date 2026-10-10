@@ -172,6 +172,7 @@ test('service worker deduplicates concurrent clients and persists receipts acros
   const results = await Promise.all([first.send(), first.send()]);
   assert.deepEqual(results.map(result => result.status), ['sent', 'duplicate']);
   assert.equal(first.shown.length, 1);
+  assert.equal(first.shown[0].silent, true); // App tones own severity and mute.
   const restarted = worker({records: first.records});
   assert.equal((await restarted.send()).status, 'duplicate');
   assert.equal((await restarted.send({runId: 'run-2'})).status, 'sent');

@@ -6,6 +6,7 @@
   "stations": [
     {
       "id": "RADAR A",
+      "label": {"en": "Radar A", "ko": "레이더 A"},
       "source_id": "channel_a",
       "facility_id": "station_a",
       "display_radius_m": 1000,
@@ -13,6 +14,7 @@
     },
     {
       "id": "RADAR B",
+      "label": {"en": "Radar B", "ko": "레이더 B"},
       "source_id": "channel_b",
       "facility_id": "station_b",
       "display_radius_m": 1000,

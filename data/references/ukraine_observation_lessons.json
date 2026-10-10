@@ -4,6 +4,7 @@
     {
       "id": "csis_decoys_2025",
       "title": "Russia Conducts Largest Air Attack on Ukraine to Date",
+      "title_ko": "러시아, 우크라이나에 당시까지 최대 규모의 공습 실시",
       "publisher": "CSIS",
       "published_at": "2025-05-29",
       "url": "https://www.csis.org/analysis/russia-conducts-largest-air-attack-ukraine-date",
@@ -22,6 +23,7 @@
     {
       "id": "rusi_ew_2025",
       "title": "Competitive Electronic Warfare in Modern Land Operations",
+      "title_ko": "현대 지상 작전에서의 전자전 경쟁",
       "publisher": "RUSI",
       "published_at": "2025-01-30",
       "url": "https://www.rusi.org/explore-our-research/publications/occasional-papers/competitive-electronic-warfare-modern-land-operations",
@@ -40,6 +42,7 @@
     {
       "id": "csis_links_2025",
       "title": "Extending the Battlespace to Space",
+      "title_ko": "전장 영역의 우주 확장",
       "publisher": "CSIS",
       "published_at": "2025-09-16",
       "url": "https://www.csis.org/analysis/chapter-8-extending-battlespace-space",

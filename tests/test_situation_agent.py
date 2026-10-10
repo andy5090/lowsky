@@ -2,6 +2,8 @@ import copy
 import importlib.util
 import json
 import os
+from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -74,6 +76,39 @@ class SituationAgentTests(unittest.TestCase):
         self.assertNotEqual(loss['summary'], recovered['summary'])
         self.assertTrue(any('cause is unknown' in item['text'] for item in loss['uncertain']))
         self.assertNotEqual(evaluate(self.state(), 'ko')['summary'], loss['summary'])
+
+    def test_korean_rules_localize_fleet_prose_without_changing_evidence(self):
+        state = self.state()
+        bundle = build_bundle(state)
+        before = copy.deepcopy(bundle)
+        report = rules_report(bundle, 'ko')
+        prose = ' '.join(row['text'] for row in report['uncertain'])
+        self.assertIn('시설 센서:', prose)
+        self.assertIn('고정 휴대폰:', prose)
+        self.assertNotIn('facility_sensor:', prose)
+        self.assertNotIn('fixed_phone:', prose)
+        self.assertEqual(bundle, before)
+        validate_report(report, bundle)
+        from tools.situation_agent import FLEET_LABELS_KO
+        catalog = json.loads((Path(__file__).resolve().parents[1] / 'data/sensor_fleet_demo.json').read_text())
+        self.assertEqual(FLEET_LABELS_KO, {group['id']: group['label']['ko'] for group in catalog['groups']})
+
+    def test_korean_provider_request_covers_all_prose_without_external_calls(self):
+        bundle = build_bundle(self.state())
+        expected = rules_report(bundle, 'ko')
+        requests = []
+        class Agent:
+            async def ainvoke(self, request, config):
+                requests.append(request)
+                return dict(structured_response=expected, messages=[SimpleNamespace(
+                    tool_calls=[{'name': tool.__name__} for tool in _evidence_tools(bundle)])])
+        with patch.dict('sys.modules', {'langchain.chat_models': SimpleNamespace(init_chat_model=lambda *args, **kw: object())}), \
+             patch('tools.situation_agent._create_agent', return_value=Agent()):
+            self.assertEqual(deepagents_report(bundle, 'ko', 'test:local'), expected)
+        prompt = requests[0]['messages'][0]['content']
+        self.assertIn('in Korean', prompt)
+        self.assertIn('every human-readable summary, text and decision-option reason', prompt)
+        self.assertIn('evidence IDs', prompt)
 
     def test_overall_summary_combines_tracks_indications_and_health_gaps(self):
         bundle = build_bundle(self.state(at_ms=90000))

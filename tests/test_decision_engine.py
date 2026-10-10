@@ -55,6 +55,38 @@ class DecisionEngineTests(unittest.TestCase):
                     evidence_version=event['evidence_version'], option_id=option,
                     reviewer='reviewer', reason='Evidence needs human attention', confirm=True)
 
+    def test_standard_choice_translations_are_frozen_without_changing_original_report(self):
+        self.sim.control(dict(action='seek', at_ms=10000))
+        original = self.assess()
+        pair = original['choice_report_i18n']
+        self.assertEqual(set(pair), {'en', 'ko'})
+        self.assertEqual(original['choice_report'], pair['en'])
+        self.assertNotEqual(pair['en']['summary'], pair['ko']['summary'])
+        for language, translated in pair.items():
+            self.assertEqual(translated['language'], language)
+            self.assertEqual(translated['mode'], 'standard')
+            self.assertIsNone(translated['recommended_option_id'])
+        self.assertEqual([(row['id'], row['evidence_ids']) for row in pair['en']['decision_options']],
+                         [(row['id'], row['evidence_ids']) for row in pair['ko']['decision_options']])
+        calls = len(self.calls)
+        state = self.engine.command(dict(action='configure', run_id=self.sim.run_id, enabled=True, language='ko'))
+        current = state['events'][0]
+        self.assertEqual(state['language'], 'ko')
+        for key in ('id', 'language', 'report', 'choice_report', 'choice_report_i18n',
+                    'evidence_version', 'at_ms', 'expires_at_ms'):
+            self.assertEqual(current[key], original[key])
+        self.assertEqual(len(self.calls), calls)
+        # A client modifying its projected copy cannot rewrite the frozen pair.
+        current['choice_report_i18n']['ko']['summary'] = 'client mutation'
+        self.assertEqual(self.engine.snapshot()['events'][0]['choice_report_i18n'], pair)
+        self.engine.command(self.confirmation(original))
+        saved = copy.deepcopy(self.engine.audit.records[-1])
+        self.assertEqual(saved['snapshot']['report'], original['report'])
+        self.assertEqual(saved['snapshot']['event']['choice_report'], original['choice_report'])
+        self.assertEqual(saved['snapshot']['event']['choice_report_i18n'], pair)
+        self.engine.command(dict(action='configure', run_id=self.sim.run_id, enabled=True, language='en'))
+        self.assertEqual(self.engine.audit.records[-1], saved)
+
     def paced_early_fixture(self):
         template = self.sim.state()
         template.update(tracks=[], sources=[], sensor_fleet={'sensors': []}, dashboard={'cards': []},

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
-import {messages, normalizeLanguage, translate, readLanguage, saveLanguage, STORAGE_KEY} from '../monitor/i18n.mjs';
+import {messages, normalizeLanguage, translate, readLanguage, saveLanguage, triggerValue, triggerSubject, localizedValue, STORAGE_KEY} from '../monitor/i18n.mjs';
 
 test('English is the default and only supported languages are selected', () => {
   for (const value of [undefined, null, '', 'fr', 'ko-KR', 'en']) {
@@ -45,12 +45,66 @@ test('saved language survives a reload and blocked storage remains usable', () =
 
 test('all static text and accessibility translation keys exist', () => {
   const html = readFileSync(new URL('../monitor/index.html', import.meta.url), 'utf8');
-  for (const [, key] of html.matchAll(/data-i18n(?:-aria-label|-title)?="([^"]+)"/g)) {
+  for (const [, key] of html.matchAll(/data-i18n(?:-aria-label|-title|-placeholder)?="([^"]+)"/g)) {
     assert.ok(Object.hasOwn(messages.en, key), key);
     assert.ok(Object.hasOwn(messages.ko, key), key);
   }
   assert.match(html, /<html lang="en">/);
   assert.match(html, /id="language-select"/);
+});
+
+test('visible static English copy and accessibility attributes cannot bypass localization', () => {
+  const html = readFileSync(new URL('../monitor/index.html', import.meta.url), 'utf8');
+  const stack = [];
+  const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+  const unchangedNames = new Set(['LOW SKY','EN','OpenStreetMap']);
+  for (const token of html.match(/<!--[\s\S]*?-->|<[^>]+>|[^<]+/g)) {
+    if (token.startsWith('<!')) continue;
+    if (token.startsWith('</')) { stack.pop(); continue; }
+    if (token.startsWith('<')) {
+      const tag = token.match(/^<([\w-]+)/)?.[1];
+      for (const [,attribute,value] of token.matchAll(/\b(aria-label|title|placeholder)="([^"]*)"/g)) {
+        if (!/[A-Za-z]/.test(value) || ['F6','F11'].includes(value)) continue;
+        assert.ok(token.includes(`data-i18n-${attribute}=`), `Untranslated ${attribute}: ${value}`);
+      }
+      if (!voidTags.has(tag) && !token.endsWith('/>')) stack.push({tag,translated:/\bdata-i18n=/.test(token)});
+      continue;
+    }
+    const text = token.trim();
+    if (!/[A-Za-z]/.test(text) || stack.some(node => node.translated || ['script','style'].includes(node.tag))) continue;
+    assert.ok(unchangedNames.has(text), `Untranslated static text: ${text}`);
+  }
+});
+
+test('dynamic render copy uses defined keys and explicit semantic translations', () => {
+  const app = readFileSync(new URL('../monitor/app.js', import.meta.url), 'utf8');
+  for (const [,key] of app.matchAll(/\bt\(['"]([^'"]+)['"]/g)) {
+    assert.ok(Object.hasOwn(messages.en,key), key);
+    assert.ok(Object.hasOwn(messages.ko,key), key);
+  }
+  for (const value of [null,true,false,'single','corroborated','conflicting','no_current_positive','requested','online','offline','stale','unknown','waiting','lost']) {
+    assert.match(triggerValue('ko',value), /[가-힣]/, String(value));
+    assert.doesNotMatch(triggerValue('en',value), /[가-힣]/, String(value));
+  }
+  for (const value of ['received_tracks','received_situation','scripted_review']) assert.match(triggerSubject('ko',value), /[가-힣]/);
+  assert.equal(triggerValue('ko',3),'3');
+  assert.equal(triggerValue('ko','custom evidence text'),'custom evidence text');
+  assert.equal(triggerSubject('ko','remote_reference'),'remote_reference');
+  assert.equal(translate('ko','positions.marker',{id:'object_01'}),'가상 object_01');
+  assert.match(app,/triggerValue\(language,trigger\.previous\)/);
+  assert.match(app,/triggerSubject\(language,trigger\.subject\)/);
+  assert.match(app,/t\('positions\.marker',\{id:drone\.object_id\}\)/);
+  assert.match(app,/source\.title_ko \|\| source\.title/);
+  assert.match(app,/stations\.find\(station=>station\.id===frame\.id\)\?\.label/);
+});
+
+test('bilingual server fields resolve without translating identifiers or authored original text', () => {
+  assert.equal(localizedValue('ko',{en:'Radar A',ko:'레이더 A'}),'레이더 A');
+  assert.equal(localizedValue('en',{en:'Radar A',ko:'레이더 A'}),'Radar A');
+  assert.equal(localizedValue('ko',{en:'Original citation'}),'Original citation');
+  assert.equal(localizedValue('ko','Operator entered this'),'Operator entered this');
+  assert.equal(localizedValue('ko',null),'');
+  assert.match(translate('ko','report.original',{language:translate('ko','report.language.en')}),/평가 원문.*영어/);
 });
 
 test('server-provided quality, alert, source and synthetic context values have translations', () => {

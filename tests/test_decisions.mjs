@@ -1,8 +1,21 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {activeDecision,selectDecision,decisionDraftStatus,decisionConfirmation,decisionStatusKey} from '../monitor/decisions.mjs';
+import {activeDecision,decisionReport,selectDecision,decisionDraftStatus,decisionConfirmation,decisionStatusKey} from '../monitor/decisions.mjs';
 const event={id:'event_1',run_id:'run_1',at_ms:5000,evidence_version:'v1',status:'ready',report:{language:'en',decision_options:[{id:'hold_review'},{id:'defer'}]}};
 const state={run_id:'run_1',at_ms:5000};
+test('frozen standard choices follow the UI language without rewriting model reports',()=>{
+ const ko={...event.report,language:'ko',summary:'수신 자료 검토'};
+ const pending={...event,status:'evaluating',report:null,choice_report:event.report,
+   choice_report_i18n:{en:event.report,ko}};
+ assert.equal(decisionReport(pending,'ko'),ko);
+ assert.equal(decisionReport(pending),event.report);
+ const draft=selectDecision(pending,'hold_review','ko');
+ assert.equal(decisionDraftStatus(draft,pending,state,'ko'),'ready');
+ assert.equal(decisionConfirmation(draft,pending,state,'ko','','',true).confirm,true);
+ assert.equal(decisionDraftStatus(draft,pending,state,'en'),'stale');
+ assert.equal(decisionReport({...pending,report:event.report},'ko'),event.report);
+ assert.equal(decisionDraftStatus(draft,{...pending,report:event.report},state,'ko'),'stale');
+});
 test('a previous confirmation notice never hides a new pending or ready event',()=>{
  for(const status of ['pending','evaluating','ready','failed']){
   assert.equal(decisionStatusKey({...event,id:'event_2',status},true,'decision.saved'),`decision.${status}`);

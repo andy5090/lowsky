@@ -2,6 +2,41 @@
 export const STORAGE_KEY = 'lowsky.monitor.language';
 export const messages = {
   "en": {
+    "audio.locked": "Enable sound",
+    "audio.ready": "Sound on",
+    "audio.muted": "Sound muted",
+    "audio.unsupported": "Sound unavailable",
+    "audio.error": "Retry sound",
+    "audio.disposed": "Sound off",
+    "audio.help": "Low: one soft tone · Medium: two tones · High: three warning pulses. Repeated updates are suppressed.",
+    "section.decide": "DECIDE",
+    "section.signal": "SIGNAL REVIEW",
+    "section.review": "REVIEW",
+    "section.assess": "ASSESS",
+    "section.early": "EARLY SIGNALS",
+    "section.load": "LOAD",
+    "positions.marker": "SIM {id}",
+    "report.original": "Original assessment · {language}",
+    "report.language.en": "English",
+    "report.language.ko": "Korean",
+    "report.otherLanguage": "This assessment was written in another language. Open the original text or request a new assessment.",
+    "trigger.value.none": "None",
+    "trigger.value.true": "Yes",
+    "trigger.value.false": "No",
+    "trigger.value.online": "Online",
+    "trigger.value.offline": "Offline",
+    "trigger.value.stale": "Out of date",
+    "trigger.value.unknown": "Unknown",
+    "trigger.value.waiting": "Waiting",
+    "trigger.value.lost": "Connection lost",
+    "trigger.value.conflicting": "Conflicting reports",
+    "trigger.value.corroborated": "Additional reports",
+    "trigger.value.single": "Single report",
+    "trigger.value.no_current_positive": "No current positive signal",
+    "trigger.value.requested": "Requested",
+    "trigger.subject.received_tracks": "Received tracks",
+    "trigger.subject.received_situation": "Received situation",
+    "trigger.subject.scripted_review": "Scripted review",
     "desktop.views": "Desktop views",
     "desktop.open3d": "3D view",
     "desktop.close3d": "Close 3D",
@@ -637,6 +672,41 @@ export const messages = {
     "brief.unavailable": "Scenario descriptions are unavailable. Replay remains available."
   },
   "ko": {
+    "audio.locked": "알림음 켜기",
+    "audio.ready": "알림음 켜짐",
+    "audio.muted": "알림음 꺼짐",
+    "audio.unsupported": "알림음 지원 안 됨",
+    "audio.error": "알림음 재시도",
+    "audio.disposed": "알림음 꺼짐",
+    "audio.help": "낮음: 짧은 신호음 1회 · 중간: 신호음 2회 · 높음: 경고음 3회. 반복 알림은 소리를 생략합니다.",
+    "section.decide": "의사결정",
+    "section.signal": "징후 검토",
+    "section.review": "검토",
+    "section.assess": "평가",
+    "section.early": "조기 신호",
+    "section.load": "수신량",
+    "positions.marker": "가상 {id}",
+    "report.original": "평가 원문 · {language}",
+    "report.language.en": "영어",
+    "report.language.ko": "한국어",
+    "report.otherLanguage": "다른 언어로 작성된 평가입니다. 원문을 펼치거나 새 평가를 요청하세요.",
+    "trigger.value.none": "없음",
+    "trigger.value.true": "예",
+    "trigger.value.false": "아니요",
+    "trigger.value.online": "연결됨",
+    "trigger.value.offline": "연결 끊김",
+    "trigger.value.stale": "오래된 정보",
+    "trigger.value.unknown": "알 수 없음",
+    "trigger.value.waiting": "대기 중",
+    "trigger.value.lost": "연결 유실",
+    "trigger.value.conflicting": "보고 불일치",
+    "trigger.value.corroborated": "추가 보고 있음",
+    "trigger.value.single": "단일 보고",
+    "trigger.value.no_current_positive": "현재 유효한 양성 신호 없음",
+    "trigger.value.requested": "요청됨",
+    "trigger.subject.received_tracks": "수신된 관측 대상",
+    "trigger.subject.received_situation": "수신된 상황",
+    "trigger.subject.scripted_review": "예약한 모의 검토",
     "desktop.views": "데스크톱 화면",
     "desktop.open3d": "3D 보기",
     "desktop.close3d": "3D 닫기",
@@ -1285,4 +1355,17 @@ export function saveLanguage(storage, language) {
   const value = normalizeLanguage(language);
   try { storage.setItem(STORAGE_KEY, value); } catch { /* In-memory language still works. */ }
   return value;
+}
+
+// Only known server enum values are translated; identifiers and authored text stay intact.
+export function triggerValue(language, value) {
+  const key = `trigger.value.${value == null ? 'none' : value}`;
+  return Object.hasOwn(messages.en, key) ? translate(language, key) : String(value);
+}
+export function triggerSubject(language, value) {
+  const key = `trigger.subject.${value}`;
+  return Object.hasOwn(messages.en, key) ? translate(language, key) : String(value ?? '');
+}
+export function localizedValue(language, value) {
+  return typeof value === 'string' ? value : value?.[normalizeLanguage(language)] || value?.en || '';
 }
