@@ -14,6 +14,7 @@ try:
     from .evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
     from .sensor_fleet import snapshot as fleet_snapshot
     from .situation_agent import configuration_status, evaluate as evaluate_situation
+    from .env_config import load_agent_env
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
 except ImportError:
@@ -21,6 +22,7 @@ except ImportError:
     from evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
     from sensor_fleet import snapshot as fleet_snapshot
     from situation_agent import configuration_status, evaluate as evaluate_situation
+    from env_config import load_agent_env
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
 
@@ -181,6 +183,8 @@ class Simulation:
             language = command.get('language')
             if language not in ('en', 'ko'):
                 raise ValueError('Invalid assessment language')
+            if self.assessment_configuration().get('configuration_error'):
+                raise ValueError('Assessment configuration is incomplete; check the configuration status')
             if self.assessment_job is not None:
                 raise AssessmentBusy('An assessment is already running')
             # Freeze the observation-only state once; provider work runs outside this lock.
@@ -393,6 +397,7 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--audit-path', type=Path, default=PROJECT / '.local' / 'track-reviews.jsonl')
     args = parser.parse_args()
+    load_agent_env(PROJECT / '.env')
     server = make_server(args.port, Simulation(audit_path=args.audit_path))
     print(f'LOW SKY monitor: http://127.0.0.1:{server.server_port}', flush=True)
     try:

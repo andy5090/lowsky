@@ -135,6 +135,58 @@ class SituationAgentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_report(report, bundle)
 
+    def test_openai_default_requires_server_key_and_never_exposes_it(self):
+        with patch.dict(os.environ, {}, clear=True):
+            status = configuration_status()
+            self.assertEqual(status['model'], 'openai:gpt-6.1-sol')
+            self.assertEqual(status['configuration_error'], 'missing_api_key')
+            self.assertFalse(status['configured'])
+            with patch('tools.situation_agent.deepagents_report') as call:
+                with self.assertRaisesRegex(RuntimeError, 'OPENAI_API_KEY'):
+                    evaluate(self.state())
+                call.assert_not_called()
+            with patch.dict(os.environ, {'OPENAI_API_KEY': 'test-secret-not-a-real-key'}):
+                with patch('tools.situation_agent.importlib.util.find_spec', return_value=object()):
+                    status = configuration_status()
+                    self.assertTrue(status['configured'])
+                    self.assertIsNone(status['configuration_error'])
+                with patch('tools.situation_agent.importlib.util.find_spec', return_value=None):
+                    self.assertEqual(configuration_status()['configuration_error'], 'missing_dependencies')
+                self.assertNotIn('test-secret', json.dumps(status))
+            with patch.dict(os.environ, {'LOW_SKY_AGENT_MODEL': ''}):
+                self.assertEqual(configuration_status()['mode'], 'rules')
+
+    @unittest.skipUnless(importlib.util.find_spec('langchain_openai'), 'Optional OpenAI adapter is not installed')
+    def test_openai_adapter_serializes_evidence_tools_without_network(self):
+        import httpx
+        from langchain_openai import ChatOpenAI
+        bundle = build_bundle(self.state())
+        expected = rules_report(bundle)
+        requests = []
+        def respond(request):
+            body = json.loads(request.content)
+            requests.append(body)
+            self.assertEqual(body['model'], 'gpt-6.1-sol')
+            self.assertEqual(request.url.path, '/v1/responses')
+            names = {tool['name'] for tool in body['tools']}
+            self.assertTrue({tool.__name__ for tool in _evidence_tools(bundle)} <= names)
+            if len(requests) == 1:
+                calls = [dict(id=f'fc_{index}', call_id=f'evidence_{index}', type='function_call',
+                              name=tool.__name__, arguments='{}', status='completed')
+                         for index, tool in enumerate(_evidence_tools(bundle))]
+            else:
+                self.assertTrue(any(message.get('type') == 'function_call_output' for message in body['input']))
+                calls = [dict(id='fc_report', call_id='report', type='function_call', status='completed',
+                              name='SituationReport', arguments=json.dumps(expected))]
+            return httpx.Response(200, json=dict(id=f'resp_fixture_{len(requests)}', object='response', created_at=0,
+                model='gpt-6.1-sol', status='completed', output=calls, error=None, incomplete_details=None))
+        model = ChatOpenAI(model='gpt-6.1-sol', api_key='test-only', max_retries=0,
+                           http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)))
+        with patch('langchain.chat_models.init_chat_model', return_value=model) as initialize:
+            self.assertEqual(deepagents_report(bundle, 'en', 'openai:gpt-6.1-sol'), expected)
+            initialize.assert_called_once_with('openai:gpt-6.1-sol', timeout=60, max_retries=0)
+        self.assertEqual(len(requests), 2)
+
     @unittest.skipUnless(importlib.util.find_spec('deepagents'), 'Optional Deep Agents SDK is not installed')
     def test_actual_sdk_tool_loop_and_structured_output_without_provider_calls(self):
         from langchain_core.language_models.chat_models import BaseChatModel
@@ -170,7 +222,7 @@ class SituationAgentTests(unittest.TestCase):
         self.assertFalse({'task', 'ls', 'read_file', 'write_file', 'execute', 'grep'} & set(model.bound_names))
         with patch('langchain.chat_models.init_chat_model', return_value=model) as initialize:
             self.assertEqual(deepagents_report(bundle, 'en', 'lowsky:test'), expected)
-            initialize.assert_called_once_with('lowsky:test', timeout=20, max_retries=0)
+            initialize.assert_called_once_with('lowsky:test', timeout=60, max_retries=0)
 
 
 if __name__ == '__main__':

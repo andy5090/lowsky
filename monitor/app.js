@@ -126,9 +126,11 @@ function renderDetails() {
 }
 function renderAssessment() {
   $('agent-mode').textContent = t(assessment?.mode==='llm'?'agent.llm':'agent.rules');
-  $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running);
-  let status = assessment?.running || assessmentBusy ? 'agent.running' : assessmentFailure || assessment?.error ? 'agent.failed' : assessment?.configured ? 'agent.ready' : 'agent.unconfigured';
-  $('agent-status').textContent = t(status);
+  const configurationError = assessment?.configuration_error;
+  $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running) || Boolean(configurationError);
+  $('agent-auto').disabled = Boolean(configurationError);
+  let status = assessment?.running || assessmentBusy ? 'agent.running' : configurationError ? `agent.${configurationError}` : assessmentFailure || assessment?.error ? 'agent.failed' : assessment?.configured ? 'agent.ready' : 'agent.unconfigured';
+  $('agent-status').textContent = `${t(status)}${assessment?.model ? ` (${assessment.model})` : ''}`;
   const report = assessment?.latest?.run_id===state?.run_id ? assessment.latest : null;
   const stale = report && (report.at_ms!==state.at_ms || report.language!==language);
   const signature = JSON.stringify([language,report,Boolean(stale)]);
@@ -137,7 +139,7 @@ function renderAssessment() {
   $('agent-report').innerHTML = report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t('agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>` : `<p class="empty-state">${t('agent.empty')}</p>`;
 }
 async function runAssessment() {
-  if(!connected || !state || assessmentBusy || assessment?.running)return;
+  if(!connected || !state || assessmentBusy || assessment?.running || assessment?.configuration_error)return;
   const run=state.run_id;
   assessmentBusy=true;assessmentFailure=false;assessmentLastAttempt=performance.now();renderAssessment();
   try {

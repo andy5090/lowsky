@@ -1,7 +1,7 @@
 """Overall received-evidence reporting, with an optional real Deep Agents adapter.
 
-Default rules mode has no third-party dependencies and is never presented as an
-LLM. Agent tools receive bounded summaries, not authored world data or histories.
+OpenAI is the selected provider. Explicit rules mode needs no third-party
+dependencies. Agent tools receive bounded summaries, not world data or histories.
 """
 import asyncio
 import copy
@@ -13,6 +13,7 @@ import time
 
 
 MAX_TRACK_EXAMPLES = 12
+DEFAULT_AGENT_MODEL = 'openai:gpt-6.1-sol'
 QUALITIES = ('consistent', 'contradictory', 'not_comparable', 'missing')
 
 
@@ -172,10 +173,20 @@ def rules_report(bundle, language='en'):
 
 
 def configuration_status():
-    model = os.environ.get('LOW_SKY_AGENT_MODEL', '').strip() or None
-    available = importlib.util.find_spec('deepagents') is not None
-    return dict(configured=bool(model and available), mode='llm' if model else 'rules', model=model,
-                dependencies_available=available)
+    model = os.environ.get('LOW_SKY_AGENT_MODEL', DEFAULT_AGENT_MODEL).strip() or None
+    provider = model.split(':', 1)[0] if model else None
+    available = all(importlib.util.find_spec(module) is not None for module in
+                    ('deepagents', 'langchain', *(['langchain_openai'] if provider == 'openai' else [])))
+    error = None
+    if model:
+        if ':' not in model or not all(model.split(':', 1)):
+            error = 'invalid_model'
+        elif provider == 'openai' and not os.environ.get('OPENAI_API_KEY', '').strip():
+            error = 'missing_api_key'
+        elif not available:
+            error = 'missing_dependencies'
+    return dict(configured=bool(model and error is None), mode='llm' if model else 'rules', model=model,
+                dependencies_available=available, configuration_error=error)
 
 
 def validate_report(report, bundle):
@@ -253,13 +264,13 @@ def deepagents_report(bundle, language, model):
     from langchain.chat_models import init_chat_model
     # Each provider request has a finite budget and is not automatically retried.
     # The graph recursion limit below independently caps model/tool iterations.
-    chat_model = init_chat_model(model, timeout=20, max_retries=0)
+    chat_model = init_chat_model(model, timeout=60, max_retries=0)
     agent = _create_agent(bundle, chat_model, model)
     async def run():
         return await asyncio.wait_for(agent.ainvoke({'messages': [{'role': 'user', 'content':
             f"Assess the current received evidence in {'Korean' if language == 'ko' else 'English'}. "
             f"Replay time: {bundle['at_ms']} ms. Read all four evidence tools and return a concise structured situation report."}]},
-            config={'recursion_limit': 12}), timeout=60)
+            config={'recursion_limit': 12}), timeout=180)
     result = asyncio.run(run())
     called = {call['name'] for message in result.get('messages', []) for call in getattr(message, 'tool_calls', [])}
     required = {tool.__name__ for tool in _evidence_tools(bundle)}
@@ -277,6 +288,8 @@ def evaluate(state, language='en', runner=None):
         raise ValueError('LOW_SKY_AGENT_MODEL must use provider:model format')
     bundle = build_bundle(state)
     if model:
+        if runner is None and config['configuration_error'] == 'missing_api_key':
+            raise RuntimeError('Set OPENAI_API_KEY in the server environment before assessing with OpenAI')
         if runner is None and not config['dependencies_available']:
             raise RuntimeError('Install requirements-agent.txt in an optional virtual environment before using Deep Agents')
         report = (runner or deepagents_report)(copy.deepcopy(bundle), language, model)

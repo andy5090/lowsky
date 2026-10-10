@@ -378,6 +378,13 @@ class AssessmentTests(SimulationFixture):
         self.assertEqual(status['latest']['mode'], 'rules')
         self.assertEqual(calls, ['en'])
 
+    def test_incomplete_configuration_rejects_assessment_before_starting_job(self):
+        self.sim.assessment_configuration = lambda: dict(configuration_error='missing_api_key')
+        with self.assertRaisesRegex(ValueError, 'configuration is incomplete'):
+            self.start()
+        self.assertIsNone(self.sim.assessment_thread)
+        self.assertIsNone(self.sim.assessment_job)
+
 
 class HTTPTests(SimulationFixture):
     def setUp(self):

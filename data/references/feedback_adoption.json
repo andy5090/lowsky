@@ -42,8 +42,8 @@
       "id": "U1",
       "source": "user",
       "requirement": "Agents assess the overall received situation",
-      "status": "partial",
-      "implementation": "Situation-assessment interface and optional Deep Agents adapter, evidence citations and explicit rule baseline. Live LLM requires configured provider credentials; it does not automate operational action."
+      "status": "implemented",
+      "implementation": "Situation assessment with OpenAI GPT-6.1 Sol through Deep Agents, received-only evidence tools, validated citations and explicit offline rules mode. Credentialed synthetic-case smoke test passed; no operational validation or automated action."
     },
     {
       "id": "D1-2",

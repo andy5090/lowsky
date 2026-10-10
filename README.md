@@ -4,7 +4,7 @@
 
 <img src="monitor/logo-metal.png" alt="LOW SKY metallic aviation emblem" width="144" height="144">
 
-LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one replay clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents is an optional LLM adapter; without provider configuration the interface explicitly shows a rule-based overview.
+LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one replay clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents uses OpenAI by default; the interface reports missing server credentials explicitly. An offline rule-based overview remains an explicit option.
 
 Original planning documents remain local and are excluded from the public repository. See [MVP direction](docs/mvp-direction.md) for scope and the folders under `godot/third_party/` for asset licenses and provenance.
 
@@ -75,17 +75,17 @@ The user’s agent-assessment requirement and the stakeholder mentor feedback ta
 
 The actual Deep Agents adapter consults four tools: observations, source/fleet health, early signals and pending reviews. Input contains complete counts plus at most 12 track examples; examples are explicitly sampled. It excludes hidden positions, routes, future receipts, expired context notices, reviewer aliases and free-text reasons. Each report item must cite a supplied observation or derived-summary ID. Citation validation is not a guarantee that model prose is factually correct. No result performs an operational action or acknowledges an alert.
 
-The default is a transparent **rule-based overview**, requiring no model or paid API. To use the real LLM adapter:
+The selected provider is **OpenAI**, with `openai:gpt-6.1-sol` as the default for situation-assessment quality. Model choice remains configurable; smaller models can be compared separately. The model supports function calling and structured output ([official model documentation](https://developers.openai.com/api/docs/models/gpt-6.1-sol)). To enable the adapter:
 
 ```sh
 python3 -m venv .local/agent-venv
 .local/agent-venv/bin/pip install -r requirements-agent.txt
-# Set LOW_SKY_AGENT_MODEL=provider:model and that provider's credentials in your shell.
-# OpenAI and Anthropic integrations are included; no provider or model is selected by default.
+export LOW_SKY_AGENT_MODEL=openai:gpt-6.1-sol
+# Set OPENAI_API_KEY in the project .env or this server shell.
 .local/agent-venv/bin/python tools/monitor_server.py
 ```
 
-See [.env.example](.env.example); the server does not automatically load `.env` files. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. Requests have a 20-second provider timeout, zero retries and a 60-second overall graph deadline. Actual SDK tool-calling/structured-output integration was tested with a fake chat model; **a credentialed live LLM call has not been verified in this environment**. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
+See [.env.example](.env.example) and the [OpenAI environment-variable setup](https://developers.openai.com/api/docs/quickstart). Keep the key server-side; do not paste it into chat or browser storage. The server reads the project `.env` at startup for `OPENAI_API_KEY`, `OPENAI_BASE_URL` and `LOW_SKY_AGENT_MODEL`; existing shell variables take precedence. Only single-line `KEY=value` values, optional `export`, quotes and comments are supported; no variable or command expansion occurs. Restart after changes. `.env` is ignored by Git; only the key-free `.env.example` is tracked. Missing `OPENAI_API_KEY` disables assessment and shows a setup message; presence is only a configuration check, not proof of valid credentials or model access. For the offline rules baseline, explicitly set `LOW_SKY_AGENT_MODEL=""`. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. Requests have a 60-second provider timeout, zero retries and a 180-second overall graph deadline. SDK tool calling and structured output are tested with local transport fixtures. A credentialed **GPT-6.1 Sol** assessment of the synthetic 240-track case was also verified in the browser on 2026-10-10, including all four evidence tools and valid evidence references. This is an integration smoke test, not a comparative model-quality benchmark. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
 
 ## Workload, sensor fleet and durable evidence reviews
 
