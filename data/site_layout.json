@@ -4,8 +4,8 @@
   "unit": "meter",
   "description": "Fictional visual test layout; dimensions are explicit demo assumptions, not a real site or design standard.",
   "perimeter": {
-    "width_m": 2500,
-    "length_m": 4000,
+    "width_m": 1200,
+    "length_m": 2900,
     "height_m": 2.5
   },
   "runway": {
@@ -73,7 +73,7 @@
       "id": "station_a",
       "asset_id": "observation_station",
       "position": [
-        -650,
+        -480,
         0,
         -250
       ],
@@ -87,7 +87,7 @@
       "id": "station_b",
       "asset_id": "observation_station",
       "position": [
-        -650,
+        -480,
         0,
         250
       ],
@@ -115,9 +115,13 @@
       380
     ],
     "overview": [
-      2500,
-      2400,
-      3500
+      2100,
+      2050,
+      3000
     ]
+  },
+  "terrain_grading": {
+    "margin_m": 50,
+    "blend_m": 350
   }
 }

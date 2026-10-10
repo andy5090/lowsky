@@ -101,8 +101,8 @@ func asset_instance(asset_id: String, size_profile: String = "") -> Node3D:
 		match asset_id:
 			"ground_tile":
 				if geographic:
-					return Geographic.make(terrain_data, materials.grass)
-				return Plains.make(materials.grass) if plains_test else Detailed.make_terrain(materials.grass)
+					return Geographic.make(terrain_data, materials.grass, site_layout)
+				return Plains.make(materials.grass, site_layout) if plains_test else Detailed.make_terrain(materials.grass, site_layout)
 			"hangar": return Detailed.make_hangar(materials)
 			"control_tower": return Detailed.make_tower(materials)
 			"utility_building": return Detailed.make_utility_building(materials)

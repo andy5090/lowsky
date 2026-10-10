@@ -62,7 +62,7 @@
       "id": "station_a",
       "asset_id": "observation_station",
       "position": [
-        -650,
+        -480,
         0,
         -250
       ],
@@ -76,7 +76,7 @@
       "id": "station_b",
       "asset_id": "observation_station",
       "position": [
-        -650,
+        -480,
         0,
         250
       ],

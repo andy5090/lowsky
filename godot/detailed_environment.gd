@@ -98,7 +98,7 @@ static func make_utility_building(m: Dictionary) -> Node3D:
 			box(root, Vector3(1.25, 0.035, 0.04), Vector3(0, 3.8 + index * 0.08, z + 0.63), m.dark_metal)
 	return root
 
-static func make_terrain(material: Material) -> Node3D:
+static func make_terrain(material: Material, layout: Dictionary) -> Node3D:
 	var root = Node3D.new()
 	root.name = "FictionalTerrain"
 	# Low distant terrain, deliberately fictional and outside the replay area.
@@ -115,8 +115,8 @@ static func make_terrain(material: Material) -> Node3D:
 			for offset in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
 				var px = (x + offset.x) * 100
 				var pz = (z + offset.y) * 100
-				var outside_site = maxf(absf(px) - 1450.0, absf(pz) - 2200.0)
-				var blend = smoothstep(0, 1800, outside_site)
+				var outside_site = maxf(absf(px) - float(layout.perimeter.width_m) * 0.5 - float(layout.terrain_grading.margin_m), absf(pz) - float(layout.perimeter.length_m) * 0.5 - float(layout.terrain_grading.margin_m))
+				var blend = smoothstep(0, float(layout.terrain_grading.blend_m), outside_site)
 				var height = maxf(0, noise.get_noise_2d(px, pz) + 0.35) * 220 * blend - 0.02
 				points.append(Vector3(px, height, pz))
 			for index in [0, 1, 2, 1, 3, 2]:

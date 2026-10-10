@@ -37,8 +37,13 @@ func verify() -> void:
 	assert(preview.terrain.get_meta("triangle_count") == 80000)
 	assert(preview.terrain_data.origin.lat == 36.5)
 	assert(preview.terrain_data.origin.lon == 127.8)
-	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1250, 2000), -0.02))
-	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -5000, -5000), float(preview.terrain_data.heights_m[0][0]) - 373.0))
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 600, 1450, preview.site_layout), -0.02))
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, -5000, -5000, preview.site_layout), float(preview.terrain_data.heights_m[0][0]) - 373.0))
+	# The old flat plateau must now return to the original DEM outside the blend.
+	assert(is_equal_approx(preview.Geographic.elevation(preview.terrain_data, 1100, 1900, preview.site_layout), float(preview.terrain_data.heights_m[138][122]) - 373.0))
+	for facility in preview.site_layout.facilities:
+		assert(absf(facility.position[0]) + 50 < preview.site_layout.perimeter.width_m * 0.5)
+		assert(absf(facility.position[2]) + 50 < preview.site_layout.perimeter.length_m * 0.5)
 	# Terrain modes must not restart or alter replay.
 	preview.elapsed_ms = 65000
 	preview._process(0)
@@ -61,11 +66,11 @@ func verify() -> void:
 	assert(preview.has_node("DetailedHangar"))
 	assert(preview.has_node("DetailedTower"))
 	assert(preview.get_node("SiteInfrastructure/Runway").get_meta("length_m") == 2500)
-	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("perimeter_m") == 13000)
+	assert(preview.get_node("SiteInfrastructure/PerimeterFence").get_meta("perimeter_m") == 8200)
 	var initial_camera_position = preview.camera.position
 	event.keycode = KEY_C
 	preview._unhandled_input(event)
-	assert(preview.camera.position.y == 2400)
+	assert(preview.camera.position.y == preview.site_layout.camera.overview[1])
 	preview._unhandled_input(event)
 	assert(preview.camera.position.is_equal_approx(initial_camera_position))
 	event.keycode = KEY_LEFT

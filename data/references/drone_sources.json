@@ -1,0 +1,172 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Reference taxonomy and source register for historical scenario research. Not simulation parameters or automatic track classification.",
+  "provenance": "User-provided list; individual claims and URLs have not been independently verified in this catalog.",
+  "drone_references": [
+    {
+      "id": "geran_2",
+      "name": "Geran-2",
+      "aliases": [
+        "Shahed-136"
+      ],
+      "reported_role": "attack",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "lancet",
+      "name": "Lancet",
+      "aliases": [],
+      "reported_role": "attack",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "garpiya",
+      "name": "Garpiya",
+      "aliases": [],
+      "reported_role": "attack",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "orlan_10",
+      "name": "Orlan-10",
+      "aliases": [],
+      "reported_role": "surveillance",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "orlan_30",
+      "name": "Orlan-30",
+      "aliases": [],
+      "reported_role": "surveillance",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "zala",
+      "name": "ZALA",
+      "aliases": [],
+      "reported_role": "surveillance",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "supercam",
+      "name": "Supercam",
+      "aliases": [],
+      "reported_role": "surveillance",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "gerbera",
+      "name": "Gerbera",
+      "aliases": [],
+      "reported_role": "decoy",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    },
+    {
+      "id": "parodiya",
+      "name": "Parodiya",
+      "aliases": [],
+      "reported_role": "decoy",
+      "verification_status": "unverified_user_provided",
+      "evidence_ids": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "rbc",
+      "name": "RBC",
+      "url": "https://www.rbc.ru",
+      "user_provided_group": "news_website",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "kommersant",
+      "name": "Kommersant",
+      "url": "https://www.kommersant.ru",
+      "user_provided_group": "news_website",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "tass",
+      "name": "TASS",
+      "url": "https://tass.ru",
+      "user_provided_group": "news_website",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "ria_novosti",
+      "name": "RIA Novosti",
+      "url": "https://ria.ru",
+      "user_provided_group": "news_website",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "military_informant",
+      "name": "Military Informant",
+      "url": "https://t.me/milinfolive",
+      "user_provided_group": "military_telegram",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "rybar",
+      "name": "Rybar",
+      "url": "https://t.me/rybar",
+      "user_provided_group": "military_telegram",
+      "review_status": "not_reviewed",
+      "use": "historical reporting, photos and discussion; cross-check specific claims"
+    },
+    {
+      "id": "rusi",
+      "name": "RUSI",
+      "url": "https://www.rusi.org",
+      "user_provided_group": "research_and_investigations",
+      "review_status": "not_reviewed",
+      "use": "candidate source for independent cross-check; assess each report and its evidence"
+    },
+    {
+      "id": "csis",
+      "name": "CSIS",
+      "url": "https://www.csis.org",
+      "user_provided_group": "research_and_investigations",
+      "review_status": "not_reviewed",
+      "use": "candidate source for independent cross-check; assess each report and its evidence"
+    },
+    {
+      "id": "conflict_armament_research",
+      "name": "Conflict Armament Research",
+      "url": "https://www.conflictarm.com",
+      "user_provided_group": "research_and_investigations",
+      "review_status": "not_reviewed",
+      "use": "candidate source for independent cross-check; assess each report and its evidence"
+    },
+    {
+      "id": "bbc_russian",
+      "name": "BBC Russian",
+      "url": "https://www.bbc.com/russian",
+      "user_provided_group": "research_and_investigations",
+      "review_status": "not_reviewed",
+      "use": "candidate source for independent cross-check; assess each report and its evidence"
+    }
+  ],
+  "review_policy": {
+    "claim_level_verification": true,
+    "military_claims_require_independent_cross_check": true,
+    "reposts_are_not_independent_confirmation": true,
+    "store_article_url_publication_date_access_date_and_claim_excerpt": true,
+    "record_conflicting_accounts_and_uncertainty": true,
+    "do_not_treat_observed_appearance_as_verified_role": true
+  },
+  "integration_status": "reference_only; no roles, flight parameters, attack behavior or recommendations added to the running fixtures"
+}

@@ -53,7 +53,7 @@ def build(cache):
                 source='Mapzen Terrain Tiles / USGS', source_url=URL, source_sha256=SHA256,
                 attribution='SRTM and GMTED2010 terrain data courtesy of the U.S. Geological Survey; Mapzen Terrain Tiles.',
                 source_grid_arcseconds=1, resampling='bilinear, 50m local grid',
-                modifications='Raw sampled elevations stored here; renderer flattens fictional site and blends 700m to surrounding DEM.',
+                modifications='Raw sampled elevations stored here; renderer flattens fictional site and blends 350m to surrounding DEM.',
                 heights_m=heights)
     output = PROJECT / 'data/terrain/korea_site.json'
     output.parent.mkdir(parents=True,exist_ok=True)

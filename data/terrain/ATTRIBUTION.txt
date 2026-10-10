@@ -9,7 +9,7 @@ USGS global elevation inputs are distributed as public-domain data; see source a
 
 Modifications: bilinear sampling onto a 50m local grid over 10km x 10km around
 36.5N, 127.8E. Godot subtracts the center reference elevation and flattens the
-fictional base, with a 700m transition to the surrounding DEM. Horizontal and
+fictional base, with a 350m transition to the surrounding DEM. Horizontal and
 vertical units are meters, with no vertical exaggeration. PBR ground materials
 are illustrative; no satellite imagery, real buildings or land-cover survey
 are included. These modifications are not endorsed by the source providers.

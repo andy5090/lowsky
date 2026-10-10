@@ -8,6 +8,7 @@
 
 - [시나리오 데이터셋](data/scenarios/v1/README.md): 12개 케이스, 관측 324건, 평가 체크포인트 144개.
 - [구상 문서](docs/mvp-direction.md): 3D 시나리오·에이전트 실험의 범위.
+- [드론·출처 참고 카탈로그](data/references/drone_sources.json): 사용자 제공 9개 명칭·분류와 10개 출처. 개별 주장 검증 전이며 실행 시나리오와 분리해 보관한다.
 - [드론 크기·역할·통신 확장](docs/drone-scenario-extension.md): 적용된 크기 기준과 통신 상태 시나리오 설계.
 - `godot/assets/`: 직접 생성한 임시 GLB 7종과 매핑 목록.
 - `godot/third_party/kenney_industrial/`: 외부 후보 모델 4종, 텍스처, 원본 라이선스와 출처 기록.
@@ -16,7 +17,7 @@
 - `godot/plains_environment.gd`: 평야형 테스트 지형, 농경지 패턴과 절차 생성 수목대.
 - `monitor/`: 영어 기본·한국어 선택 관측 모니터, 실제 지도 위 합성 오버레이와 별도 도면, 근거·현재 알림·확인 표시.
 - `tools/monitor_server.py`: 표준 라이브러리 기반 로컬 서버와 공유 시계.
-- `data/site_layout.json`: 가상 활주로 2,500 × 45m, 부지 2,500 × 4,000m, 높이 2.5m의 외곽 울타리. 설계 표준이나 실제 기지 치수의 재현이 아니다.
+- `data/site_layout.json`: 가상 활주로 2,500 × 45m, 부지 1,200 × 2,900m (3.48㎢), 높이 2.5m의 외곽 울타리. 설계 표준이나 실제 기지 치수의 재현이 아니다.
 - `data/terrain/korea_site.json`: 한국 임의 지점(36.5N, 127.8E) 주변 공개 DEM을 10km × 10km, 50m 격자로 변환한 지형.
 - `godot/preview.gd`: 가상 장면 재생과 에셋 연결 확인. 실제 기지의 지리·운영 모델이 아니다.
 
@@ -90,7 +91,7 @@ node tests/test_monitor_i18n.mjs
 
 OSM 타일은 브라우저에 보이는 영역만 요청하며 attribution을 표시한다. 일괄 수집·오프라인 저장을 하지 않는다. [타일 사용 정책](https://operations.osmfoundation.org/policies/tiles/)을 따른다. 자동 UI 검증에는 `?tiles=off`를 사용한다. 기지 평면도와 3D는 타일 네트워크 없이 동작한다. Google Maps/Earth 자료는 사용하지 않는다.
 
-3D 지형은 [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)의 N36E127 HGT를 bilinear 보간해 만들었다. 원본 체크섬, 출처, 처리 방법은 `data/terrain/`에 기록했다. 지형 원본 격자는 1각초이며 표시 격자는 50m다. 기준점 고도 373m를 로컬 Y=0으로 삼으며 수직 과장은 없다. **가상 기지와 주변 700m 전이 구간은 평탄화·보간으로 수정했다.** 이 부분은 실제 지형 재현이 아니다. 나머지 주변 지형은 DEM의 상대 고도를 사용한다. 위성사진·실제 건물·식생 분포는 반입하지 않아 텍스처는 예시 재질이다.
+3D 지형은 [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/)의 N36E127 HGT를 bilinear 보간해 만들었다. 원본 체크섬, 출처, 처리 방법은 `data/terrain/`에 기록했다. 지형 원본 격자는 1각초이며 표시 격자는 50m다. 기준점 고도 373m를 로컬 Y=0으로 삼으며 수직 과장은 없다. **가상 기지와 주변 350m 전이 구간은 평탄화·보간으로 수정했다.** 이 부분은 실제 지형 재현이 아니다. 나머지 주변 지형은 DEM의 상대 고도를 사용한다. 위성사진·실제 건물·식생 분포는 반입하지 않아 텍스처는 예시 재질이다.
 
 이전 우크라이나 참고 방향의 합성 평야 프리셋은 비교 모드로 남겨 두었다. 기본 지역은 이후 사용자 선택에 따라 한국으로 변경했다.
 
