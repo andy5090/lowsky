@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1] / "data" / "scenarios" / "v1"
 TIMES = tuple(range(0, 180_001, 10_000))
 SOURCES = ("channel_a", "channel_b")
 VARIANTS = ("consistent", "contradictory", "missing")
+WORKLOAD_COUNTS = (12, 24, 240)
 TTL_MS = 45_000
 
 
@@ -57,24 +58,28 @@ def build(root):
         ),
         (
             localized("Monitoring load test: source loss and recovery", "모니터링 부하 시험: 채널 단절·복구"),
-            localized("36 aerial objects exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.", "비행체 36개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."),
+            localized("240 synthetic aerial objects exercise the review queue. Channel B is unavailable from 01:00 until 02:10 and then resumes reporting.", "합성 비행체 240개로 검토 대기열을 시험합니다. 채널 B는 01:00부터 02:10까지 단절된 뒤 보고를 재개합니다."),
             localized("Retain last evidence during loss, distinguish missing corroboration from disappearance, and verify recovery without inventing tracks.", "단절 중 마지막 근거를 보존하고 교차 확인 불가와 대상 소멸을 구분하며, 근거를 만들어내지 않고 복구를 확인합니다."),
-            localized("36 synthetic objects sharing two observation channels; the outage affects one channel, not world motion.", "합성 비행체 36개가 두 관측 채널을 공유합니다. 단절은 한 관측 채널에만 영향을 주며 실제 움직임은 계속됩니다."),
+            localized("240 synthetic objects sharing two observation channels, plus an independent health-only fleet of 240 virtual sensor endpoints. These are workload assumptions, not measured attack or deployment sizes.", "합성 비행체 240개가 두 관측 채널을 공유하며, 별도의 가상 센서 240개는 상태 정보만 제공합니다. 수량은 부하 시험 가정이며 실측 공격·배치 규모가 아닙니다."),
         ),
     ]
-    for index, (variant, count) in enumerate(zip(VARIANTS, (12, 24, 36))):
+    for index, (variant, count) in enumerate(zip(VARIANTS, WORKLOAD_COUNTS)):
         case_id = f"case_{index + 1:03d}"
         objects = [f"object_{11 + i:02d}" for i in range(count)]
         markers = {obj: ("circle", "square", "triangle")[i % 3] for i, obj in enumerate(objects)}
+        # Keep the larger generic workload inside the same preview extent. This
+        # grid is a display fixture, not a formation or attack-path model.
+        columns, row_spacing = (12, 16) if variant == "missing" else (6, 80)
+        column_spacing = 1500 / 11 if variant == "missing" else 300
         world = {
             "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
             "objects": [
                 {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj]},
                  "keyframes": [
                      {"at_ms": tick, "position": [
-                         -750 + (i % 6) * 300 + (tick / TIMES[-1]) * (80 if i % 2 else -80),
+                         -750 + (i % columns) * column_spacing + (tick / TIMES[-1]) * (80 if i % 2 else -80),
                          80 + (i % 5) * 12,
-                         -1900 - (i // 6) * 80 + (tick / TIMES[-1]) * 3800,
+                         -1900 - (i // columns) * row_spacing + (tick / TIMES[-1]) * 3800,
                      ]} for tick in TIMES]}
                 for i, obj in enumerate(objects)
             ],
@@ -261,7 +266,7 @@ def validate(root):
         require(public["duration_ms"] == world["duration_ms"] == TIMES[-1], "Invalid duration")
         require(public["source_ids"] == list(SOURCES), "Unexpected source IDs")
         require(public["freshness_ms"] == TTL_MS, "Unexpected freshness setting")
-        require(len(set(public["object_ids"])) == (12, 24, 36)[VARIANTS.index(entry["variant"])], "Unexpected workload count")
+        require(len(set(public["object_ids"])) == WORKLOAD_COUNTS[VARIANTS.index(entry["variant"])], "Unexpected workload count")
         require(entry["split"] in ("development", "holdout"), "Unknown split")
         require({obj["object_id"] for obj in world["objects"]} == set(public["object_ids"]), "Object mismatch")
         ids = set()
@@ -294,8 +299,9 @@ def validate(root):
         expected_pairs = {(tick, obj) for tick in (70_000, 90_000, 120_000, 150_000, 180_000) for obj in public["object_ids"]}
         require({(row["at_ms"], row["object_id"]) for row in rubric["checkpoints"]} == expected_pairs,
                 "Checkpoint coverage mismatch")
+        checkpoint_payloads = {tick: snapshot(public, tick) for tick in (70_000, 90_000, 120_000, 150_000, 180_000)}
         for checkpoint in rubric["checkpoints"]:
-            payload = snapshot(public, checkpoint["at_ms"])
+            payload = checkpoint_payloads[checkpoint["at_ms"]]
             actual = information_state(payload, checkpoint["object_id"])
             require(actual == checkpoint["expected_state"], f"State mismatch in {case_id}: {checkpoint}")
             require(checkpoint["required_topics"] and checkpoint["forbidden_claims"], "Missing review rubric")

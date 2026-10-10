@@ -4,13 +4,13 @@
 
 <img src="monitor/logo-metal.png" alt="LOW SKY metallic aviation emblem" width="144" height="144">
 
-LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one replay clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. Deep Agents and generated explanations are not connected yet.
+LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one replay clock. The setting is a fictional airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents is an optional LLM adapter; without provider configuration the interface explicitly shows a rule-based overview.
 
 Original planning documents remain local and are excluded from the public repository. See [MVP direction](docs/mvp-direction.md) for scope and the folders under `godot/third_party/` for asset licenses and provenance.
 
 ## Included
 
-- [Scenario dataset](data/scenarios/v1/README.md): three 180-second cases with 12, 24, and 36 objects; 1,980 observations and 360 evaluation checkpoints. Only the third case is a load test.
+- [Scenario dataset](data/scenarios/v1/README.md): three 180-second cases with 12, 24, and 240 objects; 6,876 observations and 1,380 evaluation checkpoints. Only the third case is a load test.
 - [Drone/source catalog](data/references/drone_sources.json): nine user-supplied names/categories and ten sources, separate from executable scenarios and not individually verified.
 - [Drone scenario extension](docs/drone-scenario-extension.md): size, role, and communication concepts.
 - `monitor/`: English by default, optional Korean, scenario briefings, received observations, evidence, current alerts, human review, and PWA notifications.
@@ -63,9 +63,48 @@ Godot is an **authoring view** showing simulated object movement even when obser
 
 Contradiction, channel loss, and stale-position alerts describe observation quality. Channels A/B are not physical RF or fiber models. Acknowledgements apply to the current run, clear on seek/reset/case change, and disappear when the server restarts. At most 1,000 acknowledgement records remain in server memory; this is not a permanent audit log.
 
-**Scenario briefing** and **Timeline & review points** explain purpose, object count, milestones, and review criteria. The cases cover first reports (12 objects), conflicting evidence and review (24), and monitoring load with channel interruption/recovery (36). Counts and routes are synthetic assumptions, not measured attack sizes. Briefings contain future events for the operator and are served separately by `/api/briefings`; received-only state and clock use `/api/state` and `/api/clock`. Area early signals are a separate feed shared by all cases.
+**Scenario briefing** and **Timeline & review points** explain purpose, object count, milestones, and review criteria. The cases cover first reports (12 objects), conflicting evidence and review (24), and monitoring load with channel interruption/recovery (240). Counts and routes are synthetic assumptions, not measured attack sizes. Briefings contain future events for the operator and are served separately by `/api/briefings`; received-only state and clock use `/api/state` and `/api/clock`. Area early signals are a separate feed shared by all cases.
 
 **Radar overlay** animates received observations from A/B. Scans follow the shared clock and stop for paused or interrupted channels. New returns appear only as observations arrive. The [display configuration](data/radar_display.json)—12-second sweep, 1,000 m circle, 2.5-second return—is a visual convention, not a detection range or physical radar model. Godot uses `/api/state` to receive detection visibility and the clock atomically.
+
+## Situation assessment and feedback priorities
+
+The user’s agent-assessment requirement and the stakeholder mentor feedback take priority over the secondary engineering review. [Adoption status](data/references/feedback_adoption.json) records implemented, partial and deferred items. The original feedback DOCX/PDF remain local and unpublished. Three presentation cases are retained; only `case_003` is a load test. Its **240 objects are a synthetic software workload**, not a reconstruction or measurement of an attack.
+
+**Situation assessment** evaluates a frozen received snapshot and reports known facts, uncertainty and human review items with evidence references. Request it manually, or opt into automatic assessment every 30 seconds of wall time while playback runs. The panel labels the evidence time and marks earlier snapshots. New runs suppress old results; evaluation runs in the background without blocking replay controls. Export includes the report and its bounded, allowlisted evidence bundle.
+
+The actual Deep Agents adapter consults four tools: observations, source/fleet health, early signals and pending reviews. Input contains complete counts plus at most 12 track examples; examples are explicitly sampled. It excludes hidden positions, routes, future receipts, expired context notices, reviewer aliases and free-text reasons. Each report item must cite a supplied observation or derived-summary ID. Citation validation is not a guarantee that model prose is factually correct. No result performs an operational action or acknowledges an alert.
+
+The default is a transparent **rule-based overview**, requiring no model or paid API. To use the real LLM adapter:
+
+```sh
+python3 -m venv .local/agent-venv
+.local/agent-venv/bin/pip install -r requirements-agent.txt
+# Set LOW_SKY_AGENT_MODEL=provider:model and that provider's credentials in your shell.
+# OpenAI and Anthropic integrations are included; no provider or model is selected by default.
+.local/agent-venv/bin/python tools/monitor_server.py
+```
+
+See [.env.example](.env.example); the server does not automatically load `.env` files. A selected model with unavailable dependencies, credentials, connection or invalid output produces an explicit failure, never a fabricated successful LLM assessment. Requests have a 20-second provider timeout, zero retries and a 60-second overall graph deadline. Actual SDK tool-calling/structured-output integration was tested with a fake chat model; **a credentialed live LLM call has not been verified in this environment**. The adapter follows the official [Deep Agents API](https://reference.langchain.com/python/deepagents/graph/create_deep_agent), using an in-memory backend and no exposed filesystem, shell or delegation tools.
+
+## Workload, sensor fleet and durable evidence reviews
+
+The received-track queue shows 12 rows per page with all/evidence-gap/unreviewed filters. Counts cover all received tracks. Large map views keep position symbols but show history only for the selected track; optional SIM truth remains off by default.
+
+The [virtual fleet](data/sensor_fleet_demo.json) has **240 logical endpoints**: 60 personnel phones, 60 facility sensors, 60 civilian phones and 60 fixed phones. These are health-telemetry fixtures, independent of the A/B object-observation feeds and the two physically modeled exterior poles. At first receipt (00:01), all endpoints report online. In the load case, facility status reports arrive offline at 01:01; the fixed-phone group’s missing heartbeats become stale after 01:10. Both recover at 02:11. Loss cause remains unknown. Phone apps, audio acquisition, edge inference, sensor fusion, real agency routing and external SMS are deferred; existing open/minimized PWA current-alert notifications remain available.
+
+Per-track explanations compute known/uncertain/missing sections from source records and health. Observation, evidence agreement, object type and intent are separate: type and intent remain unknown. **Save evidence review** requires a reviewer alias, decision and reason, and rejects an outdated evidence version. The CLI appends the received snapshot, SHA-256 evidence version, replay time and real timestamp to `.local/track-reviews.jsonl` and flushes it before confirming success. Export includes records across runs and restarts. This is local durable storage, not authenticated identity or tamper-proof storage. Existing context reviews and alert acknowledgements remain session-only.
+
+Reproduce validation and the narrowly scoped performance measurement:
+
+```sh
+python3 -m unittest discover -s tests -q
+node --test tests/*.mjs
+python3 tools/benchmark_monitor.py --iterations 30
+.local/agent-venv/bin/python -m unittest tests.test_situation_agent -v
+```
+
+The [recorded local benchmark](artifacts/monitor-workload-benchmark.json) measured 240 received tracks plus 240 virtual endpoints over 30 iterations: median **33.82 ms**, maximum **37.20 ms**, serialized payload **1,272,819 bytes** on Python 3.12.11/macOS. It measures state generation plus JSON serialization only; it excludes HTTP, browser/Godot rendering and LLM latency, and establishes no real-world detection accuracy.
 
 ## PWA and current-alert notifications
 

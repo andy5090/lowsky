@@ -44,6 +44,13 @@
       <div class="scenario-help"><span data-i18n="scenarioHelp">Explore positions, observation quality and alerts in the same scenario.</span></div>
     </section>
 
+    <section class="panel agent-panel" aria-labelledby="agent-title">
+      <div class="panel-heading"><div><span class="section-number">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
+      <div class="agent-controls"><button id="agent-assess" type="button" class="button button-primary" data-i18n="agent.evaluate">Assess received situation</button><label><input id="agent-auto" type="checkbox"> <span data-i18n="agent.auto">Auto-assess during playback (every 30s)</span></label><span id="agent-status" role="status" aria-live="polite"></span><a href="/api/assessment" download="lowsky-situation-assessment.json" class="button button-secondary" data-i18n="agent.export">Export assessment and evidence</a></div>
+      <p class="agent-scope" data-i18n="agent.scope">Reviews received observations, sensor health and review workload. Hidden simulation positions are excluded. Human judgment remains required.</p>
+      <div id="agent-report" class="agent-report"></div>
+    </section>
+
     <section class="panel scenario-brief" aria-labelledby="brief-heading">
       <div class="brief-summary"><div><p class="eyebrow" id="brief-heading" data-i18n="brief.heading">SCENARIO BRIEFING</p><h2 id="brief-title"></h2><p id="brief-purpose"></p></div><span id="brief-meta" class="muted"></span></div>
       <details id="brief-details"><summary data-i18n="brief.expand">Timeline &amp; review points</summary>
@@ -74,6 +81,11 @@
     </section>
 
     <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
+      <section class="panel workload-panel" aria-labelledby="workload-title">
+        <div class="panel-heading"><div><span class="section-number">LOAD</span><h2 id="workload-title" data-i18n="workload.title">Observation workload</h2></div><span data-i18n="workload.synthetic">Synthetic input load</span></div>
+        <div id="workload-summary" class="workload-summary"></div>
+        <details class="fleet-details"><summary data-i18n="fleet.title">Virtual phone and facility sensor fleet</summary><p class="muted" data-i18n="fleet.note">Health telemetry only. These virtual endpoints do not produce the A/B drone observations or represent installed devices.</p><div id="fleet-groups" class="fleet-groups"></div><p data-i18n="fleet.cause">An offline or stale endpoint has an unknown cause; this does not establish jamming.</p><p id="fleet-last-seen" class="muted"></p></details>
+      </section>
       <section class="panel early-warning-panel" aria-labelledby="early-title">
         <div class="panel-heading"><div><span class="section-number">EW</span><h2 id="early-title" data-i18n="early.title">Area early signals</h2><span id="early-count" class="count-badge">0</span></div><span class="eyebrow" data-i18n="early.synthetic">SYNTHETIC FEED</span></div>
         <p class="early-note" data-i18n="early.note">Independent demo feed · Not associated with tracked objects. Signals require review, not confirmation of an attack.</p>
@@ -112,6 +124,7 @@
         <aside class="observation-sidebar" aria-label="Observation details" data-i18n-aria-label="observationDetails">
           <section class="panel tracks-panel" aria-labelledby="tracks-title">
             <div class="panel-heading"><div><span class="section-number">02</span><h2 id="tracks-title" data-i18n="tracksTitle">Observed tracks</h2><span id="track-count" class="count-badge">--</span></div><span class="eyebrow" data-i18n="tracks">TRACKS</span></div>
+            <div class="queue-controls"><label for="queue-filter" data-i18n="queue.filter">Review queue</label><select id="queue-filter"><option value="all" data-i18n="queue.all">All received</option><option value="attention" data-i18n="queue.attention">Evidence gaps or conflict</option><option value="unreviewed" data-i18n="queue.unreviewed">Current evidence not reviewed</option></select><div class="queue-pages"><button id="queue-prev" class="button button-secondary" data-i18n="queue.prev">Previous</button><span id="queue-page"></span><button id="queue-next" class="button button-secondary" data-i18n="queue.next">Next</button></div></div>
             <div id="track-list" data-empty="Waiting for data." class="track-list" aria-label="Observed track list" data-i18n-aria-label="trackList"></div>
           </section>
           <section class="panel active-alerts-panel" aria-labelledby="active-alerts-title">
@@ -121,6 +134,15 @@
           <section class="panel detail-panel" aria-labelledby="detail-title">
             <div class="panel-heading"><div><span class="section-number">03</span><h2 id="detail-title" data-i18n="evidenceTitle">Observation evidence</h2></div><span class="eyebrow" data-i18n="evidenceEyebrow">EVIDENCE</span></div>
             <div id="track-detail" class="track-detail"><p class="empty-state" data-i18n="selectTrack">Select a track to see its observation evidence.</p></div>
+            <div id="evidence-explanation" class="evidence-explanation"></div>
+            <form id="track-review-form" class="track-review-form">
+              <h3 data-i18n="review.title">Review received evidence</h3><p class="muted" data-i18n="review.note">Human review only. Reviewer is a self-entered alias, not authenticated identity.</p>
+              <label for="reviewer" data-i18n="review.actor">Reviewer alias</label><input id="reviewer" maxlength="80" required autocomplete="off">
+              <label for="track-decision" data-i18n="situation.decision">Review decision</label><select id="track-decision"><option value="noted" data-i18n="situation.noted">Noted</option><option value="needs_review" data-i18n="situation.needs_review">Needs further review</option><option value="dismissed" data-i18n="situation.dismissed">Dismissed from this review</option></select>
+              <label for="track-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="track-reason" rows="3" maxlength="1000" required></textarea>
+              <p id="review-version" class="muted"></p><button id="review-refresh" class="button button-secondary" type="button" data-i18n="review.refresh">Discard draft and use latest evidence</button><button id="track-review-submit" class="button button-secondary" type="submit" data-i18n="review.save">Save evidence review</button><p id="track-review-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="audit-export"><a href="/api/audit" download="lowsky-evidence-audit.json" class="button button-secondary" data-i18n="review.export">Export saved evidence reviews</a><p id="audit-summary" class="muted"></p><p class="muted" data-i18n="review.exportNote">Local evidence-review journal, across runs. Context notes and alert acknowledgements remain session-only.</p></div>
           </section>
         </aside>
       </div>

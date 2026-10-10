@@ -1,5 +1,6 @@
 """Local shared replay clock and observation-only monitoring API (stdlib only)."""
 import argparse
+import copy
 import json
 import threading
 import time
@@ -10,20 +11,32 @@ from urllib.parse import parse_qs, urlsplit
 
 try:
     from .scenario_dataset import ROOT, read_json, snapshot, information_state
+    from .evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
+    from .sensor_fleet import snapshot as fleet_snapshot
+    from .situation_agent import configuration_status, evaluate as evaluate_situation
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
+    from evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
+    from sensor_fleet import snapshot as fleet_snapshot
+    from situation_agent import configuration_status, evaluate as evaluate_situation
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
 
 PROJECT = Path(__file__).resolve().parents[1]
 
 
+class AssessmentBusy(ValueError):
+    pass
+
+
 class Simulation:
-    def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None):
+    def __init__(self, root=ROOT, clock=time.monotonic, early_feed=None, audit_path=None,
+                 assessment_evaluator=None, assessment_configuration=None):
         self.root, self.clock = root, clock
         self.early_feed = early_feed if early_feed is not None else read_json(PROJECT / 'data' / 'early_warning_demo.json')
+        self.audit = AuditLog(audit_path)
         self.reviews = []
         self.context_reviews = []
         self.situation_feed = read_json(PROJECT / "data/situation_review.json")
@@ -36,6 +49,12 @@ class Simulation:
         self.run_id = uuid.uuid4().hex
         self.revision = 0
         self.acknowledged = set()
+        self.assessment_evaluator = assessment_evaluator or evaluate_situation
+        self.assessment_configuration = assessment_configuration or configuration_status
+        self.assessment_job = None
+        self.assessment_latest = None
+        self.assessment_error = None
+        self.assessment_thread = None
 
     def _time(self):
         elapsed = (self.clock() - self.anchor_wall) * 1000 * self.speed if self.playing else 0
@@ -65,11 +84,15 @@ class Simulation:
                     status = 'stale'
                 latest_health[source] = status
                 health.append(dict(source_id=source, status=status, evidence=row))
+            observations_by_object = {}
+            for row in payload['observations']:
+                observations_by_object.setdefault(row['object_id'], []).append(row)
             tracks, alerts = [], []
             for obj in payload['object_ids']:
+                object_rows = observations_by_object.get(obj, [])
                 records = []
                 for source in payload['source_ids']:
-                    rows = [r for r in payload['observations'] if r['source_id'] == source and r['object_id'] == obj]
+                    rows = [r for r in object_rows if r['source_id'] == source]
                     row = max(rows, key=lambda r: (r['observed_at_ms'], r['available_at_ms']), default=None)
                     if row:
                         records.append(row)
@@ -78,14 +101,18 @@ class Simulation:
                 fresh = [r for r in records if latest_health[r['source_id']] == 'online'
                          and payload['at_ms'] - r['observed_at_ms'] <= payload['freshness_ms']]
                 position_record = max(fresh or records, key=lambda r: (r['observed_at_ms'], r['available_at_ms']), default=None)
-                quality = information_state(payload, obj)
+                quality = information_state({**payload, 'observations': object_rows}, obj)
                 track = dict(object_id=obj, quality=quality, records=records,
                              position=position_record['position'] if position_record else None,
                              observed_at_ms=position_record['observed_at_ms'] if position_record else None,
                              position_source=position_record['source_id'] if position_record else None,
                              last_known=not bool(fresh),
-                             history=[r for r in payload['observations'] if r['object_id'] == obj
-                                      and position_record and r['source_id'] == position_record['source_id']])
+                             history=[r for r in object_rows if position_record
+                                      and r['source_id'] == position_record['source_id']])
+                basis = evidence_snapshot(obj, object_rows, health, quality, track['last_known'])
+                track['evidence_version'] = digest(basis)
+                track['explanation'] = explain(records, health, payload['at_ms'], payload['freshness_ms'],
+                                               quality, track['last_known'], track['evidence_version'])
                 tracks.append(track)
                 if quality in ('contradictory', 'not_comparable'):
                     alerts.append(dict(id=f'{obj}:{quality}', kind=quality, object_id=obj,
@@ -106,8 +133,14 @@ class Simulation:
                 alert['acknowledged'] = alert['id'] in self.acknowledged
             situation = situation_snapshot(self.situation_feed, self.case_id, clock['at_ms'], payload['object_ids'],
                                            [r for r in self.context_reviews if r['run_id'] == self.run_id])
+            track_reviews = self.audit.current(self.run_id)
             result = dict(**clock, situation=situation, synthetic=True, tracks=tracks, sources=health, alerts=alerts,
                         contexts=payload['contexts'], early_warning=early_warning,
+                        sensor_fleet=fleet_snapshot(self.case_id, clock['at_ms']),
+                        track_reviews=track_reviews,
+                        review_summary=dict(total_saved=len(self.audit.records), current_run=len(track_reviews),
+                            by_decision={decision: sum(r['decision'] == decision for r in track_reviews)
+                                         for decision in ('noted', 'needs_review', 'dismissed')}),
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
                         coordinate_system='fictional_local_meters')
             if show_positions:
@@ -126,6 +159,65 @@ class Simulation:
                                           position=[a + (b - a) * ratio for a, b in zip(start['position'], end['position'])]))
                 result['simulation_positions'] = positions
             return result
+
+    def assessment_state(self):
+        with self.lock:
+            current = self._clock_state()
+            latest = self.assessment_latest
+            if latest and latest['run_id'] != current['run_id']:
+                latest = None
+            error = self.assessment_error
+            if error and error['run_id'] != current['run_id']:
+                error = None
+            return copy.deepcopy(dict(**self.assessment_configuration(),
+                running=self.assessment_job is not None, job=self.assessment_job,
+                latest=latest, error=error['message'] if error else None,
+                stale=bool(latest and latest['at_ms'] != current['at_ms'])))
+
+    def start_assessment(self, command):
+        with self.lock:
+            if command.get('run_id') != self.run_id:
+                raise ValueError('Stale run')
+            language = command.get('language')
+            if language not in ('en', 'ko'):
+                raise ValueError('Invalid assessment language')
+            if self.assessment_job is not None:
+                raise AssessmentBusy('An assessment is already running')
+            # Freeze the observation-only state once; provider work runs outside this lock.
+            frozen = copy.deepcopy(self.state())
+            frozen.pop('simulation_positions', None)
+            job = dict(run_id=frozen['run_id'], case_id=frozen['case_id'],
+                       at_ms=frozen['at_ms'], language=language)
+            self.assessment_job = job
+            self.assessment_error = None
+            worker = threading.Thread(target=self._evaluate_assessment, args=(frozen, job), daemon=True)
+            self.assessment_thread = worker
+            try:
+                worker.start()
+            except RuntimeError:
+                self.assessment_job = None
+                raise
+            return self.assessment_state()
+
+    def _evaluate_assessment(self, frozen, job):
+        result, error = None, None
+        try:
+            result = self.assessment_evaluator(frozen, job['language'])
+            if not isinstance(result, dict):
+                raise ValueError('Invalid assessment response')
+            # Clock/run provenance belongs to the frozen input, never model-generated text.
+            result = {**result, **job}
+        except Exception:
+            # Provider exceptions may include credentials or raw remote responses.
+            error = 'Assessment failed; provider configuration, connection, or response could not be validated.'
+        with self.lock:
+            if self.run_id == job['run_id']:
+                if error:
+                    self.assessment_error = dict(run_id=job['run_id'], message=error)
+                else:
+                    self.assessment_latest = copy.deepcopy(result)
+                    self.assessment_error = None
+            self.assessment_job = None
 
     def control(self, command):
         with self.lock:
@@ -158,6 +250,16 @@ class Simulation:
                 if type(speed) not in (int, float) or speed not in (1, 2, 4):
                     raise ValueError('Invalid speed')
                 self.speed = speed
+            elif action == 'review_track':
+                state = self.state()
+                track = next((item for item in state['tracks'] if item['object_id'] == command.get('object_id')), None)
+                payload = snapshot(self.public[self.case_id], state['at_ms'])
+                rows = [row for row in payload['observations'] if row['object_id'] == command.get('object_id')]
+                basis = evidence_snapshot(command.get('object_id'), rows, state['sources'],
+                                          track['quality'] if track else None,
+                                          track['last_known'] if track else True)
+                record = make_track_review(command, state, basis, uuid.uuid4().hex, int(time.time() * 1000))
+                self.audit.append(record)
             elif action == 'review_event':
                 situation = self.state()['situation']
                 record = make_review(command, situation, self.run_id, self.case_id, now_ms, uuid.uuid4().hex)
@@ -209,6 +311,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/state':
             self.respond(200, self.server.simulation.state(
                 show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
+        elif path == '/api/assessment':
+            self.respond(200, self.server.simulation.assessment_state())
+        elif path == '/api/audit':
+            with self.server.simulation.lock:
+                self.respond(200, self.server.simulation.audit.export())
         elif path == '/api/briefings':
             # Deliberate operator preview; kept out of observation-only state and clock.
             self.respond(200, read_json(self.server.simulation.root / 'briefings.json'))
@@ -228,6 +335,7 @@ class Handler(BaseHTTPRequestHandler):
                       '/logo.svg': ('logo.svg', 'image/svg+xml'),
                       '/logo-metal.png': ('logo-metal.png', 'image/png'),
                       '/geo.mjs': ('geo.mjs', 'text/javascript; charset=utf-8'),
+                      '/review.mjs': ('review.mjs', 'text/javascript; charset=utf-8'),
                       '/radar.mjs': ('radar.mjs', 'text/javascript; charset=utf-8'),
                       '/i18n.mjs': ('i18n.mjs', 'text/javascript; charset=utf-8'),
                       '/notifications.mjs': ('notifications.mjs', 'text/javascript; charset=utf-8'),
@@ -248,7 +356,8 @@ class Handler(BaseHTTPRequestHandler):
                 or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
             self.respond(403, {'error': 'Same-origin requests only'})
             return
-        if urlsplit(self.path).path != '/api/control':
+        path = urlsplit(self.path).path
+        if path not in ('/api/control', '/api/assessment'):
             self.respond(404, {'error': 'Not found'})
             return
         if self.headers.get_content_type() != 'application/json':
@@ -261,9 +370,16 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length))
             if not isinstance(body, dict):
                 raise ValueError('Expected an object')
-            self.respond(200, self.server.simulation.control(body))
+            if path == '/api/assessment':
+                self.respond(202, self.server.simulation.start_assessment(body))
+            else:
+                self.respond(200, self.server.simulation.control(body))
+        except AssessmentBusy as error:
+            self.respond(409, {'error': str(error)})
         except (ValueError, TypeError) as error:
             self.respond(400, {'error': str(error)})
+        except OSError:
+            self.respond(503, {'error': 'Review could not be saved; local audit storage is unavailable'})
 
 
 def make_server(port=8765, simulation=None):
@@ -275,8 +391,9 @@ def make_server(port=8765, simulation=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--audit-path', type=Path, default=PROJECT / '.local' / 'track-reviews.jsonl')
     args = parser.parse_args()
-    server = make_server(args.port)
+    server = make_server(args.port, Simulation(audit_path=args.audit_path))
     print(f'LOW SKY monitor: http://127.0.0.1:{server.server_port}', flush=True)
     try:
         server.serve_forever()

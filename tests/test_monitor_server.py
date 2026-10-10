@@ -232,7 +232,7 @@ class SimulationTests(SimulationFixture):
         self.assertEqual(later['tracks'], [])
         self.assertAlmostEqual(later['simulation_positions'][0]['position'][2], -1900 + 3800 / 36)
         self.sim.control({'action': 'case', 'case_id': 'case_003'})
-        self.assertEqual(len(self.sim.state(show_positions=True)['simulation_positions']), 36)
+        self.assertEqual(len(self.sim.state(show_positions=True)['simulation_positions']), 240)
         self.assertNotIn('simulation_positions', self.sim.state())
 
     def test_different_observation_times_raise_comparison_alert_with_evidence(self):
@@ -276,6 +276,107 @@ class SimulationTests(SimulationFixture):
                 with self.assertRaisesRegex(ValueError, "Stale run"):
                     self.sim.control({"action": "ack", "run_id": state["run_id"],
                                       "alert_id": "object_11:contradictory"})
+
+
+class AssessmentTests(SimulationFixture):
+    def setUp(self):
+        super().setUp()
+        self.sim.assessment_configuration = lambda: dict(configured=True, mode='llm', model='test:model',
+                                                        dependencies_available=True)
+        self.entered = threading.Event()
+        self.release = threading.Event()
+        self.addCleanup(self.release.set)
+
+    def start(self, language='en'):
+        return self.sim.start_assessment(dict(run_id=self.sim.run_id, language=language))
+
+    def finish(self):
+        self.release.set()
+        self.sim.assessment_thread.join(timeout=2)
+        self.assertFalse(self.sim.assessment_thread.is_alive())
+
+    def slow_evaluator(self, state, language):
+        self.captured = state
+        self.entered.set()
+        if not self.release.wait(2):
+            raise RuntimeError('test evaluator timeout')
+        return dict(mode='llm', summary='Received evidence summary', language=language,
+                    run_id='model-cannot-override-run', at_ms=-1)
+
+    def test_background_assessment_keeps_clock_responsive_and_freezes_received_state(self):
+        self.select('case_001', 60000)
+        self.sim.assessment_evaluator = self.slow_evaluator
+        started = self.start('ko')
+        self.assertTrue(started['running'])
+        self.assertTrue(self.entered.wait(1))
+        self.sim.control(dict(action='play'))
+        self.clock.advance(1)
+        self.assertEqual(self.sim.clock_state()['at_ms'], 61000)
+        self.assertNotIn('simulation_positions', self.captured)
+        self.assertEqual(self.captured['at_ms'], 60000)
+        before = self.captured['tracks'][0]['records'][0]['position'][:]
+        row_id = self.captured['tracks'][0]['records'][0]['id']
+        next(row for row in self.sim.public['case_001']['observations']
+             if row['id'] == row_id)['position'][0] = 999999
+        self.assertEqual(self.captured['tracks'][0]['records'][0]['position'], before)
+        self.finish()
+        assessed = self.sim.assessment_state()
+        self.assertFalse(assessed['running'])
+        self.assertTrue(assessed['stale'])
+        self.assertEqual(assessed['latest']['run_id'], self.sim.run_id)
+        self.assertEqual(assessed['latest']['at_ms'], 60000)
+        self.assertEqual(assessed['latest']['language'], 'ko')
+
+    def test_single_job_rejects_stale_run_language_and_busy_requests(self):
+        self.sim.assessment_evaluator = self.slow_evaluator
+        with self.assertRaisesRegex(ValueError, 'Stale run'):
+            self.sim.start_assessment(dict(run_id='old', language='en'))
+        with self.assertRaisesRegex(ValueError, 'language'):
+            self.start('fr')
+        self.start()
+        self.assertTrue(self.entered.wait(1))
+        with self.assertRaises(monitor_server.AssessmentBusy):
+            self.start()
+        self.finish()
+
+    def test_cross_run_completion_is_discarded(self):
+        self.sim.assessment_evaluator = self.slow_evaluator
+        self.start()
+        self.assertTrue(self.entered.wait(1))
+        self.sim.control(dict(action='reset'))
+        self.finish()
+        self.assertIsNone(self.sim.assessment_state()['latest'])
+        self.assertIsNone(self.sim.assessment_state()['error'])
+
+    def test_provider_error_is_explicit_and_does_not_fabricate_a_model_result(self):
+        def fail(state, language):
+            raise RuntimeError('secret-token-must-not-leak')
+        self.sim.assessment_evaluator = fail
+        self.start()
+        self.sim.assessment_thread.join(timeout=2)
+        status = self.sim.assessment_state()
+        self.assertFalse(status['running'])
+        self.assertEqual(status['mode'], 'llm')
+        self.assertIsNone(status['latest'])
+        self.assertIn('Assessment failed', status['error'])
+        self.assertNotIn('secret-token', json.dumps(status))
+        self.sim.control(dict(action='reset'))
+        self.assertIsNone(self.sim.assessment_state()['error'])
+
+    def test_polling_never_starts_evaluator_and_rules_mode_is_explicit(self):
+        self.sim.assessment_configuration = lambda: dict(configured=False, mode='rules', model=None,
+                                                        dependencies_available=False)
+        calls = []
+        self.sim.assessment_evaluator = lambda state, lang: calls.append(lang) or dict(mode='rules', summary='Baseline')
+        self.sim.assessment_state()
+        self.sim.assessment_state()
+        self.assertEqual(calls, [])
+        self.start()
+        self.sim.assessment_thread.join(timeout=2)
+        status = self.sim.assessment_state()
+        self.assertFalse(status['configured'])
+        self.assertEqual(status['latest']['mode'], 'rules')
+        self.assertEqual(calls, ['en'])
 
 
 class HTTPTests(SimulationFixture):
@@ -342,6 +443,50 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(len(state['simulation_positions']), 12)
         self.assertEqual(state['tracks'], [])
         self.assertEqual(self.sim.state()['tracks'], [])
+
+    def test_assessment_http_contract_and_same_origin_controls(self):
+        self.sim.assessment_configuration = lambda: dict(configured=False, mode='rules', model=None,
+                                                        dependencies_available=False)
+        self.sim.assessment_evaluator = lambda state, language: dict(mode='rules', summary='Explicit baseline')
+        body = json.dumps(dict(run_id=self.sim.run_id, language='en'))
+        headers = {'Content-Type': 'application/json', 'Origin': self.origin}
+        self.assertEqual(self.request('POST', '/api/assessment', body,
+                         {**headers, 'Origin': 'https://attacker.example'})[0], 403)
+        self.assertEqual(self.request('POST', '/api/assessment', json.dumps(dict(run_id='old', language='en')),
+                                      headers)[0], 400)
+        status, _, _ = self.request('POST', '/api/assessment', body, headers)
+        self.assertEqual(status, 202)
+        self.sim.assessment_thread.join(timeout=2)
+        status, headers, raw = self.request('GET', '/api/assessment')
+        self.assertEqual(status, 200)
+        self.assertEqual(headers['Cache-Control'], 'no-store')
+        self.assertEqual(json.loads(raw)['latest']['mode'], 'rules')
+
+    def test_audit_export_retains_received_review_snapshot(self):
+        state = self.select('case_001', 60000)
+        track = state['tracks'][0]
+        command = dict(action='review_track', run_id=state['run_id'], object_id=track['object_id'],
+                       evidence_version=track['evidence_version'], reviewer='Test operator',
+                       decision='noted', reason='Checked the source records')
+        self.assertEqual(self.post(command)[0], 200)
+        status, headers, raw = self.request('GET', '/api/audit')
+        self.assertEqual(status, 200)
+        self.assertEqual(headers['Cache-Control'], 'no-store')
+        record = json.loads(raw)['records'][0]
+        self.assertEqual(record['evidence_version'], track['evidence_version'])
+        self.assertTrue(record['evidence_snapshot']['observations'])
+        self.assertEqual(self.post({**command, 'run_id': 'old'})[0], 400)
+
+    def test_audit_storage_failure_does_not_report_success(self):
+        state = self.select('case_001', 60000)
+        track = state['tracks'][0]
+        with patch.object(self.sim.audit, 'append', side_effect=OSError('storage error')):
+            status, _, raw = self.post(dict(action='review_track', run_id=state['run_id'],
+                object_id=track['object_id'], evidence_version=track['evidence_version'],
+                reviewer='Test operator', decision='noted', reason='Checked'))
+        self.assertEqual(status, 503)
+        self.assertIn('could not be saved', json.loads(raw)['error'])
+        self.assertEqual(self.sim.audit.export()['records'], [])
 
     def test_state_and_control_share_replay_clock(self):
         status, _, raw = self.post({"action": "seek", "at_ms": 60000})

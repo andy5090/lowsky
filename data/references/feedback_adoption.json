@@ -1,0 +1,98 @@
+{
+  "source_priority": [
+    "user",
+    "mentor",
+    "engineering_review"
+  ],
+  "sources": {
+    "mentor": "LOW_SKY_멘토피드백.docx (local original, stakeholder priority)",
+    "engineering_review": "LOW_SKY_Detailed_Feedback_Issues_and_Solutions.pdf (local original, recommendations)"
+  },
+  "scope": "Synthetic evidence review and human oversight demo; no operational validation",
+  "items": [
+    {
+      "id": "M1",
+      "source": "mentor",
+      "requirement": "Large input and human review workload",
+      "status": "implemented",
+      "implementation": "case_003 expanded to 240 synthetic objects; one load scenario; paginated evidence review queue. Counts are workload assumptions, not measured attacks."
+    },
+    {
+      "id": "M2",
+      "source": "mentor",
+      "requirement": "Phones and facilities as many sensors",
+      "status": "partial",
+      "implementation": "240 logical endpoints, grouped health and time-gated outage/recovery telemetry. No phone app, audio collection, edge inference or physical sensor detection linkage."
+    },
+    {
+      "id": "M3",
+      "source": "mentor",
+      "requirement": "Civilian connection and notifications",
+      "status": "partial",
+      "implementation": "Existing separate civilian early-signal feed and opt-in current-alert PWA notifications while open/minimized. No external recipient, SMS, closed-app push or agency integration."
+    },
+    {
+      "id": "M4",
+      "source": "mentor",
+      "requirement": "Focus on core hackathon workflow",
+      "status": "implemented",
+      "implementation": "Kept local architecture and existing host/origin checks; no new authentication or security platform."
+    },
+    {
+      "id": "U1",
+      "source": "user",
+      "requirement": "Agents assess the overall received situation",
+      "status": "partial",
+      "implementation": "Situation-assessment interface and optional Deep Agents adapter, evidence citations and explicit rule baseline. Live LLM requires configured provider credentials; it does not automate operational action."
+    },
+    {
+      "id": "D1-2",
+      "source": "engineering_review",
+      "requirement": "Bound scope and distinguish rules from model reasoning",
+      "status": "implemented",
+      "implementation": "Three demo cases retained. Categorical explanations computed from inputs; rule and LLM assessment modes visibly distinguished."
+    },
+    {
+      "id": "D3-5",
+      "source": "engineering_review",
+      "requirement": "Separate detection from identity/intent and outage cause",
+      "status": "implemented",
+      "implementation": "Identity and intent unknown; sensor loss cause unknown; corroboration, conflict and incomplete input separated; no calibrated probability claim."
+    },
+    {
+      "id": "D6",
+      "source": "engineering_review",
+      "requirement": "Separate public context from physical observations",
+      "status": "partial",
+      "implementation": "Separate received situation/context panels; agent excludes expired notices and never treats context as physical detection. No live public-source collection."
+    },
+    {
+      "id": "D7",
+      "source": "engineering_review",
+      "requirement": "Human decision and versioned evidence audit",
+      "status": "implemented",
+      "implementation": "Track review captures self-entered reviewer alias, decision, reason, replay and wall time, received-evidence snapshot and hash; local append-only JSONL export. Alias is not authenticated identity."
+    },
+    {
+      "id": "D8",
+      "source": "engineering_review",
+      "requirement": "Do not claim validated response outcomes",
+      "status": "implemented",
+      "implementation": "No response selection or operational intervention model; synthetic narrative and measured software checks are distinguished."
+    },
+    {
+      "id": "D9-10",
+      "source": "engineering_review",
+      "requirement": "Reproducible tests and acceptance matrix",
+      "status": "implemented",
+      "implementation": "Synthetic unit/integration tests cover agreement/conflict/missing/stale/context/delayed receipts/review/replay. User-selected three cases supersede recommendation to restore twelve presentation cases."
+    },
+    {
+      "id": "D11-15",
+      "source": "engineering_review",
+      "requirement": "Fictional airfield and qualified provenance claims",
+      "status": "retained",
+      "implementation": "Generic synthetic geometry and current licensed assets retained; no universal standard compliance, typical-runway or blanket image-rights claims. Detailed airfield geometry remains deferred."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case_003",
+  "at_ms": 180000,
+  "synthetic": true,
+  "received_tracks": 240,
+  "virtual_endpoints": 240,
+  "iterations": 30,
+  "median_ms": 33.82,
+  "max_ms": 37.2,
+  "payload_bytes": 1272819,
+  "python": "3.12.11",
+  "platform": "Darwin",
+  "scope": "Simulation.state plus JSON serialization; excludes HTTP, browser, Godot rendering and LLM latency",
+  "detection_accuracy": null
+}

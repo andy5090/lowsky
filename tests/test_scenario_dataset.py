@@ -17,7 +17,7 @@ class DatasetTests(unittest.TestCase):
 
     def test_all_fixtures_match_rubric(self):
         self.assertEqual(validate(self.root), {
-            "cases": 3, "scene_groups": 3, "observations": 1980, "checkpoints": 360,
+            "cases": 3, "scene_groups": 3, "observations": 6876, "checkpoints": 1380,
         })
 
     def test_briefings_match_distinct_scenarios(self):
@@ -25,7 +25,7 @@ class DatasetTests(unittest.TestCase):
         self.assertTrue(document["author_preview"])
         self.assertEqual(len(document["cases"]), 3)
         self.assertEqual([b["case_id"] for b in document["cases"] if b["scenario_type"] == "load_test"], ["case_003"])
-        for brief, count in zip(document["cases"], (12, 24, 36)):
+        for brief, count in zip(document["cases"], (12, 24, 240)):
             public = self.public(brief["case_id"])
             self.assertEqual(brief["object_ids"], public["object_ids"])
             self.assertEqual(brief["object_count"], count)
@@ -34,6 +34,20 @@ class DatasetTests(unittest.TestCase):
             for field in ("name", "summary", "objective", "composition", "count_basis"):
                 self.assertEqual(set(brief[field]), {"en", "ko"})
             self.assertTrue(all(set(step["text"]) == {"en", "ko"} for step in brief["timeline"]))
+
+    def test_load_case_is_bounded_and_all_tracks_require_received_reports(self):
+        public = self.public("case_003")
+        world = read_json(self.root / "cases/case_003/world.json")
+        self.assertEqual(len(world["objects"]), 240)
+        for obj in world["objects"]:
+            for row in obj["keyframes"]:
+                x, y, z = row["position"]
+                self.assertLessEqual(abs(x), 830)
+                self.assertTrue(80 <= y <= 128)
+                self.assertTrue(-2300 <= z <= 1900)
+        self.assertEqual(snapshot(public, 9999)["object_ids"], [])
+        self.assertEqual(len(snapshot(public, 60000)["object_ids"]), 240)
+        self.assertEqual(len(snapshot(public, 180000)["object_ids"]), 240)
 
     def test_initial_receipts_are_staggered_and_no_unknown_ids_or_context_leak(self):
         for case in ("case_001", "case_002", "case_003"):

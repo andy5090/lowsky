@@ -1,5 +1,6 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
+import {reviewQueue} from './review.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
 import {createNotificationController, NOTIFICATION_STORAGE_KEY} from './notifications.mjs';
 const $ = id => document.getElementById(id);
@@ -17,6 +18,10 @@ let situationSignature = '', situationRun = null, situationOptions = '', reviewP
 let config, state, selected, mode = 'site', dataSignature = '', requestVersion = 0;
 let controlChain = Promise.resolve();
 let notifier, notificationBusy = false, notificationMessage = '', installPrompt;
+let assessment = null, assessmentBusy = false, assessmentLastAttempt = 0, assessmentFailure = false;
+let assessmentSignature = '';
+let queuePage = 0, queueFilter = 'all', queueRun = null;
+let trackReviewBusy = false, reviewTargetKey = '', reviewTargetVersion = '';
 let showPositions = false;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
@@ -40,6 +45,7 @@ function connection(ok, message='') {
   $('connection-status').classList.toggle('disconnected', !ok);
   for (const id of ['play-button','reset-button','case-select','timeline','speed-select']) $(id).disabled = !ok;
   updateReviewAvailability();
+  updateTrackReviewAvailability();
   renderNotificationSettings();
   if (!ok) { if (state) { delete state.simulation_positions; drawMap(); } $('sim-status').textContent = t(message || 'retainView'); drawRadar(state?.at_ms || 0); }
 }
@@ -62,8 +68,10 @@ function render(data) {
   renderPlayback(data);
   renderBriefing();
   renderSituation();
+  renderWorkload();
+  renderAssessment();
   notifier?.observe(data);
-  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.simulation_positions]);
+  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions]);
   if (signature !== dataSignature) {
     dataSignature = signature;
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
@@ -85,15 +93,21 @@ function select(id) { selected = id; renderDetails(); drawMap(); }
 function renderDetails() {
   if(!state) return;
   $('track-count').textContent = state.tracks.length;
-  $('track-list').innerHTML = state.tracks.map(t => `<button class="track-item ${selected===t.object_id?'is-selected':''}" aria-pressed="${selected===t.object_id}" data-track="${escape(t.object_id)}"><header><span class="track-name">${escape(t.object_id)}</span><span class="track-quality" data-quality="${escape(t.quality)}">${qualityLabel(t.quality)}</span></header><div class="track-meta">${t.last_known?translate(language,'lastKnown'):translate(language,'lastObservation')} · ${t.observed_at_ms===null?translate(language,'noRecord'):fmt(t.observed_at_ms)}</div></button>`).join('');
+  if (queueRun !== state.run_id) { queuePage = 0; queueRun = state.run_id; }
+  const queue = reviewQueue(state.tracks, state.track_reviews, queueFilter, queuePage);
+  queuePage = queue.page;
+  $('queue-page').textContent = t('queue.page',{page:queue.page+1,pages:queue.pages,count:queue.total});
+  $('queue-prev').disabled = queue.page === 0; $('queue-next').disabled = queue.page + 1 >= queue.pages;
+  $('track-list').innerHTML = queue.items.map(t => `<button class="track-item ${selected===t.object_id?'is-selected':''}" aria-pressed="${selected===t.object_id}" data-track="${escape(t.object_id)}"><header><span class="track-name">${escape(t.object_id)}</span><span class="track-quality" data-quality="${escape(t.quality)}">${qualityLabel(t.quality)}</span></header><div class="track-meta">${t.last_known?translate(language,'lastKnown'):translate(language,'lastObservation')} · ${t.observed_at_ms===null?translate(language,'noRecord'):fmt(t.observed_at_ms)}</div></button>`).join('');
   $('track-list').querySelectorAll('[data-track]').forEach(b => b.onclick = () => select(b.dataset.track));
   const track = state.tracks.find(t => t.object_id === selected);
   if(track) {
-    $('track-detail').innerHTML = `<h3>${escape(track.object_id)}</h3><p>${qualityLabel(track.quality)} · ${t('sampleInterval')}</p><dl class="detail-grid"><dt>${t('lastObservation')}</dt><dd>${track.observed_at_ms===null?t('none'):fmt(track.observed_at_ms)}</dd><dt>${t('positionSource')}</dt><dd>${escape(track.position_source || t('none'))}</dd><dt>${t('localXZ')}</dt><dd>${track.position ? `${track.position[0].toFixed(0)} / ${track.position[2].toFixed(0)} m` : t('none')}</dd></dl><button class="button button-secondary" id="focus-track">${t('focusTrack')}</button><div class="evidence-rows">${track.records.map(r=>`<p><strong>${escape(r.source_id)}</strong> · ${fmt(r.observed_at_ms)} · ${escape(t(`marker.${r.marker_label}`))}<br><small>${t('evidence')} ${escape(r.id)}</small></p>`).join('')}</div>`;
+    $('track-detail').innerHTML = `<h3>${escape(track.object_id)}</h3><p>${qualityLabel(track.quality)} · ${t('sampleInterval')}</p><dl class="detail-grid"><dt>${t('lastObservation')}</dt><dd>${track.observed_at_ms===null?t('none'):fmt(track.observed_at_ms)}</dd><dt>${t('positionSource')}</dt><dd>${escape(track.position_source || t('none'))}</dd><dt>${t('localXZ')}</dt><dd>${track.position ? `${track.position[0].toFixed(0)} / ${track.position[2].toFixed(0)} m` : t('none')}</dd></dl><button class="button button-secondary" id="focus-track">${t('focusTrack')}</button><div class="evidence-rows">${track.records.map(r=>`<p><strong>${escape(r.source_id)}</strong> · ${translate(language,'lastObservation')} ${fmt(r.observed_at_ms)} · ${translate(language,'early.received')} ${fmt(r.available_at_ms)} · ${escape(t(`marker.${r.marker_label}`))}<br><small>${t('evidence')} ${escape(r.id)}</small></p>`).join('')}</div>`;
     $('focus-track').onclick = () => { if(track.position){plan.x=track.position[0];plan.z=track.position[2];plan.zoom=8;setMode('site');} };
   }
   if(!track) $('track-detail').innerHTML = `<p class="empty-state">${t('awaitingDetection')}</p>`;
-  if(!state.tracks.length) $('track-list').innerHTML = `<p class="empty-state">${t('awaitingDetection')}</p>`;
+  if(!queue.items.length) $('track-list').innerHTML = `<p class="empty-state">${t(state.tracks.length?'queue.empty':'awaitingDetection')}</p>`;
+  renderEvidenceExplanation(track);
   const pending = state.alerts.filter(a=>!a.acknowledged).length;
   $('alert-count').textContent = pending;
   const alertHTML = state.alerts.map(a=>{
@@ -110,6 +124,103 @@ function renderDetails() {
   $('events-list').innerHTML = state.sources.map(s=>`<li class="event-item"><time>${s.evidence ? fmt(s.evidence.observed_at_ms) : '--:--'}</time>${escape(s.source_id)} · ${sourceLabel(s.status)}</li>`).join('') + state.contexts.map(c=>`<li class="event-item"><time>${t('published')} ${fmt(c.published_at_ms)}</time>${escape(['context_001','context_002'].includes(c.id)?t(`context.${c.id}`):c.text)}</li>`).join('');
   $('events-list').innerHTML += (state.reviews || []).map(r=>`<li class="event-item"><time>${fmt(r.at_ms)}</time>${escape(t('early.ackEvent',{id:r.alert_id}))}</li>`).join('');
 }
+function renderAssessment() {
+  $('agent-mode').textContent = t(assessment?.mode==='llm'?'agent.llm':'agent.rules');
+  $('agent-assess').disabled = !connected || !state || assessmentBusy || Boolean(assessment?.running);
+  let status = assessment?.running || assessmentBusy ? 'agent.running' : assessmentFailure || assessment?.error ? 'agent.failed' : assessment?.configured ? 'agent.ready' : 'agent.unconfigured';
+  $('agent-status').textContent = t(status);
+  const report = assessment?.latest?.run_id===state?.run_id ? assessment.latest : null;
+  const stale = report && (report.at_ms!==state.at_ms || report.language!==language);
+  const signature = JSON.stringify([language,report,Boolean(stale)]);
+  if(signature===assessmentSignature)return;
+  assessmentSignature=signature;
+  $('agent-report').innerHTML = report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(t('agent.basis',{caseId:report.case_id,time:fmt(report.at_ms),mode:report.mode==='llm'?report.model:t('agent.rules')}))}${stale?` · ${t('agent.stale')}`:''}</p><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${report[section].map(item=>`<li>${escape(item.text)}<small>${item.evidence_ids.map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div>` : `<p class="empty-state">${t('agent.empty')}</p>`;
+}
+async function runAssessment() {
+  if(!connected || !state || assessmentBusy || assessment?.running)return;
+  const run=state.run_id;
+  assessmentBusy=true;assessmentFailure=false;assessmentLastAttempt=performance.now();renderAssessment();
+  try {
+    const result=await api('/api/assessment',{run_id:run,language});
+    if(state?.run_id===run)assessment=result;
+  } catch {assessmentFailure=true;}
+  finally {assessmentBusy=false;renderAssessment();}
+}
+async function pollAssessment() {
+  const run=state?.run_id;
+  try {
+    const result=await api('/api/assessment');
+    if(state?.run_id===run){assessment=result;assessmentFailure=false;renderAssessment();}
+    if($('agent-auto').checked && connected && state?.playing && !assessmentBusy && !assessment?.running
+       && performance.now()-assessmentLastAttempt>=30000)runAssessment();
+  } catch {assessmentFailure=true;renderAssessment();}
+  setTimeout(pollAssessment,1500);
+}
+$('agent-assess').onclick=runAssessment;
+$('agent-auto').onchange=()=>{if($('agent-auto').checked)runAssessment();};
+
+function renderWorkload() {
+  if (!state) return;
+  const queue = reviewQueue(state.tracks, state.track_reviews);
+  $('workload-summary').innerHTML = [['received',queue.received],['current',queue.current],['attention',queue.attention],['unreviewed',queue.unreviewed]].map(([key,count])=>`<div><strong>${count}</strong><span>${t(`workload.${key}`)}</span></div>`).join('');
+  const fleet = state.sensor_fleet;
+  $('fleet-groups').innerHTML = (fleet?.groups || []).map(group=>`<article><h3>${escape(localized(group.label))}</h3><strong>${group.total}</strong><p>${['online','offline','stale','waiting'].map(status=>`${t(`fleet.${status}`)} ${group.counts[status] || 0}`).join(' · ')}</p></article>`).join('');
+  const received = (fleet?.sensors || []).filter(sensor=>sensor.last_seen_ms !== null && sensor.last_seen_ms !== undefined);
+  const last = received.length ? fmt(Math.max(...received.map(sensor=>sensor.last_seen_ms))) : t('none');
+  $('fleet-last-seen').textContent = t('fleet.lastSeen',{total:fleet?.total || 0,received:received.length,time:last});
+}
+function trackReviewStatus(key='') {
+  $('track-review-status').dataset.i18n = key;
+  $('track-review-status').textContent = key ? t(key) : '';
+}
+function updateTrackReviewAvailability() {
+  const track = state?.tracks.find(track=>track.object_id===selected);
+  const stale = track && reviewTargetVersion && track.evidence_version !== reviewTargetVersion;
+  $('track-review-submit').disabled = !connected || trackReviewBusy || !track || Boolean(stale);
+  if (stale && !trackReviewBusy) trackReviewStatus('review.changed');
+}
+function renderEvidenceExplanation(track) {
+  const key = `${state.run_id}:${track?.object_id || ''}`;
+  if (reviewTargetKey !== key) {
+    const hadDraft = Boolean($('track-reason').value.trim());
+    $('track-reason').value = '';
+    reviewTargetKey = key; reviewTargetVersion = track?.evidence_version || '';
+    trackReviewStatus(hadDraft ? 'situation.reset' : '');
+  } else if (!$('track-reason').value.trim() && !trackReviewBusy) {
+    reviewTargetVersion = track?.evidence_version || '';
+  }
+  const explanation = track?.explanation;
+  $('evidence-explanation').innerHTML = explanation ? `<p class="explanation-status">${t('explain.observation')}: ${t(`explain.${explanation.observation_status}`)}<br>${t('explain.evidenceStatus')}: ${t(`explain.${explanation.evidence_status}`)}</p>` + ['known','uncertain','missing'].map(section=>`<section><h3>${t(`explain.${section}`)}</h3><ul>${explanation[section].map(item=>`<li>${escape(t(`rule.${item.code}`))}${item.source_id ? ` · ${escape(item.source_id)}` : ''}<small>${(item.evidence_ids || []).map(escape).join(', ') || t('none')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('') : '';
+  $('review-version').textContent = track ? t('review.version',{id:track.object_id,version:reviewTargetVersion.slice(0,12)}) : t('awaitingDetection');
+  const summary = state.review_summary;
+  $('audit-summary').textContent = t('review.counts',{current:summary?.current_run || 0,total:summary?.total_saved || 0});
+  updateTrackReviewAvailability();
+}
+$('queue-filter').onchange = () => {queueFilter=$('queue-filter').value;queuePage=0;renderDetails();};
+$('queue-prev').onclick = () => {queuePage--;renderDetails();};
+$('queue-next').onclick = () => {queuePage++;renderDetails();};
+$('track-reason').oninput = updateTrackReviewAvailability;
+$('review-refresh').onclick = () => { $('track-reason').value=''; trackReviewStatus(); renderDetails(); };
+$('track-review-form').onsubmit = event => {
+  event.preventDefault();
+  const track = state?.tracks.find(track=>track.object_id===selected);
+  if (!connected || trackReviewBusy || !track || track.evidence_version !== reviewTargetVersion) return;
+  const body = {action:'review_track',run_id:state.run_id,object_id:selected,evidence_version:reviewTargetVersion,
+    reviewer:$('reviewer').value.trim(),decision:$('track-decision').value,reason:$('track-reason').value.trim()};
+  if (!body.reviewer || !body.reason) return;
+  const target = reviewTargetKey;
+  trackReviewBusy=true;updateTrackReviewAvailability();trackReviewStatus('situation.saving');
+  controlChain=controlChain.then(async()=>{
+    const version=++requestVersion;
+    try {
+      const data=await api('/api/control',body);
+      if(version===requestVersion)render(data);
+      if(reviewTargetKey===target){$('track-reason').value='';trackReviewStatus('review.saved');}
+    } catch { if(reviewTargetKey===target)trackReviewStatus('review.failed'); }
+    finally {trackReviewBusy=false;updateTrackReviewAvailability();}
+  });
+};
+
 function reviewStatus(key = '') {
   if (key) $('situation-review-status').dataset.i18n = key;
   else delete $('situation-review-status').dataset.i18n;
@@ -296,12 +407,14 @@ function drawSite() {
     }
   }
   for(const t of (state?.tracks || []).filter(track => connected && track.last_known === false)){
+    if (state.tracks.length > 48 && t.object_id !== selected) continue;
     const coords=t.history.map(r=>point(r.position[0],r.position[2]).join(',')).join(' ');
     svg+=`<polyline points="${coords}" fill="none" stroke="${t.object_id===selected?'#dfb86a':'#8bc9cf'}" stroke-width="1.5" stroke-dasharray="4 4"/>`;
   }
   svg+=`<text x="20" y="${h-52}" fill="#acc2c8" font-size="10">${t('perimeter',{width:site.perimeter.width_m.toLocaleString(language),length:site.perimeter.length_m.toLocaleString(language)})}</text><text x="${w-28}" y="92" fill="#acc2c8" font-size="11">${t('north')}</text>`;
   overlay.innerHTML=svg;
   markers.replaceChildren();
+  markers.classList.toggle('dense-tracks',(state?.tracks.length || 0)>48);
   for(const z of state?.early_warning?.zones || []){
     const [x,y]=point(z.center[0],z.center[2]);
     if(x<0||x>w||y<0||y>h)continue;
@@ -527,7 +640,7 @@ function applyLanguage(next, persist = false) {
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
   renderBriefing();
-  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); }
+  if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);
   if (!config && connected === false) $('map-status').textContent = t('requestFailed');
@@ -549,6 +662,6 @@ try{
   config=await api('/api/config');
   renderCases();
   Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});
-  setMode('site');poll();
+  setMode('site');poll();pollAssessment();
   api('/api/briefings').then(data=>{briefings=data.cases;renderCases();renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
 }catch(error){connection(false,'startServer');$('map-status').textContent=t('requestFailed');}
