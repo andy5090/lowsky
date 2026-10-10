@@ -21,6 +21,7 @@ try:
     from .situation_review import snapshot as situation_snapshot, make_review
     from .simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from .test_operator import TestOperator
+    from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
     from evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
@@ -32,6 +33,7 @@ except ImportError:
     from situation_review import snapshot as situation_snapshot, make_review
     from simulation_test import generate as generate_test, fixture_metadata, validate_seed, MAX_SEED
     from test_operator import TestOperator
+    from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -360,6 +362,16 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(200, self.server.simulation.decisions.snapshot())
         elif path == '/api/test-operator':
             self.respond(200, self.server.simulation.test_operator.snapshot())
+        elif path == '/api/rehearsals':
+            with self.server.simulation.lock:
+                sim = self.server.simulation
+                run_id = parse_qs(urlsplit(self.path).query).get('run_id', [None])[0]
+                try:
+                    result = (export_rehearsal(sim.decisions.audit.records, run_id, sim.clock_state()) if run_id
+                              else summarize_rehearsals(sim.decisions.audit.records, sim.clock_state()))
+                    self.respond(200, result)
+                except ValueError:
+                    self.respond(404, {'error': 'Unknown recorded run'})
         elif path == '/api/decisions/audit':
             with self.server.simulation.lock:
                 self.respond(200, self.server.simulation.decisions.audit.export())

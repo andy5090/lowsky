@@ -1,6 +1,6 @@
 import {localToGeo, mercator, unproject, pixelsPerMeter} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
-import {reviewQueue} from './review.mjs';
+import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
 import {selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
 import {translate, readLanguage, saveLanguage, normalizeLanguage} from './i18n.mjs';
@@ -25,8 +25,10 @@ let assessmentSignature = '';
 let decisions = null, decisionBusy = false, decisionDraft = null, decisionError = '', decisionSignature = '';
 let decisionLanguagePending = false, decisionAvailable = false;
 let decisionNoticeRun = null;
+let rehearsals = null, rehearsalRecords = null, rehearsalBusy = false, rehearsalError = false, rehearsalRequest = 0, rehearsalSignature = '';
 let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
+const selectedComments = {track:'',situation:''};
 let trackReviewBusy = false, reviewTargetKey = '', reviewTargetVersion = '';
 let showPositions = false;
 let radarVisible = true, clockReceivedAt = performance.now();
@@ -175,12 +177,21 @@ async function pollAssessment() {
 $('agent-assess').onclick=runAssessment;
 $('agent-auto').onchange=()=>{if($('agent-auto').checked)runAssessment();};
 
+function decisionText(key) {
+  const primary = `<span lang="${language}">${escape(t(key))}</span>`;
+  if (!$('decision-bilingual').checked) return primary;
+  const other = language === 'en' ? 'ko' : 'en';
+  return `${primary}<small class="decision-translation" lang="${other}">${escape(translate(other,key))}</small>`;
+}
+$('decision-bilingual').onchange=()=>{decisionSignature='';renderDecisions();};
+
 function currentDecision() {
   if (!decisions || !state || decisions.run_id !== state.run_id) return null;
   return (decisions.events || []).find(event=>!['decided','superseded'].includes(event.status)) || null;
 }
 function renderDecisions() {
   renderOperator();
+  if($('rehearsal-panel').open)renderRehearsals();
   if (decisionNoticeRun !== state?.run_id) {
     if (decisionError === 'decision.saved') decisionError = '';
     decisionNoticeRun = state?.run_id;
@@ -196,12 +207,13 @@ function renderDecisions() {
   $('decision-attention').hidden = !event;
   $('decision-attention-text').textContent = event ? (operatorActive() ? t('operator.autoNotice') : t(statusKey)) : '';
   const report = event?.report;
+  $('decision-bilingual-note').hidden = !$('decision-bilingual').checked;
   const signature = JSON.stringify([language,event,decisionBusy,operatorActive(),decisionDraft?.event_id,decisionDraft?.option_id]);
   if (signature !== decisionSignature) {
     decisionSignature = signature;
     $('decision-event').innerHTML = event ? `<p class="muted">${escape(event.case_id)} · ${fmt(event.at_ms)} · ${escape(event.id)}</p>
       <ul class="decision-triggers">${(event.triggers || []).map(trigger=>`<li>${escape(t(`decision.trigger.${trigger.kind}`))} · ${escape(trigger.subject || '')} <span class="muted">(${escape(String(trigger.previous))} → ${escape(String(trigger.current))})</span><small>${(trigger.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('')}</ul>
-      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${t(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${t(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
+      ${report ? `<p class="agent-summary">${escape(report.summary)}</p><p class="muted">${escape(report.mode==='llm'?report.model:t('agent.rules'))}${report.language!==language?` · ${t('decision.languageMismatch')}`:''}</p><div class="decision-options">${(report.decision_options || []).filter(option=>['continue_monitoring','hold_review','defer'].includes(option.id)).map(option=>`<article><h3>${decisionText(`decision.option.${option.id}`)}</h3>${report.recommended_option_id===option.id?`<span class="decision-recommendation">${t('decision.recommended')}</span>`:''}<p>${escape(option.reason)}</p><small>${(option.evidence_ids || []).map(escape).join(', ')}</small><p class="decision-effect">${decisionText(`decision.effect.${option.id}`)}</p><button type="button" class="button button-secondary" data-decision-option="${option.id}" ${event.status!=='ready' || decisionBusy || operatorActive() || report.language!==language?'disabled':''}>${t(decisionDraft?.event_id===event.id && decisionDraft?.option_id===option.id?'decision.selected':'decision.select')}</button></article>`).join('')}</div><details class="decision-evidence"><summary>${t('decision.evidenceDetails')}</summary><div class="agent-findings">${['known','uncertain','review_items'].map(section=>`<section><h3>${t(`agent.${section}`)}</h3><ul>${(report[section] || []).map(item=>`<li>${escape(item.text)}<small>${(item.evidence_ids || []).map(escape).join(', ')}</small></li>`).join('') || `<li>${t('none')}</li>`}</ul></section>`).join('')}</div></details>`:''}
       ${['ready','failed'].includes(event.status)?`<button type="button" id="decision-retry" class="button button-secondary" ${decisionBusy?'disabled':''}>${t(event.status==='failed'?'decision.retry':'decision.reassess')}</button>`:''}` : `<p class="empty-state">${t('decision.empty')}</p>`;
     document.querySelectorAll('[data-decision-option]').forEach(button=>button.onclick=()=>{
       decisionDraft = selectDecision(currentDecision(),button.dataset.decisionOption);decisionError='';renderDecisions();
@@ -255,6 +267,62 @@ $('decision-form').onsubmit=async event=>{
   if(await decisionAction(body)){decisionDraft=null;$('decision-reason').value='';$('decision-extra').open=false;decisionError='decision.saved';renderDecisions();}
 };
 
+function renderRehearsals() {
+  $('rehearsal-refresh').disabled = rehearsalBusy;
+  $('rehearsal-run').disabled = rehearsalBusy || !rehearsals?.runs?.length;
+  const selectedRun = $('rehearsal-run').value || rehearsals?.current_run_id;
+  const run = rehearsals?.runs?.find(item=>item.run_id===selectedRun);
+  const records = rehearsalRecords && rehearsalRecords.run_id===selectedRun ? rehearsalRecords.records : [];
+  $('rehearsal-export').hidden = !run || rehearsalBusy || rehearsalError;
+  if(run) $('rehearsal-export').href = `/api/rehearsals?run_id=${encodeURIComponent(run.run_id)}`;
+  $('rehearsal-status').textContent = rehearsalBusy ? t('rehearsal.loading') : rehearsalError ? t('rehearsal.failed') : !records?.length ? t('rehearsal.empty') : t('rehearsal.count',{count:records.length,shown:Math.min(100,records.length)});
+  if(rehearsals && state && rehearsals.current_run_id!==state.run_id && !rehearsalBusy && !rehearsalError) $('rehearsal-status').textContent += ' '+t('rehearsal.changed');
+  if (rehearsals?.truncated && !rehearsalBusy && !rehearsalError) $('rehearsal-status').textContent += ' '+t('rehearsal.runsLimited',{shown:rehearsals.runs.length,total:rehearsals.total_runs});
+  $('rehearsal-summary').innerHTML = run ? ['human','automated_test','unknown'].map(key=>`<span>${escape(t(`rehearsal.${key}`))} <strong>${run.actors[key]}</strong></span>`).join('')+['continue_monitoring','hold_review','defer'].map(key=>`<span>${escape(t(`decision.option.${key}`))} <strong>${run.choices[key]}</strong></span>`).join('') : '';
+  const signature=JSON.stringify([language,rehearsalError,rehearsalBusy,selectedRun,(records || []).map(row=>row.id)]);
+  if(signature===rehearsalSignature)return;
+  rehearsalSignature=signature;
+  $('rehearsal-records').innerHTML = rehearsalError || rehearsalBusy ? '' : (records || []).slice(-100).reverse().map(record=>{
+    const f=record.fields, actor=f.decision.actor?.type || 'unknown';
+    return `<li><details><summary>${fmt(f.time.simulation_ms)} · ${escape(t(`decision.option.${f.decision.option_id}`))} · ${escape(t(`rehearsal.${['human','automated_test'].includes(actor)?actor:'unknown'}`))}</summary><dl>
+      <dt>${t('rehearsal.event')}</dt><dd>${escape(f.event.id)} · ${(f.event.triggers || []).map(item=>escape(t(`decision.trigger.${item.kind}`))).join(', ')}</dd>
+      <dt>${t('rehearsal.evidenceTitle')}</dt><dd>${escape(t('rehearsal.evidence',{count:f.evidence.observations.total,version:record.evidence_version.slice(0,12)}))}<br>${t('rehearsal.evidenceLink')}</dd>
+      <dt>${t('rehearsal.assessment')}</dt><dd lang="${f.assessment.language==='ko'?'ko':'en'}">${escape(f.assessment.summary || '')}</dd>
+      <dt>${t('rehearsal.uncertainty')}</dt><dd>${(f.uncertainty || []).map(item=>escape(item.text)).join('<br>') || t('rehearsal.noUncertainty')}</dd>
+      <dt>${t('rehearsal.decision')}</dt><dd>${escape(t(`decision.option.${f.decision.option_id}`))}</dd>
+      <dt>${t('rehearsal.reason')}</dt><dd>${escape(f.reason || t('rehearsal.noComment'))}</dd>
+      <dt>${t('rehearsal.time')}</dt><dd>${escape(t('rehearsal.recorded',{time:fmt(f.time.simulation_ms),date:new Date(f.time.recorded_at_unix_ms).toLocaleString(language)}))}</dd>
+    </dl></details></li>`;
+  }).join('');
+}
+function renderRehearsalRuns(selectedRun) {
+  $('rehearsal-run').innerHTML = (rehearsals?.runs || []).map(run=>{
+    const input=run.test_run;
+    const provenance=input?.mode==='seeded'?t('rehearsal.seed',{seed:input.seed}):t(input?.mode==='fixture'?'rehearsal.baseline':'rehearsal.unknownSeed');
+    return `<option value="${escape(run.run_id)}">${escape(run.case_id)} · ${escape(provenance)} · ${escape(run.run_id.slice(0,8))}</option>`;
+  }).join('');
+  if(rehearsals?.runs.some(run=>run.run_id===selectedRun)) $('rehearsal-run').value=selectedRun;
+}
+async function loadRehearsals(refresh=true) {
+  const request=++rehearsalRequest;
+  const selectedRun=$('rehearsal-run').value;
+  rehearsalBusy=true;rehearsalError=false;renderRehearsals();
+  try {
+    if(refresh){
+      const result=await api('/api/rehearsals');
+      if(request!==rehearsalRequest)return;
+      rehearsals=result;renderRehearsalRuns(selectedRun);
+    }
+    const run=$('rehearsal-run').value;
+    const result=await api(`/api/rehearsals?run_id=${encodeURIComponent(run)}`);
+    if(request===rehearsalRequest)rehearsalRecords=result;
+  } catch {if(request===rehearsalRequest)rehearsalError=true;}
+  finally {if(request===rehearsalRequest){rehearsalBusy=false;renderRehearsals();}}
+}
+$('rehearsal-panel').ontoggle=()=>{if($('rehearsal-panel').open)loadRehearsals();};
+$('rehearsal-refresh').onclick=()=>loadRehearsals();
+$('rehearsal-run').onchange=()=>loadRehearsals(false);
+
 function operatorActive() { return Boolean(testOperator?.active && testOperator.run_id === state?.run_id); }
 function renderOperator() {
   const active = operatorActive();
@@ -288,6 +356,19 @@ function renderWorkload() {
   const last = received.length ? fmt(Math.max(...received.map(sensor=>sensor.last_seen_ms))) : t('none');
   $('fleet-last-seen').textContent = t('fleet.lastSeen',{total:fleet?.total || 0,received:received.length,time:last});
 }
+function renderCommentSuggestions(scope, keys, disabled=false) {
+  const box=$(`${scope}-suggestions`);
+  const selected=selectedComments[scope];
+  const options=selected && !keys.includes(selected)?[...keys,selected]:keys;
+  const signature=JSON.stringify([language,options,selected,disabled]);
+  if(box.dataset.signature===signature)return;
+  box.dataset.signature=signature;
+  box.innerHTML=options.map(key=>`<button type="button" class="button button-secondary" data-comment="${key}" aria-pressed="${selected===key}" ${disabled?'disabled':''}>${escape(t(`review.suggest.${key}`))}</button>`).join('');
+  box.querySelectorAll('[data-comment]').forEach(button=>button.onclick=()=>{
+    selectedComments[scope]=selectedComments[scope]===button.dataset.comment?'':button.dataset.comment;
+    if(scope==='track')renderDetails();else renderSituation();
+  });
+}
 function trackReviewStatus(key='') {
   $('track-review-status').dataset.i18n = key;
   $('track-review-status').textContent = key ? t(key) : '';
@@ -296,16 +377,19 @@ function updateTrackReviewAvailability() {
   const track = state?.tracks.find(track=>track.object_id===selected);
   const stale = track && reviewTargetVersion && track.evidence_version !== reviewTargetVersion;
   $('track-review-submit').disabled = !connected || trackReviewBusy || !track || Boolean(stale);
+  for(const id of ['reviewer','track-decision','track-reason','review-refresh']) $(id).disabled = !connected || trackReviewBusy || !track;
+  document.querySelectorAll('#track-suggestions button').forEach(button=>button.disabled=!connected || trackReviewBusy || !track);
   if (stale && !trackReviewBusy) trackReviewStatus('review.changed');
 }
 function renderEvidenceExplanation(track) {
   const key = `${state.run_id}:${track?.object_id || ''}`;
   if (reviewTargetKey !== key) {
-    const hadDraft = Boolean($('track-reason').value.trim());
+    const hadDraft = Boolean($('track-reason').value.trim() || selectedComments.track);
+    selectedComments.track='';
     $('track-reason').value = '';
     reviewTargetKey = key; reviewTargetVersion = track?.evidence_version || '';
     trackReviewStatus(hadDraft ? 'situation.reset' : '');
-  } else if (!$('track-reason').value.trim() && !trackReviewBusy) {
+  } else if (!$('track-reason').value.trim() && !selectedComments.track && !trackReviewBusy) {
     reviewTargetVersion = track?.evidence_version || '';
   }
   const explanation = track?.explanation;
@@ -313,20 +397,20 @@ function renderEvidenceExplanation(track) {
   $('review-version').textContent = track ? t('review.version',{id:track.object_id,version:reviewTargetVersion.slice(0,12)}) : t('awaitingDetection');
   const summary = state.review_summary;
   $('audit-summary').textContent = t('review.counts',{current:summary?.current_run || 0,total:summary?.total_saved || 0});
+  renderCommentSuggestions('track',commentSuggestions(track),!track || trackReviewBusy || !connected);
   updateTrackReviewAvailability();
 }
 $('queue-filter').onchange = () => {queueFilter=$('queue-filter').value;queuePage=0;renderDetails();};
 $('queue-prev').onclick = () => {queuePage--;renderDetails();};
 $('queue-next').onclick = () => {queuePage++;renderDetails();};
 $('track-reason').oninput = updateTrackReviewAvailability;
-$('review-refresh').onclick = () => { $('track-reason').value=''; trackReviewStatus(); renderDetails(); };
+$('review-refresh').onclick = () => { selectedComments.track=''; $('track-reason').value=''; trackReviewStatus(); renderDetails(); };
 $('track-review-form').onsubmit = event => {
   event.preventDefault();
   const track = state?.tracks.find(track=>track.object_id===selected);
   if (!connected || trackReviewBusy || !track || track.evidence_version !== reviewTargetVersion) return;
   const body = {action:'review_track',run_id:state.run_id,object_id:selected,evidence_version:reviewTargetVersion,
-    reviewer:$('reviewer').value.trim(),decision:$('track-decision').value,reason:$('track-reason').value.trim()};
-  if (!body.reviewer || !body.reason) return;
+    reviewer:$('reviewer').value.trim(),decision:$('track-decision').value,reason:reviewComment(selectedComments.track,$('track-reason').value,t)};
   const target = reviewTargetKey;
   trackReviewBusy=true;updateTrackReviewAvailability();trackReviewStatus('situation.saving');
   controlChain=controlChain.then(async()=>{
@@ -334,7 +418,7 @@ $('track-review-form').onsubmit = event => {
     try {
       const data=await api('/api/control',body);
       if(version===requestVersion)render(data);
-      if(reviewTargetKey===target){$('track-reason').value='';trackReviewStatus('review.saved');}
+      if(reviewTargetKey===target){selectedComments.track='';$('track-reason').value='';renderDetails();trackReviewStatus('review.saved');}
     } catch { if(reviewTargetKey===target)trackReviewStatus('review.failed'); }
     finally {trackReviewBusy=false;updateTrackReviewAvailability();}
   });
@@ -348,6 +432,7 @@ function reviewStatus(key = '') {
 function updateReviewAvailability() {
   const unavailable = !connected || reviewPending || !state?.situation?.events?.length;
   for (const id of ['situation-event-select','situation-decision','situation-reason','situation-submit']) $(id).disabled = unavailable;
+  document.querySelectorAll('#situation-suggestions button').forEach(button=>button.disabled=unavailable);
 }
 function renderSituation() {
   const situation = state?.situation;
@@ -357,7 +442,8 @@ function renderSituation() {
   const changedRun = situationRun !== null && situationRun !== state.run_id;
   const removedEvent = previous && !events.some(event => event.id === previous);
   if (changedRun || removedEvent) {
-    const hadDraft = $('situation-reason').value.trim().length > 0;
+    const hadDraft = Boolean($('situation-reason').value.trim() || selectedComments.situation);
+    selectedComments.situation='';
     $('situation-reason').value = '';
     $('situation-decision').value = 'noted';
     reviewStatus(hadDraft ? 'situation.reset' : '');
@@ -370,6 +456,7 @@ function renderSituation() {
     if (!changedRun && events.some(event => event.id === previous)) eventSelect.value = previous;
   }
   updateReviewAvailability();
+  renderCommentSuggestions('situation',['verify_source','more_evidence','revisit'],!connected || reviewPending || !events.length);
   const signature = JSON.stringify([language, situation, config?.research_sources]);
   if (signature === situationSignature) return;
   situationSignature = signature;
@@ -403,15 +490,15 @@ function renderSituation() {
   }).join('') || `<li class="empty-state">${t('situation.noSources')}</li>`;
 }
 $('situation-event-select').onchange = () => {
+  selectedComments.situation='';
   $('situation-reason').value = '';
   $('situation-decision').value = 'noted';
-  reviewStatus();
+  reviewStatus();renderSituation();
 };
 $('situation-review-form').onsubmit = event => {
   event.preventDefault();
   if (reviewPending || !connected || !state?.situation?.events?.length) return;
-  const reason = $('situation-reason').value.trim();
-  if (!reason) { reviewStatus('situation.required'); $('situation-reason').focus(); return; }
+  const reason = reviewComment(selectedComments.situation,$('situation-reason').value,t);
   const body = {action:'review_event',run_id:state.run_id,event_id:$('situation-event-select').value,decision:$('situation-decision').value,reason};
   reviewPending = true; updateReviewAvailability();
   reviewStatus('situation.saving');
@@ -421,8 +508,8 @@ $('situation-review-form').onsubmit = event => {
       const data = await api('/api/control',body);
       if (version === requestVersion) render(data);
       if (state.run_id === body.run_id && $('situation-event-select').value === body.event_id) {
-        $('situation-reason').value = '';
-        reviewStatus('situation.saved');
+        selectedComments.situation='';$('situation-reason').value = '';
+        renderSituation();reviewStatus('situation.saved');
       }
     } catch {
       reviewStatus('situation.failed');
@@ -780,6 +867,7 @@ function applyLanguage(next, persist = false) {
   for (const element of document.querySelectorAll('[data-empty]')) element.dataset.empty = t('waitingData');
   renderCases();
   renderBriefing();
+  renderRehearsalRuns($('rehearsal-run').value);renderRehearsals();
   if (state) { renderPlayback(state); renderDetails(); renderEarlyWarning(); renderSituation(); renderWorkload(); renderAssessment(); renderDecisions(); }
   drawMap();
   if (connected !== null) connection(connected, connectionMessage);

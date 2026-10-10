@@ -146,6 +146,14 @@ Automatic records carry `actor.type=automated_test`, provider, model and operato
 
 An end-to-end browser test with seed 42 used the real Codex CLI to choose **Hold for evidence review**, store its reason as an automated test and keep the shared clock paused. The preceding situation report in that isolated check used the explicit rules baseline; the credentialed situation-agent integration was verified separately above.
 
+## Decision rehearsal review
+
+Expand **Decision rehearsal review** below the decision panel to inspect saved runs by scenario and seed. Human and automated decisions are counted separately, alongside continue/hold/defer choices. Each record shows its original assessment and uncertainty. **Export seven-field records** downloads the selected run's event, received evidence, assessment, uncertainty, decision, optional comment and timestamps, with evidence provenance retained. Refresh after more decisions or a new run. The UI lists up to 50 runs and displays the latest 100 decisions; selected-run export includes every decision in that run. This is a read-only view of the durable journal, not an accuracy score or automatic model-training loop.
+
+**Show choices in English and Korean** displays both languages for choice labels and effects. Model reasoning remains in its original assessment language; toggling bilingual labels does not make a model call or change a decision.
+
+`GET /api/rehearsals` returns run summaries; `GET /api/rehearsals?run_id=...` exports the selected run. The internal suggestion document's adoption and remaining gaps are recorded in [Suggestion adoption](docs/suggestion-adoption.md), including the actual three-scenario scope and the absence of verified SAPIENT, single-file site switching or VR support. The source document stays local.
+
 ## Workload, sensor fleet and durable evidence reviews
 
 Received events sit directly below the map controls, independently of the evidence column height. Long observation evidence scrolls within its own panel; switching to Current alerts retains the event log.
@@ -154,7 +162,7 @@ The received-track queue shows 12 rows per page with all/evidence-gap/unreviewed
 
 The [virtual fleet](data/sensor_fleet_demo.json) has **240 logical endpoints**: 60 personnel phones, 60 facility sensors, 60 civilian phones and 60 fixed phones. These are health-telemetry fixtures, independent of the A/B object-observation feeds and the two physically modeled exterior poles. At first receipt (00:01), all endpoints report online. In the load case, facility status reports arrive offline at 01:01; the fixed-phone group’s missing heartbeats become stale after 01:10. Both recover at 02:11. Loss cause remains unknown. Phone apps, audio acquisition, edge inference, sensor fusion, real agency routing and external SMS are deferred; existing open/minimized PWA current-alert notifications remain available.
 
-Per-track explanations compute known/uncertain/missing sections from source records and health. Observation, evidence agreement, object type and intent are separate: type and intent remain unknown. **Save evidence review** requires a reviewer alias, decision and reason, and rejects an outdated evidence version. The CLI appends the received snapshot, SHA-256 evidence version, replay time and real timestamp to `.local/track-reviews.jsonl` and flushes it before confirming success. Export includes records across runs and restarts. This is local durable storage, not authenticated identity or tamper-proof storage. Existing context reviews and alert acknowledgements remain session-only.
+Per-track explanations compute known/uncertain/missing sections from source records and health. Observation, evidence agreement, object type and intent are separate: type and intent remain unknown. **Save evidence review** requires a review decision and rejects an outdated evidence version. Optional comment buttons offer wording based on received evidence gaps, source disagreement or stale reports. Click a suggestion to select it, click again to clear it, then save; suggestions never save automatically. Free text and reviewer alias are optional, inside a disclosure. The CLI appends the received snapshot, SHA-256 evidence version, replay time and real timestamp to `.local/track-reviews.jsonl` and flushes it before confirming success. Export includes records across runs and restarts. This is local durable storage, not authenticated identity or tamper-proof storage. Existing context reviews and alert acknowledgements remain session-only.
 
 Reproduce validation and the narrowly scoped performance measurement:
 
@@ -219,7 +227,7 @@ Ukraine's [ePPO app description](https://play.google.com/store/apps/details?id=u
 
 [Situation events](data/situation_review.json) adapt indicators, delayed/conflicting reports, unknown link status, and revisiting earlier reviews from the local `LOW_SKY_Detailed_Scenario.docx`. Days and hours are compressed into a 180-second demonstration. The adaptation excludes attack sequencing, weapon selection, engagement recommendations, and unverified performance figures.
 
-Expand **Situation & human review** to inspect received context and uncertainty, then record **noted**, **needs review**, or **dismissed** with a reason. Each record contains seven fields: event, evidence, assessment, uncertainty, decision, reason, and replay time. The 02:30 revisit links actual prior user records from the same run. Counts derive from recorded decisions; no accuracy score is calculated. Seek, reset, and case changes create a new run. Records are held in memory and disappear on server restart.
+Expand **Situation & human review** to inspect received context and uncertainty, then record **noted**, **needs review**, or **dismissed** with an optional suggested comment or free text. Each record contains seven fields: event, evidence, assessment, uncertainty, decision, reason, and replay time. The 02:30 revisit links actual prior user records from the same run. Counts derive from recorded decisions; no accuracy score is calculated. Seek, reset, and case changes create a new run. Records are held in memory and disappear on server restart.
 
 [Ukraine observation lessons](data/references/ukraine_observation_lessons.json) connect qualitative CSIS and RUSI analyses to uncertainty explanations: mixed decoys, electronic interference, and different communication links. One report does not establish aircraft role, and absent RF does not prove a fiber link. Synthetic counts, routes, and scores are not tactical models inferred from these sources.
 

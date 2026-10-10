@@ -105,11 +105,11 @@ def make_track_review(command, state, basis, review_id, reviewed_at_unix_ms):
         raise ValueError('Unknown received track')
     if command.get('evidence_version') != track['evidence_version'] or digest(basis) != track['evidence_version']:
         raise ValueError('Evidence changed; refresh the track before review')
-    reviewer, reason = command.get('reviewer'), command.get('reason')
-    if not isinstance(reviewer, str) or not 1 <= len(reviewer.strip()) <= 80:
-        raise ValueError('Reviewer alias is required (1-80 characters)')
-    if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
-        raise ValueError('Review reason is required (1-1000 characters)')
+    reviewer, reason = command.get('reviewer', ''), command.get('reason', '')
+    if not isinstance(reviewer, str) or len(reviewer.strip()) > 80:
+        raise ValueError('Reviewer alias must be text up to 80 characters')
+    if not isinstance(reason, str) or len(reason.strip()) > 1000:
+        raise ValueError('Review comment must be text up to 1000 characters')
     if command.get('decision') not in ('noted', 'needs_review', 'dismissed'):
         raise ValueError('Invalid review decision')
     return dict(schema_version=1, id=review_id, run_id=state['run_id'], case_id=state['case_id'],

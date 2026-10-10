@@ -10,3 +10,18 @@ export function reviewQueue(tracks, reviews = [], filter = 'all', page = 0, size
     received:tracks.length, current:tracks.filter(t => t.last_known === false).length,
     attention:tracks.filter(t => t.quality !== 'consistent').length, unreviewed:tracks.filter(pending).length};
 }
+
+// Optional wording suggestions, never automatically selected or saved.
+export function commentSuggestions(track) {
+  if (!track) return [];
+  const keys = ['more_evidence'];
+  if (track.quality === 'contradictory') keys.push('compare_sources');
+  if (track.last_known || track.explanation?.missing?.some(item=>item.code==='observation_stale')) keys.push('fresh_report');
+  if (track.explanation?.missing?.length) keys.push('check_missing');
+  keys.push('identity_unknown');
+  return keys;
+}
+export function reviewComment(suggestion, text, translate) {
+  const known=['more_evidence','compare_sources','fresh_report','check_missing','identity_unknown','verify_source','revisit'];
+  return [known.includes(suggestion)?translate(`review.suggest.${suggestion}`):'', text.trim()].filter(Boolean).join(' ');
+}

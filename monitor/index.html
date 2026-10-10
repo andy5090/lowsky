@@ -51,6 +51,7 @@
       <p class="agent-scope" data-i18n="decision.scope">Important received events pause shared playback for assessment and your decision. Selecting an option does not execute it.</p>
 
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
+      <div class="decision-language-controls"><label><input id="decision-bilingual" type="checkbox"><span data-i18n="decision.bilingual">Show choices in English and Korean</span></label><p id="decision-bilingual-note" class="muted" hidden data-i18n="decision.originalReport">Choice labels and effects are bilingual. Agent reasoning remains in its original assessment language.</p></div>
       <div id="decision-event" class="decision-event"></div>
       <form id="decision-form" class="decision-form" hidden>
         <h3 data-i18n="decision.confirmTitle">Confirm your decision</h3>
@@ -64,6 +65,15 @@
       </form>
       <details class="decision-history"><summary data-i18n="decision.history">Decisions in this replay</summary><ol id="decision-history"></ol></details>
     </section>
+
+    <details id="rehearsal-panel" class="panel rehearsal-panel">
+      <summary data-i18n="rehearsal.title">Decision rehearsal review</summary>
+      <div class="rehearsal-body">
+        <p class="muted" data-i18n="rehearsal.scope">Review saved decisions and their received evidence across runs. Counts describe the review workflow, not decision quality. This view does not train the agent or change its rules.</p>
+        <div class="rehearsal-controls"><label for="rehearsal-run" data-i18n="rehearsal.run">Recorded run</label><select id="rehearsal-run"></select><button id="rehearsal-refresh" type="button" class="button button-secondary" data-i18n="rehearsal.refresh">Refresh records</button><a id="rehearsal-export" class="button button-secondary" hidden download="lowsky-rehearsal-review.json" data-i18n="rehearsal.export">Export seven-field records</a></div>
+        <p id="rehearsal-status" role="status" aria-live="polite"></p><div id="rehearsal-summary" class="rehearsal-summary"></div><ol id="rehearsal-records" class="rehearsal-records"></ol>
+      </div>
+    </details>
 
     <section class="panel agent-panel" aria-labelledby="agent-title">
       <div class="panel-heading"><div><span class="section-number">ASSESS</span><h2 id="agent-title" data-i18n="agent.title">Situation assessment</h2></div><span id="agent-mode" class="status-pill"></span></div>
@@ -92,7 +102,8 @@
             <h3 data-i18n="situation.review">Record a human evidence review</h3>
             <label for="situation-event-select" data-i18n="situation.event">Received event</label><select id="situation-event-select" required></select>
             <label for="situation-decision" data-i18n="situation.decision">Review decision</label><select id="situation-decision"><option value="noted" data-i18n="situation.noted">Noted</option><option value="needs_review" data-i18n="situation.needs_review">Needs further review</option><option value="dismissed" data-i18n="situation.dismissed">Dismissed from this review</option></select>
-            <label for="situation-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="situation-reason" rows="3" maxlength="1000" required></textarea>
+            <p class="muted" data-i18n="review.suggestHelp">Choose an optional comment. Select it again to clear it.</p><div id="situation-suggestions" class="review-suggestions" role="group" aria-label="Suggested comments" data-i18n-aria-label="review.suggestions"></div>
+            <details><summary data-i18n="decision.extra">Add a comment (optional)</summary><label for="situation-reason" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="situation-reason" rows="3" maxlength="800"></textarea></details>
             <button id="situation-submit" type="submit" class="button button-secondary" data-i18n="situation.save">Save review</button><p id="situation-review-status" role="status" aria-live="polite"></p>
           </form>
           <details class="situation-log"><summary data-i18n="situation.log">Recorded reviews</summary><p id="situation-review-counts"></p><ol id="situation-reviews" class="situation-events"></ol></details>
@@ -167,9 +178,9 @@
             </div>
             <form id="track-review-form" class="track-review-form">
               <h3 data-i18n="review.title">Review received evidence</h3><p class="muted" data-i18n="review.note">Human review only. Reviewer is a self-entered alias, not authenticated identity.</p>
-              <label for="reviewer" data-i18n="review.actor">Reviewer alias</label><input id="reviewer" maxlength="80" required autocomplete="off">
               <label for="track-decision" data-i18n="situation.decision">Review decision</label><select id="track-decision"><option value="noted" data-i18n="situation.noted">Noted</option><option value="needs_review" data-i18n="situation.needs_review">Needs further review</option><option value="dismissed" data-i18n="situation.dismissed">Dismissed from this review</option></select>
-              <label for="track-reason" data-i18n="situation.reason">Reason (required)</label><textarea id="track-reason" rows="3" maxlength="1000" required></textarea>
+              <p class="muted" data-i18n="review.suggestHelp">Choose an optional comment. Select it again to clear it.</p><div id="track-suggestions" class="review-suggestions" role="group" aria-label="Suggested comments" data-i18n-aria-label="review.suggestions"></div>
+              <details><summary data-i18n="decision.extra">Add a comment (optional)</summary><label for="track-reason" data-i18n="decision.comment">Additional comment (optional)</label><textarea id="track-reason" rows="3" maxlength="800"></textarea><label for="reviewer" data-i18n="decision.alias">Reviewer alias (optional)</label><input id="reviewer" maxlength="80" autocomplete="off"></details>
               <p id="review-version" class="muted"></p><button id="review-refresh" class="button button-secondary" type="button" data-i18n="review.refresh">Discard draft and use latest evidence</button><button id="track-review-submit" class="button button-secondary" type="submit" data-i18n="review.save">Save evidence review</button><p id="track-review-status" role="status" aria-live="polite"></p>
             </form>
             <div class="audit-export"><a href="/api/audit" download="lowsky-evidence-audit.json" class="button button-secondary" data-i18n="review.export">Export saved evidence reviews</a><p id="audit-summary" class="muted"></p><p class="muted" data-i18n="review.exportNote">Local evidence-review journal, across runs. Context notes and alert acknowledgements remain session-only.</p></div>

@@ -90,7 +90,7 @@ class EvidenceReviewTests(unittest.TestCase):
         state = self.state()
         command = self.command(state)
         for patch in ({'run_id': 'old'}, {'evidence_version': 'old'}, {'object_id': 'unreceived'},
-                      {'reviewer': ''}, {'reviewer': 'x' * 81}, {'reason': ' '},
+                      {'reviewer': None}, {'reviewer': 'x' * 81},
                       {'reason': 'x' * 1001}, {'decision': 'attack'}, {'reason': None}):
             with self.subTest(patch=patch), self.assertRaises(ValueError):
                 self.sim.control({**command, **patch})
@@ -101,6 +101,16 @@ class EvidenceReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Evidence changed'):
             self.sim.control(command)
         self.assertEqual(self.sim.audit.export()['records'], [])
+
+    def test_optional_reviewer_and_comment_do_not_require_typing(self):
+        state=self.state()
+        command=self.command(state)
+        command.pop('reviewer'); command.pop('reason')
+        self.sim.control(command)
+        saved=self.sim.audit.records[-1]
+        self.assertEqual(saved['reviewer'],'')
+        self.assertEqual(saved['reason'],'')
+        self.assertEqual(saved['decision'],command['decision'])
 
     def test_future_and_world_annotations_never_enter_explanation_or_audit(self):
         public = self.sim.public[self.sim.case_id]

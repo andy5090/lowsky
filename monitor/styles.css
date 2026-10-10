@@ -258,3 +258,29 @@ button:disabled{cursor:not-allowed}
 #received-events-panel .events-list { max-height:180px; overflow:auto; overscroll-behavior:contain; }
 #map-events-host .events-panel { margin-top:14px; }
 @media(max-width:800px) { .evidence-scroll { max-height:380px; } }
+
+.decision-language-controls { padding:0 18px 12px; font-size:12px; }
+.decision-language-controls label { display:flex; align-items:center; gap:7px; }
+.decision-language-controls p { margin-top:7px; }
+.decision-translation { display:block; margin-top:5px; font-size:11px; font-weight:400; color:var(--ink-soft); }
+.rehearsal-panel { margin:16px 0; }
+.rehearsal-panel > summary { cursor:pointer; padding:13px 18px; font-size:13px; font-weight:600; }
+.rehearsal-body { padding:0 18px 16px; }
+.rehearsal-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0; font-size:12px; }
+.rehearsal-controls select { min-width:0; max-width:100%; padding:7px; color:var(--ink); background:var(--paper); border:1px solid var(--line); }
+.rehearsal-summary { display:flex; flex-wrap:wrap; gap:8px 18px; margin:12px 0; font-size:12px; }
+.rehearsal-summary strong { color:var(--cyan); padding-left:5px; }
+#rehearsal-status { font-size:12px; color:var(--muted); }
+.rehearsal-records { max-height:380px; overflow:auto; padding:0 0 0 20px; font-size:12px; }
+.rehearsal-records li { padding:9px 0; border-top:1px solid var(--line); }
+.rehearsal-records summary { cursor:pointer; }
+.rehearsal-records dl { display:grid; grid-template-columns:110px minmax(0,1fr); gap:9px 14px; }
+.rehearsal-records dt { color:var(--muted); }
+.rehearsal-records dd { margin:0; overflow-wrap:anywhere; }
+@media(max-width:520px) { .rehearsal-records dl { grid-template-columns:1fr; gap:5px; } .rehearsal-records dd { margin-bottom:9px; } }
+
+.review-suggestions { display:flex; flex-wrap:wrap; gap:6px; margin:9px 0 12px; }
+.review-suggestions button { text-align:left; font-size:11px; min-height:32px; }
+.review-suggestions button[aria-pressed="true"] { border-color:var(--olive); background:#293627; color:#e1ebd1; }
+.track-review-form details,.situation-review-form details { margin:10px 0; }
+.track-review-form summary,.situation-review-form summary { cursor:pointer; font-size:12px; color:var(--ink-soft); }

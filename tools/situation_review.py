@@ -34,11 +34,11 @@ def make_review(command, situation, run_id, case_id, at_ms, record_id):
     event = next((e for e in situation['events'] if e['id'] == command.get('event_id')), None)
     if event is None:
         raise ValueError('Unknown received event')
-    decision, reason = command.get('decision'), command.get('reason')
+    decision, reason = command.get('decision'), command.get('reason', '')
     if decision not in DECISIONS:
         raise ValueError('Invalid review decision')
-    if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
-        raise ValueError('Review reason must contain 1–1000 characters')
+    if not isinstance(reason, str) or len(reason.strip()) > 1000:
+        raise ValueError('Review comment must be text up to 1000 characters')
     # Seven content fields are captured from the current received context plus human input.
     # IDs and run/case metadata isolate repeated replays; there is no inferred operator identity.
     return dict(id=record_id, run_id=run_id, case_id=case_id,

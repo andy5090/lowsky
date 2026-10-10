@@ -438,6 +438,22 @@ class HTTPTests(SimulationFixture):
             status, _, _ = self.request("GET", path)
             self.assertEqual(status, 404)
 
+    def test_rehearsal_http_is_read_only_and_exports_only_selected_run(self):
+        from tests.test_rehearsal_review import record
+        self.sim.decisions.audit.append(record('archived'))
+        before = self.sim.clock_state()
+        status, headers, raw = self.request('GET', '/api/rehearsals')
+        self.assertEqual(status, 200)
+        self.assertEqual(headers['Cache-Control'], 'no-store')
+        self.assertEqual(json.loads(raw)['runs'][0]['run_id'], self.sim.run_id)
+        status, _, raw = self.request('GET', '/api/rehearsals?run_id=archived')
+        self.assertEqual(status, 200)
+        self.assertEqual(len(json.loads(raw)['records'][0]['fields']), 7)
+        self.assertEqual(self.request('GET', '/api/rehearsals?run_id=missing')[0], 404)
+        self.assertEqual(self.request('GET', '/api/rehearsals', headers={'Host':'outside.example'})[0], 403)
+        self.assertEqual(self.sim.clock_state(), before)
+        self.assertIsNone(self.sim.decisions.worker)
+
     def test_operator_http_requires_explicit_same_origin_start_and_get_is_passive(self):
         operator = self.sim.test_operator
         operator.configuration = lambda: dict(available=True, model='test', provider='codex_cli')

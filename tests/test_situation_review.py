@@ -75,11 +75,16 @@ class SituationReviewTests(unittest.TestCase):
     def test_review_validation_does_not_change_state(self):
         self.advance(10000)
         invalid = [{'event_id':'context_close'}, {'run_id':'stale'}, {'decision':'approve_weapon'},
-                   {'reason':''}, {'reason':' '}, {'reason':'a'*1001}, {'reason':None}]
+                   {'reason':'a'*1001}, {'reason':None}]
         for change in invalid:
             before = self.sim.state()
             with self.assertRaises(ValueError): self.review(**change)
             self.assertEqual(self.sim.state(), before)
+
+    def test_optional_comment_accepts_decision_without_typing(self):
+        self.advance(10000)
+        self.review(reason='')
+        self.assertEqual(self.sim.state()['situation']['review_log'][-1]['reason'],'')
 
     def test_rewind_and_case_reset_isolate_review_history(self):
         self.advance(10000)
