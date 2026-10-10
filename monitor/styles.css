@@ -325,3 +325,14 @@ button:disabled{cursor:not-allowed}
 .review-dialog label { display:block; margin:8px 0 5px; }
 @media(max-width:1100px) { .dashboard-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:640px) { .dashboard-grid { grid-template-columns:repeat(2,minmax(0,1fr)); padding:0 12px; } .dashboard-grid > section:last-child { grid-column:1/-1; } .dashboard-toolbar { padding:12px; } .dashboard-toolbar a { margin-left:0; } .review-dialog .decision-form { padding:18px; } }
+
+/* Keep primary simulation controls above the decision workspace. */
+.workspace > .playback-panel { margin:0 0 18px; }
+.playback-top,.playback-actions { flex-wrap:wrap; }
+.playback-actions { align-items:center; }
+.playback-actions .speed-field { margin-left:8px; }
+.run-options { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+.run-options > summary { cursor:pointer; color:var(--muted); font-size:11px; }
+.run-options .test-run-controls { margin-top:12px; padding-bottom:0; border-bottom:0; }
+.run-options .test-run-note { margin-bottom:0; }
+@media(max-width:520px) { .playback-actions { justify-content:flex-start; } }

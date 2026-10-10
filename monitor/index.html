@@ -41,6 +41,30 @@
       <div class="scenario-help"><span data-i18n="scenarioHelp">Received inputs vary with each scenario run.</span><span id="test-run-summary" class="test-run-summary"></span></div>
     </section>
 
+    <section class="panel playback-panel" aria-label="Scenario playback" data-i18n-aria-label="scenarioPlayback">
+      <div class="playback-top">
+        <div class="playback-title"><span class="eyebrow" data-i18n="scenarioTime">SCENARIO TIME</span><output id="time-label" for="timeline">--:--</output></div>
+        <div class="playback-actions">
+          <button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button>
+          <button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button>
+          <div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+        </div>
+      </div>
+      <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="180000" step="1000" value="0">
+      <div class="playback-bottom"><span data-i18n="timelineHelp">Scrub the timeline to compare observations.</span></div>
+      <p id="test-run-error" class="test-run-error" role="status" aria-live="polite"></p>
+      <details class="run-options">
+        <summary data-i18n="test.options">Run options</summary>
+        <form id="test-run-form" class="test-run-controls">
+          <div class="test-seed-field"><label for="test-seed" data-i18n="test.seedLabel">Seed (optional)</label><input id="test-seed" type="number" min="0" max="2147483647" step="1" inputmode="numeric" aria-describedby="test-seed-help test-run-error"><small id="test-seed-help" data-i18n="test.seedHelp">Blank = a new random seed</small></div>
+          <button id="test-run-button" type="submit" class="button button-primary" data-i18n="test.start">Run new test</button>
+          <button id="test-repeat-button" type="button" class="button button-secondary" disabled data-i18n="test.repeat">Run again with same seed</button>
+          <output id="test-current-seed" class="test-run-summary"></output>
+        </form>
+        <p class="test-run-note" data-i18n="test.scope">Varies observation delays, missing reports and sensor-health timing. Routes stay fixed. The same seed reproduces inputs; agent assessments and human decisions may differ.</p>
+      </details>
+    </section>
+
     <section class="panel dashboard-panel" aria-labelledby="dashboard-title">
       <div class="panel-heading"><div><span class="section-number">REVIEW</span><h2 id="dashboard-title" data-i18n="dashboard.title">Decision dashboard</h2></div><span id="dashboard-status" class="status-pill"></span></div>
       <div class="dashboard-toolbar"><label for="dashboard-object" data-i18n="dashboard.object">Received object</label><select id="dashboard-object"></select><span id="dashboard-priority" class="dashboard-priority" hidden data-i18n="dashboard.priority">Review priority raised</span><a href="/api/dashboard/audit" download="lowsky-review-decisions.json" data-i18n="dashboard.export">Export review journal</a></div>
@@ -94,17 +118,7 @@
     <section id="monitor-view" aria-label="Synthetic site observation view" data-i18n-aria-label="monitorRegion">
       <div class="monitor-grid">
         <div class="map-column">
-          <section class="panel playback-panel" aria-label="Scenario playback" data-i18n-aria-label="scenarioPlayback">
-            <form id="test-run-form" class="test-run-controls">
-              <div class="test-seed-field"><label for="test-seed" data-i18n="test.seedLabel">Seed (optional)</label><input id="test-seed" type="number" min="0" max="2147483647" step="1" inputmode="numeric" aria-describedby="test-seed-help test-run-error"><small id="test-seed-help" data-i18n="test.seedHelp">Blank = a new random seed</small></div>
-              <button id="test-run-button" type="submit" class="button button-primary" data-i18n="test.start">Run new test</button><button id="test-repeat-button" type="button" class="button button-secondary" disabled data-i18n="test.repeat">Run again with same seed</button>
-              <output id="test-current-seed" class="test-run-summary"></output>
-            </form>
-            <p id="test-run-error" class="test-run-error" role="status" aria-live="polite"></p><p class="test-run-note" data-i18n="test.scope">Varies observation delays, missing reports and sensor-health timing. Routes stay fixed. The same seed reproduces inputs; agent assessments and human decisions may differ.</p>
-            <div class="playback-top"><div class="playback-title"><span class="eyebrow" data-i18n="scenarioTime">SCENARIO TIME</span><output id="time-label" for="timeline">--:--</output></div><div class="playback-actions"><button type="button" id="reset-button" class="button button-secondary" data-i18n="reset">Reset</button><button type="button" id="play-button" class="button button-primary" data-i18n="play">Play</button></div></div>
-            <label class="sr-only" for="timeline" data-i18n="seekLabel">Seek scenario time</label><input id="timeline" class="timeline" type="range" min="0" max="180000" step="1000" value="0">
-            <div class="playback-bottom"><span data-i18n="timelineHelp">Scrub the timeline to compare observations.</span><div class="speed-field"><label for="speed-select" data-i18n="speed">Speed</label><select id="speed-select"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div></div>
-          </section>
+
 
           <section class="panel map-panel" aria-labelledby="map-title">
             <div class="panel-heading map-heading"><div><span class="section-number">01</span><h2 id="map-title" data-i18n="observationArea">Observation area</h2></div><span id="map-status" class="muted" role="status" data-i18n="planLoading">Preparing site plan</span></div>
