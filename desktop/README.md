@@ -49,8 +49,9 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 The smoke check runs outside the repository with a temporary user folder, tests case/clock changes and served assets, launches exported 3D headlessly, and verifies backend shutdown. `--check-sdk` also exercises Deep Agents, its evidence tools, and structured output against a dummy OpenAI endpoint on loopback; it makes no external provider calls and needs no API key. `--skip-godot` isolates backend checks. After changing Python/frontend files, rebuild the backend; after changing Godot files, re-export 3D. `--skip-backend` and `--skip-godot` are local incremental-build options, not release defaults.
 
-## CI and release
+## Local distribution
 
-Run the **Desktop installers** GitHub Actions workflow, or push a `desktop-v*` tag. macOS and Windows native jobs each build and smoke-test their payload and upload installer artifacts for 14 days. Creating a tag publishes build artifacts only; there is no automatic public release or auto-update feed. Never add provider keys to a build workflow.
+Installer builds run locally on the target operating system. This public repository has no GitHub Actions packaging workflow, tag-triggered builds, artifact uploads, automatic releases or update feed. Build on a Mac for macOS and a Windows PC for Windows; this Python/Godot/Tauri bundle does not support cross-building the Windows installer on macOS. Keep installers in the ignored `dist/` directory and distribute them explicitly when needed.
+
 
 Packaging follows the official [Tauri resource bundling](https://v2.tauri.app/develop/resources/), [Windows installer](https://v2.tauri.app/distribute/windows-installer/), and [Godot 4.5 export](https://docs.godotengine.org/en/4.5/tutorials/export/exporting_projects.html) documentation.

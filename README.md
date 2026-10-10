@@ -24,7 +24,7 @@ Original planning documents remain local and are excluded from the public reposi
 
 ## Desktop installers
 
-The [desktop packaging guide](desktop/README.md) covers one installer containing the Tauri monitor, local Python/Deep Agents runtime, Godot 3D app, and datasets. Native macOS DMG and Windows NSIS builds are available through the **Desktop installers** workflow. The desktop launcher starts both windows, manages their shared service, and keeps keys and journals in per-user application data.
+The [desktop packaging guide](desktop/README.md) covers one installer containing the Tauri monitor, local Python/Deep Agents runtime, Godot 3D app, and datasets. Build macOS DMG locally on macOS and Windows NSIS locally on Windows with `desktop/build.py`. GitHub Actions installer builds are not configured. The desktop launcher starts both windows, manages their shared service, and keeps keys and journals in per-user application data.
 
 ## Run
 
