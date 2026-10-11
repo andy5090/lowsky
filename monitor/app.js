@@ -1528,7 +1528,7 @@ function drawSite() {
     const status=asset.selection?.status==='pending'?t('exercise.mapPending',{time:fmt(asset.selection.effective_at_ms)}):t(`exercise.status.${asset.status}`);
     marker.textContent=`${localized(asset.label)} · ${status}`;
     marker.title=asset.branch?t('exercise.mapSelected',{branch:localized(asset.branch.label)}):status;
-    marker.onclick=()=>{showPanel('decision');$('exercise-panel').open=true;$('exercise-panel').scrollIntoView({block:'start'});};
+    marker.onclick=()=>{showPanel('tools');$('exercise-panel').open=true;$('exercise-panel').scrollIntoView({block:'start'});};
     markers.append(marker);
   }
   for(const z of visibleSignalZones()){

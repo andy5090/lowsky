@@ -177,18 +177,7 @@
           <div class="decision-form-actions"><button id="tactics-confirm" type="submit" class="button button-primary" data-i18n="tactics.confirm">Confirm and record</button><button id="tactics-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div>
         </form></dialog>
       </div>
-    </section><details id="exercise-panel" class="panel rehearsal-panel" open>
-      <summary data-i18n="exercise.title">Scripted training branch</summary>
-      <div class="rehearsal-body">
-        <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
-        <section class="exercise-mission-section" aria-labelledby="exercise-mission-title"><h3 id="exercise-mission-title" data-i18n="exercise.missions">Observed scene progression</h3><p class="muted" data-i18n="exercise.missionScope">Shows received aircraft and resulting facility status. This does not establish identity or measured defense effectiveness.</p><div id="exercise-missions" class="exercise-missions"></div></section>
-        <details class="exercise-facilities"><summary data-i18n="exercise.facilities">Facility status</summary><ul id="exercise-assets" class="exercise-assets"></ul></details>
-        <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
-        <p id="exercise-fixed-asset" class="muted" hidden data-i18n="exercise.fixedAsset">This authored scene uses its predefined facility.</p><div id="exercise-options" class="decision-options"></div>
-        <p id="exercise-status" role="status" aria-live="polite"></p>
-        <dialog id="exercise-dialog" class="review-dialog" aria-labelledby="exercise-confirm-title"><div class="decision-form"><h3 id="exercise-confirm-title" data-i18n="exercise.confirm">Confirm training branch</h3><p id="exercise-modal-summary"></p><p id="exercise-modal-effect"></p><p id="exercise-modal-context" class="muted"></p><p data-i18n="exercise.scope">Predefined training outcome. Time continues.</p><div class="decision-form-actions"><button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button><button id="exercise-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div></div></dialog>
-      </div>
-    </details><section class="panel decision-panel" aria-labelledby="decision-title">
+    </section><section class="panel decision-panel" aria-labelledby="decision-title">
       <div class="panel-heading"><div><span class="section-number" data-i18n="section.decide">DECIDE</span><h2 id="decision-title" tabindex="-1" data-i18n="decision.title">Decision checkpoints</h2></div><span id="decision-count" class="count-badge">0</span></div>
       <div class="decision-request"><button id="decision-assess" class="button button-secondary" type="button" data-i18n="decision.assess">Request a decision checkpoint</button></div>
       <p id="decision-status" class="decision-status" role="status" aria-live="polite"></p>
@@ -298,7 +287,19 @@
         </div>
       </details>
     </section></div>
-<div id="pane-tools" class="workspace-pane" tabindex="0" role="region" aria-label="tools" data-i18n-aria-label="layout.tools" hidden><details id="rehearsal-panel" class="panel rehearsal-panel">
+<div id="pane-tools" class="workspace-pane" tabindex="0" role="region" aria-label="tools" data-i18n-aria-label="layout.tools" hidden><details id="exercise-panel" class="panel rehearsal-panel instructor-panel">
+      <summary><span class="instructor-badge" data-i18n="exercise.instructorBadge">INSTRUCTOR</span> <span data-i18n="exercise.title">Instructor scene control</span></summary>
+      <div class="rehearsal-body">
+        <p class="instructor-note" data-i18n="exercise.instructorNote">For instructors and scenario authors. Changes how the training scene unfolds; it is not a trainee decision, no alert asks for it, and it is not recorded in decision journals.</p>
+        <p class="muted" data-i18n="exercise.scope">Choose a predefined aircraft movement and facility status for this run. These are scripted outcomes, not predictions of defense effectiveness. Time keeps moving while you choose.</p>
+        <section class="exercise-mission-section" aria-labelledby="exercise-mission-title"><h3 id="exercise-mission-title" data-i18n="exercise.missions">Observed scene progression</h3><p class="muted" data-i18n="exercise.missionScope">Shows received aircraft and resulting facility status. This does not establish identity or measured defense effectiveness.</p><div id="exercise-missions" class="exercise-missions"></div></section>
+        <details class="exercise-facilities"><summary data-i18n="exercise.facilities">Facility status</summary><ul id="exercise-assets" class="exercise-assets"></ul></details>
+        <div class="rehearsal-controls"><label for="exercise-object" data-i18n="exercise.object">Currently observed aircraft</label><select id="exercise-object"></select><label for="exercise-asset" data-i18n="exercise.asset">Affected facility</label><select id="exercise-asset"></select></div>
+        <p id="exercise-fixed-asset" class="muted" hidden data-i18n="exercise.fixedAsset">This authored scene uses its predefined facility.</p><div id="exercise-options" class="decision-options"></div>
+        <p id="exercise-status" role="status" aria-live="polite"></p>
+        <dialog id="exercise-dialog" class="review-dialog" aria-labelledby="exercise-confirm-title"><div class="decision-form"><h3 id="exercise-confirm-title" data-i18n="exercise.confirm">Confirm training branch</h3><p id="exercise-modal-summary"></p><p id="exercise-modal-effect"></p><p id="exercise-modal-context" class="muted"></p><p data-i18n="exercise.scope">Predefined training outcome. Time continues.</p><div class="decision-form-actions"><button id="exercise-confirm" type="button" class="button button-primary" disabled data-i18n="exercise.confirm">Confirm training branch</button><button id="exercise-cancel" type="button" class="button button-secondary" data-i18n="decision.cancel">Cancel selection</button></div></div></dialog>
+      </div>
+    </details><details id="rehearsal-panel" class="panel rehearsal-panel">
       <summary data-i18n="rehearsal.title">Decision rehearsal review</summary>
       <div class="rehearsal-body">
         <p class="muted" data-i18n="rehearsal.scope">Review saved decisions and their received evidence across runs. Counts describe the review workflow, not decision quality. This view does not train the agent or change its rules.</p>
