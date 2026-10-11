@@ -9,24 +9,10 @@ godot/.godot/
 !.env.example
 !.env.sample
 .~lock.*
-LOW_SKY_team_brief.docx
-LOW_SKY_scenario_v2.docx
-LOW_SKY_Sensor_Engineering_Brief.docx
-LOW_SKY_Sensor_Technical_Specifications.docx
-LOW_SKY_picket_line.docx
 
-LOW_SKY_Detailed_Scenario.docx
-LOW_SKY_airfield_reference.docx
-LOW_SKY_Verified_Source_Evidence_Dossier.pdf
-
-# Local review journals and source feedback documents
+# Local review journals
 .local/
-LOW_SKY_Detailed_Feedback_Issues_and_Solutions.pdf
 LOW_SKY_멘토피드백.docx
-LOW_SKY_멘토피드백.docx
-
-LOW_SKY_Suggestion.docx
-LOW_SKY_decisiondashboard.docx
 
 # Desktop build products (never include user configuration or journals)
 desktop/node_modules/
@@ -41,3 +27,11 @@ desktop/src-tauri/icons/*
 !desktop/src-tauri/icons/128x128@2x.png
 !desktop/src-tauri/icons/icon.icns
 !desktop/src-tauri/icons/icon.ico
+
+# Original planning documents are internal (team proposals, mentor feedback) and this repository
+# is public. Keep the files in docs/sources/ locally; only the index README is tracked.
+docs/sources/*
+!docs/sources/README.md
+# Safety net for copies dropped anywhere else in the tree.
+LOW_SKY_*.docx
+LOW_SKY_*.pdf
