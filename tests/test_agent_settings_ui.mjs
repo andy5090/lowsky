@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CUSTOM_MODEL, modelOptions, initialDraft, draftProblem, saveCommand, removeKeyCommand, testCommand, keyStatus} from '../monitor/agent_settings.mjs';
+import {CUSTOM_MODEL, modelOptions, modelsCommand, initialDraft, draftProblem, saveCommand, removeKeyCommand, testCommand, keyStatus} from '../monitor/agent_settings.mjs';
 import {messages} from '../monitor/i18n.mjs';
 
 const view = {saved_provider:null, provider:'openai', providers:{
@@ -52,4 +52,14 @@ test('every settings label exists in English and Korean, including all connectio
   for (const code of ['ok','missing_api_key','missing_dependencies','invalid_key','permission_denied','model_not_found','rate_limited','network','provider_error'])
     assert.ok(messages.en[`settings.test.${code}`] && messages.ko[`settings.test.${code}`], code);
   for (const error of ['missing_api_key','missing_dependencies','invalid_model','unsupported_provider']) assert.ok(messages.ko[`agent.${error}`], error);
+});
+
+test('models loaded from the provider follow the presets, skip duplicates and invalid IDs', () => {
+  const ids = modelOptions(view,'anthropic',['claude-opus-5','claude-opus-4-8','bad id','x:y']).map(row => row.id);
+  assert.deepEqual(ids, ['claude-opus-5','claude-sonnet-5','claude-opus-4-8',CUSTOM_MODEL]);
+  assert.deepEqual(modelsCommand(view,{provider:'anthropic',api_key:''}),{action:'models',provider:'anthropic'});
+  assert.equal(modelsCommand(view,{provider:'openai',api_key:''}),null, 'No key yet');
+  assert.deepEqual(modelsCommand(view,{provider:'openai',api_key:' sk-new-key-1234 '}),{action:'models',provider:'openai',api_key:'sk-new-key-1234'});
+  assert.equal(modelsCommand(view,{provider:'openai',api_key:'sk-ant-wrong-slot'}),null);
+  assert.equal(modelsCommand(view,{provider:'rules',api_key:''}),null);
 });

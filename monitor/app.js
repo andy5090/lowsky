@@ -1,5 +1,5 @@
 import {enhanceSelects} from './custom_selects.mjs';
-import {CUSTOM_MODEL, modelOptions, initialDraft, draftProblem, saveCommand, removeKeyCommand, testCommand, keyStatus} from './agent_settings.mjs';
+import {CUSTOM_MODEL, modelOptions, modelsCommand, initialDraft, draftProblem, saveCommand, removeKeyCommand, testCommand, keyStatus} from './agent_settings.mjs';
 import {desktopCommand, desktopShortcut, acceptDesktopState} from './desktop.mjs';
 import {localToGeo, mercator, unproject, pixelsPerMeter, mapToLocal} from './geo.mjs';
 import {radarFrame, replayTime} from './radar.mjs';
@@ -258,6 +258,7 @@ $('agent-assess').onclick=runAssessment;
 
 // AI settings dialog: provider, model and a write-only API key kept on this computer by the server.
 let agentSettings=null, settingsDraft=null, settingsBusy=false, settingsNotice='', settingsNoticeValues={};
+let fetchedModels={openai:[],anthropic:[]};
 function settingsLabel(row){
   if(row.id===CUSTOM_MODEL)return t('settings.customOption');
   return row.label?localized(row.label):row.id;
@@ -276,7 +277,7 @@ function renderAgentSettings(){
   const draft=settingsDraft, llm=draft.provider!=='rules';
   for(const input of document.querySelectorAll('input[name="agent-provider"]')){input.checked=input.value===draft.provider;input.disabled=settingsBusy;}
   $('agent-settings-llm').hidden=!llm;
-  const options=llm?modelOptions(agentSettings,draft.provider):[];
+  const options=llm?modelOptions(agentSettings,draft.provider,fetchedModels[draft.provider] || []):[];
   const signature=JSON.stringify([language,draft.provider,options]);
   if($('agent-settings-model').dataset.signature!==signature){
     $('agent-settings-model').dataset.signature=signature;
@@ -295,6 +296,7 @@ function renderAgentSettings(){
   $('agent-settings-remove').hidden=!removeKeyCommand(agentSettings,draft);
   $('agent-settings-remove').disabled=settingsBusy;
   $('agent-settings-test').disabled=settingsBusy || !testCommand(agentSettings,draft);
+  $('agent-settings-models').disabled=settingsBusy || !modelsCommand(agentSettings,draft);
   $('agent-settings-save').disabled=settingsBusy || !saveCommand(agentSettings,draft);
   const problem=draftProblem(agentSettings,draft);
   $('agent-settings-status').textContent=settingsBusy?t('settings.working'):settingsNotice?t(settingsNotice,settingsNoticeValues):problem?t(problem):'';
@@ -305,6 +307,7 @@ async function openAgentSettings(){
   try {agentSettings=await api('/api/agent-settings');}
   catch {agentSettings=null;settingsNotice='settings.loadFailed';}
   settingsDraft=initialDraft(agentSettings);
+  fetchedModels={openai:[],anthropic:[]};
   $('agent-settings-key').value='';$('agent-settings-custom').value='';
   if(!dialog.open)dialog.showModal();
   renderAgentSettings();
@@ -320,8 +323,14 @@ async function agentSettingsRequest(body,kind){
   settingsBusy=true;settingsNotice='';settingsNoticeValues={};renderAgentSettings();
   try {
     const result=await api('/api/agent-settings',body);
-    if(kind==='test'){
+    if(kind==='models'){
+      if(result.ok){fetchedModels[body.provider]=result.models || [];settingsNotice=result.models?.length?'settings.models.loaded':'settings.models.empty';settingsNoticeValues={count:result.models?.length || 0};}
+      else {settingsNotice=`settings.test.${result.code}`;settingsNoticeValues={model:'',status:result.status ?? ''};}
+    } else if(kind==='test'){
       settingsNotice=`settings.test.${result.code}`;settingsNoticeValues={model:result.model || draftModel(settingsDraft),status:result.status ?? ''};
+      // A working key can list the other models it may use, so offer them right away.
+      const listing=result.ok?modelsCommand(agentSettings,settingsDraft):null;
+      if(listing){const models=await api('/api/agent-settings',listing).catch(()=>null);if(models?.ok)fetchedModels[listing.provider]=models.models || [];}
     } else {
       agentSettings=result;
       const provider=settingsDraft.provider;
@@ -349,8 +358,11 @@ for(const input of document.querySelectorAll('input[name="agent-provider"]'))inp
 };
 $('agent-settings-model').onchange=()=>{readSettingsDraft();settingsNotice='';renderAgentSettings();if(settingsDraft.model===CUSTOM_MODEL)$('agent-settings-custom').focus();};
 for(const id of ['agent-settings-custom','agent-settings-key'])$(id).oninput=()=>{readSettingsDraft();settingsNotice='';renderAgentSettings();};
+// A different key may see different models; drop the list loaded with the previous key.
+$('agent-settings-key').addEventListener('change',()=>{if(settingsDraft)fetchedModels[settingsDraft.provider]=[];renderAgentSettings();});
 $('agent-settings-save').onclick=()=>{readSettingsDraft();agentSettingsRequest(saveCommand(agentSettings,settingsDraft),'save');};
 $('agent-settings-test').onclick=()=>{readSettingsDraft();agentSettingsRequest(testCommand(agentSettings,settingsDraft),'test');};
+$('agent-settings-models').onclick=()=>{readSettingsDraft();agentSettingsRequest(modelsCommand(agentSettings,settingsDraft),'models');};
 $('agent-settings-remove').onclick=()=>{readSettingsDraft();agentSettingsRequest(removeKeyCommand(agentSettings,settingsDraft),'remove');};
 // The desktop menu and links can open the dialog directly.
 window.addEventListener('lowsky:open-agent-settings',openAgentSettings);

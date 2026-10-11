@@ -6,15 +6,25 @@ export function providerView(view, provider) {
   return view?.providers?.[provider] || null;
 }
 
-// Preset IDs first, then any saved or default ID not in the list, then the custom entry.
-export function modelOptions(view, provider) {
+// Preset IDs first, then saved/default IDs, then models loaded from the provider, then the custom entry.
+export function modelOptions(view, provider, fetched = []) {
   const info = providerView(view, provider);
   if (!info) return [];
   const rows = (info.presets || []).map(preset => ({id: preset.id, label: preset.label}));
-  for (const id of [info.saved_model, info.default_model]) {
-    if (id && !rows.some(row => row.id === id)) rows.push({id, label: null});
+  for (const id of [info.saved_model, info.default_model, ...(Array.isArray(fetched) ? fetched : [])]) {
+    if (typeof id === 'string' && MODEL_PATTERN.test(id) && !id.includes(':') && !rows.some(row => row.id === id))
+      rows.push({id, label: null, fetched: fetched.includes(id)});
   }
   return [...rows, {id: CUSTOM_MODEL, label: null}];
+}
+
+// Ask the provider which models this key can use; works with the typed key or a saved/environment key.
+export function modelsCommand(view, draft) {
+  if (!['openai', 'anthropic'].includes(draft?.provider)) return null;
+  const key = (draft.api_key || '').trim();
+  if (key && (!KEY_PATTERN.test(key) || (draft.provider === 'openai' && key.startsWith('sk-ant-')))) return null;
+  if (!key && !providerView(view, draft.provider)?.key_set) return null;
+  return {action: 'models', provider: draft.provider, ...(key ? {api_key: key} : {})};
 }
 
 export function initialDraft(view) {

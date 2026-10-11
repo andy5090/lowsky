@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools import monitor_server
-from tools.agent_settings import AgentSettings, PRESETS, test_connection
+from tools.agent_settings import AgentSettings, PRESETS, list_models, test_connection
 from tools.situation_agent import (_evidence_tools, build_bundle, chat_model_options, configuration_status,
                                    deepagents_report, evaluate, rules_report)
 
@@ -121,6 +121,33 @@ class AgentSettingsStoreTests(unittest.TestCase):
         self.assertNotIn(SECRET, json.dumps(result))
         with patch('anthropic.resources.models.Models.retrieve', return_value=type('M', (), {'id': 'claude-opus-5'})()):
             self.assertEqual(test_connection(candidate), dict(ok=True, code='ok', model='claude-opus-5'))
+
+
+class ModelListingTests(unittest.TestCase):
+    def test_openai_presets_follow_the_official_flagship_list(self):
+        self.assertEqual([row['id'] for row in PRESETS['openai']], ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna'])
+        self.assertTrue(all(row['label']['en'] and row['label']['ko'] for row in PRESETS['openai']))
+
+    def test_listing_filters_to_chat_models_newest_first_and_handles_errors(self):
+        self.assertEqual(list_models(dict(provider='openai', api_key=None))['code'], 'missing_api_key')
+        if not importlib.util.find_spec('openai') or not importlib.util.find_spec('anthropic'):
+            self.skipTest('provider SDKs not installed')
+        import httpx
+        import openai
+        row = lambda model_id, created: type('M', (), {'id': model_id, 'created': created})()
+        listing = [row('gpt-6-luna', 30), row('gpt-6-astra', 20), row('text-embedding-4', 50), row('gpt-6-realtime', 60),
+                   row('gpt-6-audio', 61), row('dall-e-4', 62), row('ft:gpt-6:org', 63), row('o5-mini', 10)]
+        config = dict(provider='openai', api_key='sk-test-key-123456', base_url=None, model_id='gpt-6.1-sol')
+        with patch('openai.resources.models.Models.list', return_value=listing):
+            result = list_models(config)
+        self.assertEqual(result, dict(ok=True, code='ok', models=['gpt-6-luna', 'gpt-6-astra', 'o5-mini'], truncated=False))
+        response = httpx.Response(401, request=httpx.Request('GET', 'https://api.openai.com/v1/models'))
+        with patch('openai.resources.models.Models.list', side_effect=openai.AuthenticationError('x', response=response, body=None)):
+            self.assertEqual(list_models(config)['code'], 'invalid_key')
+        claude = [row('claude-opus-5', 5), row('claude-sonnet-5', 6), row('not-claude', 7)]
+        with patch('anthropic.resources.models.Models.list', return_value=claude):
+            result = list_models(dict(config, provider='anthropic'))
+        self.assertEqual(result['models'], ['claude-sonnet-5', 'claude-opus-5'])
 
 
 class ClaudeOptionsTests(unittest.TestCase):
@@ -273,6 +300,11 @@ class SettingsEndpointTests(unittest.TestCase):
         self.assertEqual((status, data['code']), (200, 'ok'))
         self.assertEqual(probe.call_args[0][0]['api_key'], SECRET)
         self.assertEqual(self.call('POST', '/api/agent-settings', dict(action='delete'))[0], 400)
+        with patch('tools.monitor_server.list_agent_models', return_value=dict(ok=True, code='ok', models=['claude-opus-5'], truncated=False)) as listing:
+            status, data = self.call('POST', '/api/agent-settings', dict(action='models', provider='anthropic'))
+        self.assertEqual((status, data['models']), (200, ['claude-opus-5']))
+        self.assertEqual(listing.call_args[0][0]['api_key'], SECRET)
+        self.assertNotIn(SECRET, json.dumps(data))
         status, data = self.call('POST', '/api/agent-settings', dict(action='remove_key', provider='anthropic'))
         self.assertEqual((status, data['provider'], data['providers']['anthropic']['key_set']), (200, 'anthropic', False))
         self.assertEqual(data['status']['configuration_error'], 'missing_api_key')

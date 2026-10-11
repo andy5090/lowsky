@@ -16,7 +16,7 @@ try:
     from .sensor_fleet import snapshot as fleet_snapshot
     from .situation_agent import configuration_status, evaluate as evaluate_situation
     from .env_config import load_agent_env
-    from .agent_settings import AgentSettings, test_connection as test_agent_connection
+    from .agent_settings import AgentSettings, test_connection as test_agent_connection, list_models as list_agent_models
     from .decision_engine import DecisionEngine, DecisionBusy
     from .early_warning import snapshot as early_snapshot
     from .situation_review import snapshot as situation_snapshot, make_review
@@ -34,7 +34,7 @@ except ImportError:
     from sensor_fleet import snapshot as fleet_snapshot
     from situation_agent import configuration_status, evaluate as evaluate_situation
     from env_config import load_agent_env
-    from agent_settings import AgentSettings, test_connection as test_agent_connection
+    from agent_settings import AgentSettings, test_connection as test_agent_connection, list_models as list_agent_models
     from decision_engine import DecisionEngine, DecisionBusy
     from early_warning import snapshot as early_snapshot
     from situation_review import snapshot as situation_snapshot, make_review
@@ -632,6 +632,9 @@ class Handler(BaseHTTPRequestHandler):
                 elif body.get('action') == 'remove_key':
                     sim.agent_settings.remove_key(body)
                     self.respond(200, dict(**sim.agent_settings.public(), status=sim.assessment_configuration()))
+                elif body.get('action') == 'models':
+                    # Lists the models the entered or saved key can use; no tokens are generated.
+                    self.respond(200, list_agent_models(sim.agent_settings.candidate(body)))
                 elif body.get('action') == 'test':
                     # Runs outside the simulation lock; checks key and model access without generating tokens.
                     self.respond(200, test_agent_connection(sim.agent_settings.candidate(body)))

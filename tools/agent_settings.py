@@ -25,8 +25,11 @@ DEFAULT_MODELS = {'openai': 'gpt-6.1-sol', 'anthropic': 'claude-opus-5'}
 DEFAULT_MODEL_SETTING = 'openai:gpt-6.1-sol'
 # Offered in the settings dialog; any other provider model ID can be typed as a custom value.
 PRESETS = {
+    # Flagship text models from https://developers.openai.com/api/docs/models (checked 2026-10-11).
     'openai': [
-        dict(id='gpt-6.1-sol', label=dict(en='GPT-6.1 Sol (default)', ko='GPT-6.1 Sol (기본)')),
+        dict(id='gpt-6.1-sol', label=dict(en='GPT-6.1 Sol (default, balanced)', ko='GPT-6.1 Sol (기본, 균형)')),
+        dict(id='gpt-6-astra', label=dict(en='GPT-6 Astra (most capable, highest cost)', ko='GPT-6 Astra (최고 성능, 최고 비용)')),
+        dict(id='gpt-6-luna', label=dict(en='GPT-6 Luna (most efficient, lower cost)', ko='GPT-6 Luna (가장 효율적, 저비용)')),
     ],
     'anthropic': [
         dict(id='claude-opus-5', label=dict(en='Claude Opus 5 (recommended)', ko='Claude Opus 5 (권장)')),
@@ -244,20 +247,68 @@ class AgentSettings:
                     key_source=key_source, base_url=base_url, source='candidate')
 
 
+# Chat-capable families only: listings also include embeddings, speech, image and moderation models.
+OPENAI_EXCLUDE = ('audio', 'realtime', 'live', 'transcribe', 'tts', 'image', 'embedding', 'moderation', 'dall-e', 'whisper',
+                  'search', 'instruct')
+MAX_LISTED_MODELS = 60
+
+
+def _client(config, timeout):
+    if config['provider'] == 'anthropic':
+        import anthropic
+        return anthropic, anthropic.Anthropic(api_key=config['api_key'], base_url=config.get('base_url'), timeout=timeout, max_retries=0)
+    import openai
+    return openai, openai.OpenAI(api_key=config['api_key'], base_url=config.get('base_url'), timeout=timeout, max_retries=0)
+
+
+def list_models(config, timeout=15):
+    """Model IDs this key can use, from the provider's models endpoint (no tokens generated)."""
+    if not config.get('api_key'):
+        return dict(ok=False, code='missing_api_key', models=[])
+    try:
+        errors, client = _client(config, timeout)
+    except ImportError:
+        return dict(ok=False, code='missing_dependencies', models=[])
+    try:
+        rows = list(client.models.list())
+    except errors.AuthenticationError:
+        return dict(ok=False, code='invalid_key', models=[])
+    except errors.PermissionDeniedError:
+        return dict(ok=False, code='permission_denied', models=[])
+    except errors.RateLimitError:
+        return dict(ok=False, code='rate_limited', models=[])
+    except errors.APIConnectionError:
+        return dict(ok=False, code='network', models=[])
+    except errors.APIStatusError as error:
+        return dict(ok=False, code='provider_error', status=getattr(error, 'status_code', None), models=[])
+    except Exception:
+        return dict(ok=False, code='provider_error', status=None, models=[])
+    models = []
+    for row in rows:
+        model_id = getattr(row, 'id', None)
+        if not isinstance(model_id, str) or ':' in model_id or not 0 < len(model_id) <= MAX_MODEL_LENGTH:
+            continue
+        if config['provider'] == 'openai':
+            lowered = model_id.lower()
+            if not lowered.startswith(('gpt-', 'o1', 'o3', 'o4', 'o5', 'o6')) or any(word in lowered for word in OPENAI_EXCLUDE):
+                continue
+        elif not model_id.startswith('claude-'):
+            continue
+        created = getattr(row, 'created', None) or getattr(row, 'created_at', None)
+        created = created.timestamp() if hasattr(created, 'timestamp') else (created or 0)
+        models.append((created, model_id))
+    # Newest first, as the providers list them by creation time.
+    ordered = [model_id for _, model_id in sorted(set(models), key=lambda item: (-item[0], item[1]))]
+    return dict(ok=True, code='ok', models=ordered[:MAX_LISTED_MODELS], truncated=len(ordered) > MAX_LISTED_MODELS)
+
+
 def test_connection(config, timeout=15):
     """Check key and model access without generating tokens (models.retrieve on each provider)."""
     provider, model_id, api_key = config['provider'], config['model_id'], config['api_key']
     if not api_key:
         return dict(ok=False, code='missing_api_key')
     try:
-        if provider == 'anthropic':
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key, base_url=config.get('base_url'), timeout=timeout, max_retries=0)
-            errors = anthropic
-        else:
-            import openai
-            client = openai.OpenAI(api_key=api_key, base_url=config.get('base_url'), timeout=timeout, max_retries=0)
-            errors = openai
+        errors, client = _client(config, timeout)
     except ImportError:
         return dict(ok=False, code='missing_dependencies')
     try:
