@@ -1,6 +1,6 @@
 # LOW SKY — Scenario Training Workspace
 
-[한국어](README.ko.md)
+[한국어](README.ko.md) · Version 0.2.0 · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md)
 
 Updated demos (2026-10-11): [Korean 3-minute annotated edition](dist/demo-videos/ko/LOW_SKY_Demo_KO_Annotated.mp4) · [English 3-minute annotated edition](dist/demo-videos/en/LOW_SKY_Demo_EN_Annotated.mp4). “Detection → Decision → Rehearsal” distinguishes the operator’s observation/decision workspace from the 3D simulation for training evaluators and third-party observers. Both 1080p/30fps editions include geographic terrain, matching service branding and quiet background music. The local `dist/demo-videos/` folder includes clean edits, silent copies, SRT subtitles, chapters, source credits and verification records. Video artifacts are excluded from Git.
 
@@ -45,7 +45,7 @@ python3 tools/monitor_server.py
 /Applications/Godot.app/Contents/MacOS/Godot --path godot -- --monitor
 ```
 
-Open http://127.0.0.1:8765. The language selector stores the choice in this browser. Run a new simulation test with an optional seed; pause, resume, seek, template selection, and speed control the shared simulation. `--monitor` disables Godot's replay controls while keeping camera and terrain controls available. Godot pauses on disconnection and resynchronizes when the connection returns. The web play button does not launch Godot; open the 3D window separately.
+Open http://127.0.0.1:8765. The language selector stores the choice in this browser. The Godot 3D view follows the same choice: the monitor publishes it to the local server (`POST /api/ui-language`, returned as `ui_language` in `/api/state`), and the 3D panel and world labels switch to English-only or Korean-only text; without a connected monitor the 3D view stays in English. Run a new simulation test with an optional seed; pause, resume, seek, template selection, and speed control the shared simulation. `--monitor` disables Godot's replay controls while keeping camera and terrain controls available. Godot pauses on disconnection and resynchronizes when the connection returns. The web play button does not launch Godot; open the 3D window separately.
 
 The synchronized view starts at the overview. By default, 3D labels and screen markers appear only for fresh received detections. **Show drone positions (SIM)** is off initially; turn it on to label every simulated drone in purple, including undetected objects. Physical drone bodies continue moving in the 3D simulation. The map has its own **Show drone positions** switch, also off initially, with a separate purple truth layer and warning. These switches are independent display preferences. **Previous drone / Next drone** or **[ / ]** selects and follows any drone, wrapping at the ends. **F / Follow selected drone** toggles that selection and the overview; manual camera movement cancels follow mode. The `CAMERA / SIM` ID and index describe author-camera selection, not detection; received-only world labels remain unchanged. Selecting another template resets the camera selection. The author view provides **14 airframe variants**, including the free textured CesiumDrone (CC BY 4.0) and procedural visual approximations informed by the scenario documents. Small quads retain a provisional **0.6 m maximum horizontal span**; other airframes use separate provisional size profiles. Follow distance scales with the model. Select `visual.airframe_id` and optionally override `visual.size_profile` using `godot/assets/display_profiles.json`. See the [rendered catalog](artifacts/drone-catalog.png) and [free asset review](docs/drone-asset-review.md).
 
@@ -341,6 +341,7 @@ Run shared-clock/follow checks against a separate server to avoid changing an ac
 python3 tools/monitor_server.py --port 8766
 # Another terminal:
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_monitor.gd --quit-after 1200 -- --monitor --monitor-port=8766
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_language.gd --quit-after 1200 -- --monitor --monitor-port=8766
 ```
 
 The windowed preview check covers real GUI drag, orbit, and button interactions; headless mode skips only rendering-dependent button delivery. Capture mode requires a graphics device, saves `artifacts/korea-preview.png`, and exits. Add `--overview` for `korea-overview.png`, `--plains` for `plains-*`, or `--hills` for `asset-preview.png`/`asset-overview.png`. These checks establish asset and replay behavior, not validation of a complete agent system or real-world detection performance. Notification unit tests do not by themselves prove OS-visible delivery on every platform.

@@ -56,7 +56,7 @@ static func make(layout: Dictionary, materials: Dictionary) -> Node3D:
 		var label = Label3D.new()
 		label.name = zone.id
 		label.text = zone.label.en
-		label.set_meta("label_ko", zone.label.ko)
+		label.set_meta("label", zone.label)
 		label.position = vector(zone.position) + Vector3(0, 22, 0)
 		label.modulate = Color(zone.color)
 		label.font_size = 40

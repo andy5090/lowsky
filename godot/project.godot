@@ -3,6 +3,13 @@ config_version=5
 [application]
 config/name="LOW SKY — 3D Simulation"
 run/main_scene="res://preview.tscn"
+config/icon="res://icon_3d.png"
+config/macos_native_icon="res://icon_3d.icns"
+config/windows_native_icon="res://icon_3d.ico"
+boot_splash/bg_color=Color(0.035, 0.055, 0.08, 1)
+boot_splash/image="res://splash_3d.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
 
 [display]
 window/size/viewport_width=1440

@@ -28,6 +28,7 @@ try:
     from .decision_dashboard import DecisionDashboard
     from .desktop_controls import DesktopControls, DesktopBusy
     from .rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
+    from .version import VERSION
 except ImportError:
     from scenario_dataset import ROOT, read_json, snapshot, information_state
     from evidence_review import AuditLog, digest, evidence_snapshot, explain, make_track_review
@@ -46,6 +47,7 @@ except ImportError:
     from decision_dashboard import DecisionDashboard
     from desktop_controls import DesktopControls, DesktopBusy
     from rehearsal_review import summarize as summarize_rehearsals, export_run as export_rehearsal
+    from version import VERSION
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -509,8 +511,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/desktop':
             self.respond(200, self.server.desktop.snapshot())
         elif path == '/api/state':
-            self.respond(200, self.server.simulation.state(
-                show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']))
+            # ui_language mirrors the monitor's language selector so the Godot 3D view can follow it.
+            self.respond(200, dict(self.server.simulation.state(
+                show_positions=parse_qs(urlsplit(self.path).query).get('show_positions') == ['1']),
+                ui_language=self.server.ui_language))
         elif path == '/api/assessment':
             self.respond(200, self.server.simulation.assessment_state())
         elif path == '/api/agent-settings':
@@ -548,7 +552,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/clock':
             self.respond(200, self.server.simulation.clock_state())
         elif path == '/api/config':
-            self.respond(200, dict(site=read_json(PROJECT / 'data' / 'site_layout.json'),
+            self.respond(200, dict(version=VERSION, site=read_json(PROJECT / 'data' / 'site_layout.json'),
                                    cases=[{'case_id': c['case_id'], 'variant': c['variant']} for c in self.server.simulation.cases],
                                    regional_map=read_json(PROJECT / 'monitor' / 'map_config.json'),
                                    radar_display=read_json(PROJECT / 'data' / 'radar_display.json'),
@@ -596,7 +600,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path
         if path not in ('/api/control', '/api/assessment', '/api/decisions', '/api/test-operator', '/api/desktop',
-                        '/api/desktop/runtime', '/api/agent-settings'):
+                        '/api/desktop/runtime', '/api/agent-settings', '/api/ui-language'):
             self.respond(404, {'error': 'Not found'})
             return
         if path == '/api/desktop/runtime' and not self.server.desktop.authenticated(
@@ -624,6 +628,11 @@ class Handler(BaseHTTPRequestHandler):
                              self.server.simulation.decisions.command(body))
             elif path == '/api/assessment':
                 self.respond(202, self.server.simulation.start_assessment(body))
+            elif path == '/api/ui-language':
+                if body.get('language') not in ('en', 'ko'):
+                    raise ValueError('Invalid UI language')
+                self.server.ui_language = body['language']
+                self.respond(200, {'language': self.server.ui_language})
             elif path == '/api/agent-settings':
                 sim = self.server.simulation
                 if body.get('action') == 'save':
@@ -667,6 +676,7 @@ def make_server(port=8765, simulation=None, desktop=None):
     server = MonitorServer(('127.0.0.1', port), Handler)
     server.simulation = simulation or Simulation()
     server.desktop = desktop or DesktopControls()
+    server.ui_language = None  # In memory only; the monitor republishes it after a restart.
     return server
 
 

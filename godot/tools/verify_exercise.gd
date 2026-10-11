@@ -103,7 +103,7 @@ func verify_missions(preview) -> bool:
 		await process_frame
 		await RenderingServer.frame_post_draw
 		assert(preview.ui_panel.get_global_rect().end.y <= root.size.y - 50, "Enlarged panel fits viewport with scroll")
-		assert(preview.ui_title.get_theme_font_size("font_size") == 36)
+		assert(preview.ui_title.get_theme_font_size("font_size") == 32 and preview.ui_title.text == "LOW SKY 3D")
 		var panel_path = ProjectSettings.globalize_path("res://../.local/mission-panel.png")
 		assert(root.get_texture().get_image().save_png(panel_path) == OK)
 		preview.toggle_ui_panel()

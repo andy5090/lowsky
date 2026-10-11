@@ -3,6 +3,8 @@ extends Node3D
 ## Lines come from Natural Earth 1:10m (generalized by hundreds of metres); launch
 ## areas are scenario planning assumptions. Local metres: X east, Z south.
 
+const UIText = preload("res://ui_text.gd")
+
 const LINE_STYLES = {
 	"mdl": {"color": Color("ff4f45"), "half_width_m": 60.0, "min_half_pixels": 3.0, "dash_m": 0.0, "gap_m": 0.0, "short": {"en": "MDL", "ko": "군사분계선"}, "label_x": [-26000.0, -4000.0, 34000.0]},
 	"dmz_south": {"color": Color("ffb547"), "half_width_m": 40.0, "min_half_pixels": 2.0, "dash_m": 1400.0, "gap_m": 900.0, "short": {"en": "DMZ south limit", "ko": "남방한계선"}, "label_x": [-8000.0, 20000.0]},
@@ -68,7 +70,6 @@ func build(mdl: Dictionary, corridor_data: Dictionary, ground_height: Callable) 
 		for x in style.label_x:
 			var marker = Label3D.new()
 			marker.name = "Label_%s_%d" % [id, line_labels.size()]
-			marker.text = "%s / %s" % [style.short.en, style.short.ko]
 			marker.set_meta("full_label", label)
 			marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			marker.fixed_size = true
@@ -107,8 +108,8 @@ func build(mdl: Dictionary, corridor_data: Dictionary, ground_height: Callable) 
 		marker.add_child(disc)
 		var label = Label3D.new()
 		label.name = "Label"
-		var title: Dictionary = corridor.get("label", {})
-		label.text = "Launch area / 발진 구역\n· %s / %s" % [title.get("en", corridor.id), title.get("ko", corridor.id)]
+		label.set_meta("title", corridor.get("label", {}))
+		label.set_meta("corridor_id", str(corridor.id))
 		label.position.y = 120.0
 		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		label.fixed_size = true
@@ -122,6 +123,14 @@ func build(mdl: Dictionary, corridor_data: Dictionary, ground_height: Callable) 
 		marker.add_child(label)
 		launch_root.add_child(marker)
 	reground(ground_height)
+	apply_language()
+
+func apply_language() -> void:
+	for marker in line_labels:
+		marker.text = UIText.pick(LINE_STYLES[marker.get_meta("line_id")].short)
+	for marker in launch_root.get_children():
+		var label: Label3D = marker.get_node("Label")
+		label.text = UIText.t("geo.launch", [UIText.pick(label.get_meta("title"), label.get_meta("corridor_id"))])
 
 func reground(ground_height: Callable) -> void:
 	for id in ribbons:

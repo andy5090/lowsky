@@ -2,6 +2,7 @@ extends Node3D
 ## User-positioned scene personnel and sensors. Positions come only from the shared state.
 
 const Detailed = preload("res://detailed_environment.gd")
+const UIText = preload("res://ui_text.gd")
 # Display assumptions only (not detection ranges); state unit_kinds take precedence.
 const FALLBACK_RANGES = {"infantry": 0, "radar": 5000, "detection_phone": 1500, "effector_team": 2500}
 const RING_COLORS = {"radar": Color(0.35, 0.9, 1.0, 0.55), "detection_phone": Color(1.0, 0.75, 0.25, 0.55), "effector_team": Color(1.0, 0.5, 0.2, 0.55)}
@@ -202,12 +203,17 @@ func sync(rows: Array, ground_height: Callable, kinds: Array = []) -> void:
 		var label = row.get("label", {})
 		if not label is Dictionary:
 			label = {}
-		unit.get_node("UnitLabel").text = "%s / %s" % [label.get("en", id), label.get("ko", kind_ko[kind])]
+		unit.set_meta("label", {"en": label.get("en", id), "ko": label.get("ko", kind_ko[kind])})
+		unit.get_node("UnitLabel").text = UIText.pick(unit.get_meta("label"))
 	for id in units.keys():
 		if not present.has(id):
 			remove_child(units[id])
 			units[id].queue_free()
 			units.erase(id)
+
+func apply_language() -> void:
+	for unit in units.values():
+		unit.get_node("UnitLabel").text = UIText.pick(unit.get_meta("label"))
 
 func sync_ring(unit: Node3D, kind: String, radius: float) -> void:
 	var ring = unit.get_node_or_null("RangeRing")

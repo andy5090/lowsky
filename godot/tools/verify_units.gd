@@ -17,7 +17,7 @@ func verify() -> void:
 	send_state(preview, state)
 	assert(preview.exercise_units.units.size() == 1)
 	var person: Node3D = preview.exercise_units.units[unit.id]
-	assert(person.get_child_count() > 10 and person.get_node("UnitLabel").text == "Infantry 1 / 보병 1")
+	assert(person.get_child_count() > 10 and person.get_node("UnitLabel").text == "Infantry 1")
 	verify_ground(preview, person, 40, -200)
 	send_state(preview, state)
 	assert(preview.exercise_units.units[unit.id] == person, "Unchanged snapshots reuse the personnel model")
@@ -90,7 +90,7 @@ func verify_kinds(preview: Node3D) -> void:
 		var node: Node3D = units[row.id]
 		nodes[row.id] = node
 		assert(node.get_child_count() > 6, "Each kind has a procedural model: " + row.id)
-		assert(node.get_node("UnitLabel").text == "%s / %s" % [row.label.en, row.label.ko])
+		assert(node.get_node("UnitLabel").text == row.label.en)
 		var ring = node.get_node_or_null("RangeRing")
 		if expected_ranges[row.id] > 0:
 			assert(ring != null and is_equal_approx(ring.get_meta("range_m"), expected_ranges[row.id]), "Range ring radius follows unit_kinds: " + row.id)

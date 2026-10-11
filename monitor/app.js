@@ -110,6 +110,7 @@ document.addEventListener('keydown',event=>{
 
 function connection(ok, message='') {
   syncSelects();
+  if (ok && connected === false) publishLanguage();
   connected = ok; connectionMessage = message;
   $('connection-status').textContent = ok ? t('connected') : t('disconnected');
   $('connection-status').classList.toggle('is-connected', ok);
@@ -140,6 +141,7 @@ async function poll() {
 function render(data) {
   syncSelects();
   state = data; clockReceivedAt = performance.now(); connection(true);
+  if (data.ui_language === null) publishLanguage();
   renderPlayback(data);
   renderBriefing();
   renderSituation();
@@ -292,6 +294,8 @@ function renderAgentSettings(){
   const status=keyStatus(agentSettings,draft.provider);
   $('agent-settings-key-status').textContent=t(status.key,{hint:status.hint || ''});
   $('agent-settings-load-error').hidden=agentSettings?.load_error!=='corrupt_settings_file';
+  $('agent-settings-version').hidden=!config?.version;
+  $('agent-settings-version').textContent=config?.version?t('settings.version',{version:config.version}):'';
   for(const id of ['agent-settings-model','agent-settings-custom','agent-settings-key'])$(id).disabled=settingsBusy;
   $('agent-settings-remove').hidden=!removeKeyCommand(agentSettings,draft);
   $('agent-settings-remove').disabled=settingsBusy;
@@ -1813,10 +1817,13 @@ function renderCases() {
   $('case-select').innerHTML = config.cases.map(c => `<option value="${escape(c.case_id)}">${escape(c.case_id)} · ${escape(localized(briefings.find(b=>b.case_id===c.case_id)?.name) || t(`variant.${c.variant}`))}</option>`).join('');
   if (current) $('case-select').value = current;
 }
+// Best effort: the Godot 3D view reads this from /api/state; a restarted server re-learns it on reconnect.
+function publishLanguage() { api('/api/ui-language', {language}).catch(() => {}); }
 function applyLanguage(next, persist = false) {
   syncSelects();
   language = normalizeLanguage(next);
   if (persist) { try { saveLanguage(localStorage, language); } catch { /* Storage may be unavailable. */ } }
+  publishLanguage();
   document.documentElement.lang = language;
   document.title = t('title');
   if (typeof renderAgentSettings === 'function') queueMicrotask(renderAgentSettings);

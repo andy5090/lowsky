@@ -1,7 +1,8 @@
 extends SceneTree
 ## MDL/DMZ reference ribbons, author-only launch areas and the approach camera preset.
 
-const EXPECTED_LABELS = {"mdl": "MDL / 군사분계선", "dmz_south": "DMZ south limit / 남방한계선", "dmz_north": "DMZ north limit / 북방한계선"}
+## English until the monitor selects Korean (verify_language covers the switch).
+const EXPECTED_LABELS = {"mdl": "MDL", "dmz_south": "DMZ south limit", "dmz_north": "DMZ north limit"}
 ## Northernmost reach each line must exceed (local Z, metres; the DMZ south limit stays near -41.3 km).
 const NORTH_OF = {"mdl": -43000.0, "dmz_south": -41000.0, "dmz_north": -43000.0}
 
@@ -40,7 +41,7 @@ func verify() -> void:
 	preview.elapsed_ms = 60000
 	preview._process(0)
 	assert(preview.drone_overlay.markers().size() > 0, "Author markers still project at approach range")
-	var approach_buttons = preview.ui_body.find_children("*", "Button", true, false).filter(func(button): return button.text.begins_with("Approach view / 접근 경로 보기"))
+	var approach_buttons = preview.ui_body.find_children("*", "Button", true, false).filter(func(button): return button.text.begins_with("Approach view"))
 	assert(approach_buttons.size() == 1)
 	preview.set_drone_positions(false)
 	print("PASS: approach view [B] frames every launch area and the site within camera.far; overlay markers project")
@@ -89,4 +90,4 @@ func verify_launch_areas(preview: Node3D, expected: bool) -> void:
 		var corridor: Dictionary = preview.geography.corridors[index]
 		assert(marker.is_visible_in_tree() == expected, "Launch areas are author-only")
 		assert(is_equal_approx(marker.position.x, corridor.launch[0]) and is_equal_approx(marker.position.z, corridor.launch[2]))
-		assert(marker.get_node("Label").text.begins_with("Launch area / 발진 구역\n· " + corridor.label.en))
+		assert(marker.get_node("Label").text == "Launch area\n· " + corridor.label.en)

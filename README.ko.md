@@ -1,6 +1,6 @@
 # LOW SKY 시나리오 훈련 워크스페이스
 
-[English](README.md)
+[English](README.md) · 버전 0.2.0 · [변경 기록](CHANGELOG.md) · [로드맵](ROADMAP.md)
 
 새 데모 영상(2026-10-11): [한국어 3분 설명 자막본](dist/demo-videos/ko/LOW_SKY_Demo_KO_Annotated.mp4) · [영어 3분 설명 자막본](dist/demo-videos/en/LOW_SKY_Demo_EN_Annotated.mp4). “탐지 → 결심 → 리허설”을 중심으로, 운영자 관측·판단 화면과 평가자·제3자 관찰자용 3D 시뮬레이션을 구분한다. 지형 지도와 서비스 로고·서체, 낮은 음량의 배경음악을 반영한 1080p·30fps 영상이다. `dist/demo-videos/`에는 클린본, 무음본, SRT, 챕터, 음원 출처와 검증 기록이 있다. 영상은 Git에서 제외된 로컬 산출물이다.
 
@@ -70,7 +70,7 @@ python3 tools/monitor_server.py
 /Applications/Godot.app/Contents/MacOS/Godot --path godot -- --monitor
 ```
 
-브라우저에서 http://127.0.0.1:8765 를 연다. 기본 언어는 영어이며 상단에서 한국어로 바꿀 수 있다. 언어 선택은 해당 브라우저에 저장된다. 모니터의 재생·일시정지·시간 이동·케이스·배속 조작이 Godot에 반영된다. `--monitor`에서는 3D의 재생 조작을 비활성화하고 카메라·지형 조작만 허용한다. 연결이 끊기면 3D 재생을 멈추며, 재연결 시 서버 시간으로 맞춘다. 기본 포트는 8765이다. 웹 재생 버튼은 Godot를 자동 실행하지 않으므로 위 명령으로 3D 창도 열어야 한다. 연동 모드는 전체 조망으로 시작하며, 기본적으로 신선한 수신 탐지가 있는 드론에만 3D 라벨과 화면 표식을 표시한다. **Show drone positions (SIM)** 스위치는 기본 꺼짐이며, 켜면 미탐지 드론까지 보라색 SIM 라벨로 표시한다. 드론의 물리 모델은 계속 이동한다. 지도에도 독립적인 **드론 위치 보기** 스위치가 있으며, 켠 경우에만 별도 보라색 SIM 위치 레이어를 표시한다. **Previous drone / Next drone 버튼 또는 [ / ] 키**로 이전·다음 드론을 선택해 따라본다. 끝에서는 처음으로 순환한다. **F 키 또는 Follow selected drone 버튼**은 선택한 드론 추적과 전체 조망을 전환한다. `CAMERA / SIM`의 ID·순번은 제작자용 카메라 선택 정보이며 탐지 여부를 의미하지 않는다. 미탐지 드론의 월드 라벨은 계속 숨긴다. 템플릿 변경은 선택을 초기화하고, 패닝·회전 등 카메라 수동 조작은 따라보기를 해제한다. 기종별 표시 크기에 맞춰 추적 거리를 조절한다.
+브라우저에서 http://127.0.0.1:8765 를 연다. 기본 언어는 영어이며 상단에서 한국어로 바꿀 수 있다. 언어 선택은 해당 브라우저에 저장된다. Godot 3D 화면도 같은 언어를 따른다. 모니터가 선택 언어를 로컬 서버에 알리면(`POST /api/ui-language`, `/api/state`의 `ui_language`) 3D 패널과 월드 라벨이 영어 또는 한국어 한 가지로 바뀌며, 모니터가 연결되지 않으면 영어로 표시한다. 모니터의 재생·일시정지·시간 이동·케이스·배속 조작이 Godot에 반영된다. `--monitor`에서는 3D의 재생 조작을 비활성화하고 카메라·지형 조작만 허용한다. 연결이 끊기면 3D 재생을 멈추며, 재연결 시 서버 시간으로 맞춘다. 기본 포트는 8765이다. 웹 재생 버튼은 Godot를 자동 실행하지 않으므로 위 명령으로 3D 창도 열어야 한다. 연동 모드는 전체 조망으로 시작하며, 기본적으로 신선한 수신 탐지가 있는 드론에만 3D 라벨과 화면 표식을 표시한다. **Show drone positions (SIM)** 스위치는 기본 꺼짐이며, 켜면 미탐지 드론까지 보라색 SIM 라벨로 표시한다. 드론의 물리 모델은 계속 이동한다. 지도에도 독립적인 **드론 위치 보기** 스위치가 있으며, 켠 경우에만 별도 보라색 SIM 위치 레이어를 표시한다. **Previous drone / Next drone 버튼 또는 [ / ] 키**로 이전·다음 드론을 선택해 따라본다. 끝에서는 처음으로 순환한다. **F 키 또는 Follow selected drone 버튼**은 선택한 드론 추적과 전체 조망을 전환한다. `CAMERA / SIM`의 ID·순번은 제작자용 카메라 선택 정보이며 탐지 여부를 의미하지 않는다. 미탐지 드론의 월드 라벨은 계속 숨긴다. 템플릿 변경은 선택을 초기화하고, 패닝·회전 등 카메라 수동 조작은 따라보기를 해제한다. 기종별 표시 크기에 맞춰 추적 거리를 조절한다.
 
 모니터는 현재까지 도착한 관측만 보여준다. 위치는 10초 간격 합성 데이터 중 마지막 수신 관측이며 보간된 제작자 경로가 아니다. 충돌·채널 중단·오래된 위치 알림은 관측 품질에 관한 것이다. 알림 확인은 현재 실행의 메모리 상태이며 영구 감사 로그가 아니다. 시간 이동·케이스 변경·초기화 시 확인 상태를 지운다. 관측 채널 A/B는 실제 RF·광섬유 통신 모델이 아니다.
 
@@ -279,6 +279,7 @@ node --test tests/test_notifications.mjs
 python3 tools/monitor_server.py --port 8766
 # 다른 터미널:
 /Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_monitor.gd --quit-after 1200 -- --monitor --monitor-port=8766
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path godot --script res://tools/verify_language.gd --quit-after 1200 -- --monitor --monitor-port=8766
 ```
 
 창을 표시하는 검증 명령은 실제 GUI 입력 경로에서 패닝·회전·버튼 클릭의 공존도 검사한다. Headless 실행에서는 렌더링이 필요한 GUI 버튼 전달 검사만 건너뛴다.

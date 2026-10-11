@@ -1,6 +1,8 @@
 extends Control
 ## Received detection labels; optional SIM markers expose author positions.
 
+const UIText = preload("res://ui_text.gd")
+
 var camera: Camera3D
 var objects: Array = []
 var followed_object_id = ""
@@ -54,7 +56,7 @@ func _draw() -> void:
 		labels.append(box)
 		draw_line(point + Vector2(10, 0), box.position + Vector2(0, 12), color, 1, true)
 		draw_rect(box, Color(0.04, 0.06, 0.08, 0.92))
-		draw_string(font, box.position + Vector2(6, 17), ("SIM " if marker.sim else "DETECTED ") + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+		draw_string(font, box.position + Vector2(6, 17), UIText.t("label.sim" if marker.sim else "label.detected") + marker.id, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 		if note != "":
 			# Rule-based training advice from the shared state; the overlay only repeats the received-only label line.
 			draw_string(font, box.position + Vector2(6, 35), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, color.darkened(0.15))

@@ -10,6 +10,7 @@ const DroneModels = preload("res://drone_models.gd")
 const SimulationUITheme = preload("res://simulation_ui_theme.gd")
 const ExerciseUnits = preload("res://exercise_units.gd")
 const GeographyOverlay = preload("res://geography_overlay.gd")
+const UIText = preload("res://ui_text.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
 var objects: Array = []
@@ -23,6 +24,10 @@ var ui_body: VBoxContainer
 var ui_scroll: ScrollContainer
 var ui_title: Label
 var ui_toggle: Button
+var ui_subtitle: Label
+var ui_hint: Label
+## [control, property, UIText key] rewritten by apply_ui_language().
+var ui_text_bindings: Array = []
 var elapsed_ms = 0.0
 var playing = true
 var case_id = "case_001"
@@ -47,6 +52,8 @@ var desktop_command_request: HTTPRequest
 var desktop_status: Label
 var desktop_monitor_button: Button
 var desktop_fullscreen_button: Button
+## [UIText key, format values, is_error] so the status can be re-rendered on a language change.
+var desktop_message: Array = ["desktop.connecting", [], false]
 var monitor_mode = false
 var monitor_base_url = "http://127.0.0.1:8765"
 var monitor_connected = false
@@ -462,14 +469,23 @@ func build_ui() -> void:
 	var header = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 18)
 	contents.add_child(header)
+	# Brand block mirrors the web monitor header: LOW SKY shield mark on the left, heavy wide-tracked wordmark.
+	var mark = TextureRect.new()
+	mark.texture = load("res://brand_mark.png")
+	mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	mark.custom_minimum_size = Vector2(52, 52)
+	mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(mark)
 	ui_title = Label.new()
-	ui_title.text = "LOW SKY / 3D VIEW"
-	ui_title.add_theme_font_size_override("font_size", 36)
+	ui_title.text = "LOW SKY 3D"
+	ui_title.add_theme_font_override("font", brand_font(["Avenir Next", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI"], 800, 4))
+	ui_title.add_theme_font_size_override("font_size", 32)
+	ui_title.add_theme_color_override("font_color", Color("d9e4e3"))
 	ui_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(ui_title)
 	ui_toggle = Button.new()
 	ui_toggle.text = "−"
-	ui_toggle.tooltip_text = "Collapse controls / 패널 접기"
 	ui_toggle.custom_minimum_size = Vector2(40, 38)
 	ui_toggle.pressed.connect(toggle_ui_panel)
 	header.add_child(ui_toggle)
@@ -486,54 +502,50 @@ func build_ui() -> void:
 	get_viewport().size_changed.connect(resize_ui_panel)
 	if desktop_mode:
 		build_desktop_controls(column)
-	var subtitle = Label.new()
-	subtitle.text = "AUTHOR VIEW / 전체 장면\nFull scene context" if realistic else "ASSET STUDY / AUTHOR VIEW\nBuilding samples + procedural placeholders"
-	subtitle.modulate = Color("91b6b8")
-	column.add_child(subtitle)
+	ui_subtitle = Label.new()
+	ui_subtitle.modulate = Color("91b6b8")
+	column.add_child(ui_subtitle)
 	if realistic:
 		terrain_button = Button.new()
-		terrain_button.text = terrain_caption()
 		terrain_button.pressed.connect(toggle_terrain)
 		column.add_child(terrain_button)
 	var buttons = HBoxContainer.new()
 	column.add_child(buttons)
 	for index in range(3):
 		var button = Button.new()
-		button.text = ["Consistent", "Conflicting", "Missing"][index]
+		ui_text_bindings.append([button, "text", ["case.consistent", "case.conflicting", "case.missing"][index]])
 		var id = "case_%03d" % (index + 1)
 		button.pressed.connect(func(): load_case(id))
 		button.disabled = monitor_mode
 		buttons.add_child(button)
 	var playback = Button.new()
-	playback.text = "Pause / Resume  [Space]"
+	ui_text_bindings.append([playback, "text", "playback"])
 	playback.pressed.connect(func(): playing = not playing)
 	playback.disabled = monitor_mode
 	column.add_child(playback)
 	follow_button = Button.new()
-	follow_button.text = "Follow selected drone  [F]"
 	follow_button.pressed.connect(toggle_follow)
 	column.add_child(follow_button)
 	var drone_selection = HBoxContainer.new()
 	column.add_child(drone_selection)
 	previous_drone_button = Button.new()
-	previous_drone_button.text = "Previous drone  ["
+	ui_text_bindings.append([previous_drone_button, "text", "drone.previous"])
 	previous_drone_button.pressed.connect(func(): select_drone(-1))
 	drone_selection.add_child(previous_drone_button)
 	next_drone_button = Button.new()
-	next_drone_button.text = "Next drone  ]"
+	ui_text_bindings.append([next_drone_button, "text", "drone.next"])
 	next_drone_button.pressed.connect(func(): select_drone(1))
 	drone_selection.add_child(next_drone_button)
 	selected_drone_label = Label.new()
 	selected_drone_label.add_theme_font_size_override("font_size", 21)
 	selected_drone_label.modulate = Color("edb0fb")
 	column.add_child(selected_drone_label)
-	update_follow_controls()
 	var approach = Button.new()
-	approach.text = "Approach view / 접근 경로 보기  [B]"
+	ui_text_bindings.append([approach, "text", "approach"])
 	approach.pressed.connect(show_approach_view)
 	column.add_child(approach)
 	var aids = CheckButton.new()
-	aids.text = "Show all drones (author view)"
+	ui_text_bindings.append([aids, "text", "positions.toggle"])
 	aids.button_pressed = false
 	aids.toggled.connect(set_drone_positions)
 	column.add_child(aids)
@@ -542,24 +554,55 @@ func build_ui() -> void:
 	status_label = Label.new()
 	status_label.add_theme_font_size_override("font_size", 24)
 	column.add_child(status_label)
-	var hint = Label.new()
-	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home   B: approach\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
-	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home   B: approach\nReplay control: %s\nLabels: received detections / author view\n[ / ]: previous / next drone   F: follow / overview\nCamera selection: author view" % monitor_base_url
-	hint.modulate = Color("91b6b8")
-	if realistic:
-		hint.text += "\nIllustrative altitude / 표시용 고도\nBeyond local DEM: schematic space"
-	column.add_child(hint)
+	ui_hint = Label.new()
+	ui_hint.modulate = Color("91b6b8")
+	column.add_child(ui_hint)
 	for label in column.find_children("*", "Label", true, false):
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	apply_ui_language()
+
+func apply_ui_language() -> void:
+	# Single place that (re)writes every user-facing 3D view text for UIText.language.
+	for binding in ui_text_bindings:
+		if is_instance_valid(binding[0]):
+			binding[0].set(binding[1], UIText.t(binding[2]))
+	ui_toggle.tooltip_text = UIText.t("panel.collapse" if ui_body.visible else "panel.expand")
+	ui_subtitle.text = UIText.t("subtitle.author" if realistic else "subtitle.assets")
+	ui_hint.text = (UIText.t("hint.monitor", [monitor_base_url]) if monitor_mode else UIText.t("hint.standalone")) + (UIText.t("hint.altitude") if realistic else "")
+	if is_instance_valid(terrain_button):
+		terrain_button.text = terrain_caption()
+	update_follow_controls()
+	update_drone_labels()
+	update_exercise_marker()
+	update_mission_vignettes()
+	show_desktop_message(desktop_message[0], desktop_message[1], desktop_message[2])
+	var zones = get_node_or_null("SiteInfrastructure/DisplayZones")
+	if zones:
+		for zone in zones.get_children():
+			zone.text = UIText.pick(zone.get_meta("label", {}), zone.text)
+	if is_instance_valid(exercise_units):
+		exercise_units.apply_language()
+	if is_instance_valid(geography):
+		geography.apply_language()
 	resize_ui_panel.call_deferred()
+
+static func brand_font(names: Array, weight: int, tracking: int) -> FontVariation:
+	# Same family stack as monitor/styles.css; tracking approximates the CSS letter-spacing.
+	var system = SystemFont.new()
+	system.font_names = PackedStringArray(names)
+	system.font_weight = weight
+	var font = FontVariation.new()
+	font.base_font = system
+	font.spacing_glyph = tracking
+	return font
 
 func resize_ui_panel() -> void:
 	if not is_instance_valid(ui_scroll):
 		return
 	var viewport_size = get_viewport().get_visible_rect().size
-	ui_panel.custom_minimum_size.x = minf(580, viewport_size.x - 60)
-	ui_body.custom_minimum_size.x = ui_panel.custom_minimum_size.x - 64
+	# Collapsed: shrink to the brand row so the 3D viewport is released.
+	ui_panel.custom_minimum_size.x = minf(580, viewport_size.x - 60) if ui_body.visible else 0.0
+	ui_body.custom_minimum_size.x = maxf(0.0, ui_panel.custom_minimum_size.x - 64)
 	var available = viewport_size.y - ui_panel.position.y - 72 - 98
 	ui_scroll.custom_minimum_size.y = minf(ui_body.get_combined_minimum_size().y, maxf(120, available)) if ui_body.visible else 0.0
 	ui_panel.reset_size.call_deferred()
@@ -567,16 +610,15 @@ func resize_ui_panel() -> void:
 func toggle_ui_panel() -> void:
 	ui_body.visible = not ui_body.visible
 	ui_scroll.visible = ui_body.visible
-	ui_title.text = "LOW SKY / 3D VIEW" if ui_body.visible else "LOW SKY"
 	ui_toggle.text = "−" if ui_body.visible else "+"
-	ui_toggle.tooltip_text = "Collapse controls / 패널 접기" if ui_body.visible else "Expand controls / 패널 펼치기"
+	ui_toggle.tooltip_text = UIText.t("panel.collapse" if ui_body.visible else "panel.expand")
 	# PanelContainer otherwise retains its previous rect after minimum size shrinks.
 	resize_ui_panel()
 
 func terrain_caption() -> String:
 	if geographic:
-		return "Terrain: Gyeonggi DEM  [T]"
-	return "Terrain: Plains  [T]" if plains_test else "Terrain: Hills  [T]"
+		return UIText.t("terrain.dem")
+	return UIText.t("terrain.plains" if plains_test else "terrain.hills")
 
 func display_position(authored: Vector3) -> Vector3:
 	# Uniform illustrative lift, not terrain-following or flight planning. Keep
@@ -711,7 +753,7 @@ func update_drone_labels() -> void:
 		var detected = detected_ids.has(item.object_id) and (not monitor_mode or monitor_connected)
 		item.sim = show_drone_positions
 		item.label.visible = detected or show_drone_positions
-		item.label.text = ("AUTHOR " if show_drone_positions else "DETECTED ") + item.object_id
+		item.label.text = UIText.t("label.author" if show_drone_positions else "label.detected") + item.object_id
 		item.note = ""
 		if detected and not show_drone_positions and monitor_mode and monitor_connected:
 			var advice = tactics_label_lines(str(item.object_id))
@@ -733,7 +775,7 @@ func index_tactics() -> void:
 			tactics_targets[str(target.object_id)] = target
 	for effector in monitor_tactics.get("effectors", []):
 		if effector is Dictionary and effector.has("id") and effector.get("label") is Dictionary:
-			tactics_effector_labels[str(effector.id)] = str(effector.label.get("en", effector.id))
+			tactics_effector_labels[str(effector.id)] = effector.label
 
 func tactics_label_lines(object_id: String) -> String:
 	# Rule-based training advice from the shared state; never altered by the scene.
@@ -743,16 +785,20 @@ func tactics_label_lines(object_id: String) -> String:
 	var lines = ""
 	var identification = target.get("identification", {})
 	if identification is Dictionary and identification.has("lean"):
-		lines += "\n" + str(identification.lean).replace("_", " ").to_upper()
+		lines += "\n" + ui_term("lean." + str(identification.lean))
 		var profile = str(identification.get("profile", "unclassified"))
 		if profile != "unclassified":
-			lines += " · " + profile.replace("_", " ").to_upper()
+			lines += " · " + ui_term("profile." + profile)
 	var response = target.get("response", {})
 	var allocation = response.get("allocation") if response is Dictionary else null
 	if allocation is Dictionary:
 		var effector_id = str(allocation.get("effector_id", ""))
-		lines += "\nALLOCATED: %s (training record)" % tactics_effector_labels.get(effector_id, effector_id)
+		lines += "\n" + UIText.t("tactics.allocated", [UIText.pick(tactics_effector_labels.get(effector_id), effector_id)])
 	return lines
+
+func ui_term(key: String) -> String:
+	# Unknown identifiers keep the previous readable upper-case form.
+	return UIText.t(key) if UIText.has(key) else key.get_slice(".", 1).replace("_", " ").to_upper()
 
 func standalone_detections() -> Dictionary:
 	# Only received, fresh observations from online sources grant label visibility.
@@ -808,18 +854,18 @@ func _process(delta: float) -> void:
 	if follow_drone:
 		update_follow_camera()
 	if time_label:
-		time_label.text = "%s  |  %03d / %03d s" % [case_id, elapsed_ms / 1000, int(world_data.duration_ms) / 1000]
-		time_label.text += "  |  Objects %d · Detected labels %d" % [objects.size(), detected_ids.size()]
+		time_label.text = UIText.t("time.clock", [case_id, elapsed_ms / 1000, int(world_data.duration_ms) / 1000])
+		time_label.text += UIText.t("time.counts", [objects.size(), detected_ids.size()])
 		if monitor_mode and monitor_test_run.get("mode") == "seeded":
-			time_label.text += "  |  Seed %s" % str(monitor_test_run.get("seed"))
+			time_label.text += UIText.t("time.seed", [str(monitor_test_run.get("seed"))])
 		var lines = PackedStringArray()
 		for source in public_data.get("source_ids", []):
 			var state = "unknown"
 			for event in public_data["source_health"]:
 				if event["source_id"] == source and event["available_at_ms"] <= elapsed_ms:
 					state = event["status"]
-			lines.append("%s: %s" % [source, state])
-		status_label.text = ("MONITOR: connected" if monitor_connected else "MONITOR: disconnected · replay frozen") if monitor_mode else "\n".join(lines)
+			lines.append("%s: %s" % [source, UIText.t("source." + state) if UIText.has("source." + state) else state])
+		status_label.text = UIText.t("monitor.connected" if monitor_connected else "monitor.disconnected") if monitor_mode else "\n".join(lines)
 
 func show_overview() -> void:
 	stop_follow()
@@ -877,14 +923,19 @@ func update_follow_controls() -> void:
 		objects[index].label.pixel_size = (0.015 if realistic else 0.03) * (0.1 if follow_drone and index == selected_drone_index else 1.0)
 	if follow_button:
 		follow_button.disabled = empty
-		follow_button.text = "Return to overview  [F]" if follow_drone else "Follow selected drone  [F]"
+		follow_button.text = UIText.t("follow.stop" if follow_drone else "follow.start")
 	if previous_drone_button:
 		previous_drone_button.disabled = empty
 	if next_drone_button:
 		next_drone_button.disabled = empty
 	if selected_drone_label:
 		# This is author-camera context, never a received detection or world label.
-		selected_drone_label.text = "CAMERA: No drones" if empty else "CAMERA: %s  (%d / %d)\n%s · %s m display span" % [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size(), display_profiles.airframes[objects[selected_drone_index].node.get_meta("airframe_id")].label, objects[selected_drone_index].node.get_meta("horizontal_span_m")]
+		if empty:
+			selected_drone_label.text = UIText.t("camera.none")
+		else:
+			var airframe_id = str(objects[selected_drone_index].node.get_meta("airframe_id"))
+			var airframe_label = UIText.t("airframe." + airframe_id) if UIText.has("airframe." + airframe_id) else str(display_profiles.airframes[airframe_id].label)
+			selected_drone_label.text = UIText.t("camera.selected", [objects[selected_drone_index].object_id, selected_drone_index + 1, objects.size(), airframe_label, objects[selected_drone_index].node.get_meta("horizontal_span_m")])
 
 func select_drone(offset: int) -> void:
 	if objects.is_empty():
@@ -1077,6 +1128,8 @@ func receive_monitor_clock(result: int, response_code: int, _headers: PackedStri
 	monitor_received_at = Time.get_ticks_msec()
 	monitor_connected = true
 	elapsed_ms = monitor_clock
+	if UIText.set_language(state.get("ui_language")):
+		apply_ui_language()
 	update_drone_labels()
 
 func exercise_time(object_id: String, at_ms: float) -> float:
@@ -1104,7 +1157,7 @@ func update_exercise_marker() -> void:
 	for asset in monitor_exercise.get("assets", []):
 		if asset.id == selection.asset_id:
 			exercise_marker.position = vector(asset.position) + Vector3(0, 45, 0)
-			exercise_marker.text = "%s · %s\n%s" % [asset.label.en, str(asset.status).to_upper(), str(selection.status).to_upper()]
+			exercise_marker.text = "%s · %s\n%s" % [UIText.pick(asset.label, str(asset.id)), ui_term("asset." + str(asset.status)), ui_term("selection." + str(selection.status))]
 			exercise_marker.modulate = Color(1.0, 0.7, 0.3) if asset.status != "available" else Color(0.5, 1.0, 0.7)
 			exercise_marker.visible = true
 			return
@@ -1272,7 +1325,7 @@ func update_mission_vignettes() -> void:
 		payload.visible = false
 		label.visible = (detected_ids.has(str(mission.object_id)) and (not monitor_mode or monitor_connected)) or show_drone_positions
 		label.position = anchor + Vector3(0, 35, 0)
-		label.text = {"finale": "DESCENT / 하강", "complete": "FACILITY DAMAGE / 시설 피해", "partial": "RESTRICTED / 제한 운영", "prevented": "FACILITY CLEAR / 시설 정상"}.get(phase, phase.to_upper())
+		label.text = ui_term("mission." + phase)
 		pose_result_effects(node, anchor, phase if found else "approach", float(mission.get("result_at_ms", mission.phase_start_ms) if mission.get("result_at_ms") != null else mission.phase_start_ms))
 		if found and phase == "complete":
 			charred_facilities[str(mission.asset_id)] = true
@@ -1304,15 +1357,15 @@ func build_desktop_controls(column: VBoxContainer) -> void:
 	var row = HBoxContainer.new()
 	column.add_child(row)
 	desktop_monitor_button = Button.new()
-	desktop_monitor_button.text = "Monitoring [F6]"
-	desktop_monitor_button.tooltip_text = "Return to monitoring [F6]"
+	ui_text_bindings.append([desktop_monitor_button, "text", "desktop.monitor"])
+	ui_text_bindings.append([desktop_monitor_button, "tooltip_text", "desktop.monitor_tip"])
 	desktop_monitor_button.add_theme_font_size_override("font_size", 20)
 	desktop_monitor_button.disabled = true
 	desktop_monitor_button.pressed.connect(func(): desktop_command("show_monitor"))
 	row.add_child(desktop_monitor_button)
 	desktop_fullscreen_button = Button.new()
-	desktop_fullscreen_button.text = "Fullscreen [F11]"
-	desktop_fullscreen_button.tooltip_text = "Toggle full screen [F11]"
+	ui_text_bindings.append([desktop_fullscreen_button, "text", "desktop.fullscreen"])
+	ui_text_bindings.append([desktop_fullscreen_button, "tooltip_text", "desktop.fullscreen_tip"])
 	desktop_fullscreen_button.add_theme_font_size_override("font_size", 20)
 	desktop_fullscreen_button.disabled = true
 	desktop_fullscreen_button.pressed.connect(func(): desktop_command("toggle_3d_fullscreen"))
@@ -1321,7 +1374,6 @@ func build_desktop_controls(column: VBoxContainer) -> void:
 	desktop_status.add_theme_font_size_override("font_size", 18)
 	desktop_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desktop_status.custom_minimum_size.x = 300
-	desktop_status.text = "Connecting window controls… / 창 제어 연결 중"
 	column.add_child(desktop_status)
 
 func start_desktop_controls() -> void:
@@ -1343,7 +1395,7 @@ func start_desktop_controls() -> void:
 func poll_desktop_state() -> void:
 	if desktop_mode and desktop_poll_request.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
 		if desktop_poll_request.request(monitor_base_url + "/api/desktop") != OK:
-			set_desktop_error("Window controls unavailable / 창 제어 연결 실패")
+			show_desktop_message("desktop.request_failed", [], true)
 
 func desktop_command(action: String) -> void:
 	if not desktop_mode or not is_instance_valid(desktop_command_request):
@@ -1352,23 +1404,24 @@ func desktop_command(action: String) -> void:
 		return
 	var error = desktop_command_request.request(monitor_base_url + "/api/desktop", ["Content-Type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"action":action}))
 	if error != OK:
-		set_desktop_error("Window command failed / 창 제어 요청 실패")
+		show_desktop_message("desktop.command_failed", [], true)
 
-func set_desktop_error(message: String) -> void:
+func show_desktop_message(key: String, values: Array = [], error: bool = false) -> void:
+	desktop_message = [key, values, error]
 	if is_instance_valid(desktop_status):
-		desktop_status.text = message.left(180)
-		desktop_status.modulate = Color("ffc778")
+		desktop_status.text = UIText.t(key, values).left(180)
+		desktop_status.modulate = Color("ffc778") if error else Color("91b6b8")
 
 func receive_desktop_state(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS:
-		set_desktop_error("Window controls disconnected; retrying / 창 제어 재연결 중")
+		show_desktop_message("desktop.disconnected", [], true)
 		return
 	var state = JSON.parse_string(body.get_string_from_utf8())
 	if response_code not in [200, 202]:
-		set_desktop_error("Window command rejected (%s) / 창 제어 요청 거절" % response_code)
+		show_desktop_message("desktop.rejected", [response_code], true)
 		return
 	if not state is Dictionary or not state.has_all(["available", "view", "fullscreen", "three_d_open", "pending", "error", "revision"]):
-		set_desktop_error("Invalid window state / 창 제어 응답 오류")
+		show_desktop_message("desktop.invalid", [], true)
 		return
 	apply_desktop_state(state)
 
@@ -1381,15 +1434,14 @@ func apply_desktop_state(state: Dictionary) -> Dictionary:
 	if is_instance_valid(desktop_status):
 		desktop_monitor_button.disabled = not state.available or state.pending
 		desktop_fullscreen_button.disabled = not state.available or state.pending
-		desktop_status.modulate = Color("91b6b8")
 		if not state.available:
-			desktop_status.text = "Window controls unavailable / 창 제어 사용 불가"
+			show_desktop_message("desktop.unavailable")
 		elif state.error != null and not str(state.error).is_empty():
-			set_desktop_error("Window control: " + str(state.error))
+			show_desktop_message("desktop.error", [str(state.error)], true)
 		elif state.pending:
-			desktop_status.text = "Switching window… / 창 전환 중"
+			show_desktop_message("desktop.switching")
 		else:
-			desktop_status.text = "F6 · Monitoring / 모니터링    F11 · Fullscreen / 전체 화면"
+			show_desktop_message("desktop.ready")
 	if int(state.revision) == desktop_revision:
 		return {}
 	desktop_revision = int(state.revision)

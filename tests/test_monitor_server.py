@@ -673,7 +673,8 @@ class HTTPTests(SimulationFixture):
         controlled = json.loads(raw)
         status, headers, raw = self.request("GET", "/api/state")
         self.assertEqual(status, 200)
-        self.assertEqual(json.loads(raw), controlled)
+        # /api/state adds only the monitor's UI language for the 3D view.
+        self.assertEqual(json.loads(raw), dict(controlled, ui_language=None))
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
         status, _, raw = self.request("GET", "/api/clock")
@@ -732,6 +733,12 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(set(payload["cases"][0]), {"case_id", "variant"})
         self.assertNotIn("focus_object_id", raw.decode())
 
+    def test_config_reports_the_application_version(self):
+        from tools.version import VERSION
+        status, _, raw = self.request("GET", "/api/config")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw)["version"], VERSION)
+
     def test_scripted_briefings_are_separate_from_observation_state(self):
         status, _, raw = self.request("GET", "/api/briefings")
         self.assertEqual(status, 200)
@@ -743,6 +750,28 @@ class HTTPTests(SimulationFixture):
         self.assertNotIn("briefings", state)
         self.assertNotIn("comparison_object", json.dumps(state))
         self.assertNotIn("brief.event", json.dumps(state))
+
+    def test_ui_language_is_validated_and_shared_through_state(self):
+        headers = {"Content-Type": "application/json", "Origin": self.origin}
+        self.assertIsNone(json.loads(self.request("GET", "/api/state")[2])["ui_language"])
+        for language in ("fr", "", "KO", None, ["ko"], 1):
+            with self.subTest(language=language):
+                status, _, raw = self.request("POST", "/api/ui-language", json.dumps({"language": language}), headers)
+                self.assertEqual(status, 400)
+                self.assertIn("error", json.loads(raw))
+        self.assertEqual(self.request("POST", "/api/ui-language", json.dumps({}), headers)[0], 400)
+        self.assertIsNone(json.loads(self.request("GET", "/api/state")[2])["ui_language"])
+        status, _, raw = self.request("POST", "/api/ui-language", json.dumps({"language": "ko"}), headers)
+        self.assertEqual((status, json.loads(raw)), (200, {"language": "ko"}))
+        self.assertEqual(json.loads(self.request("GET", "/api/state?show_positions=1")[2])["ui_language"], "ko")
+        self.assertEqual(self.request("POST", "/api/ui-language", json.dumps({"language": "en"}),
+                                      {**headers, "Origin": "https://attacker.example"})[0], 403)
+        self.assertEqual(self.request("POST", "/api/ui-language", "language=en",
+                                      {"Content-Type": "application/x-www-form-urlencoded"})[0], 415)
+        self.assertEqual(json.loads(self.request("GET", "/api/state")[2])["ui_language"], "ko")
+        self.assertEqual(self.request("POST", "/api/ui-language", json.dumps({"language": "en"}), headers)[0], 200)
+        self.assertEqual(json.loads(self.request("GET", "/api/state")[2])["ui_language"], "en")
+        self.assertEqual(self.sim.clock_state()["revision"], 0, "Language never touches the shared clock")
 
     def test_non_json_malformed_oversized_and_invalid_commands_are_rejected(self):
         self.assertEqual(self.request("POST", "/api/control", "action=play",

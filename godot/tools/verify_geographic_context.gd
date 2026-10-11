@@ -130,7 +130,8 @@ func verify_buttons(preview: Node) -> bool:
 	var selected_before: int = preview.selected_drone_index
 	await click(preview.ui_toggle)
 	assert(not preview.ui_body.visible and preview.ui_toggle.text == "+")
-	assert(panel.size.y < 100 and panel.size.x < 260, "Collapsed panel must release the 3D viewport")
+	# Collapsed keeps only the logo, "LOW SKY 3D" and the expand button.
+	assert(panel.size.y < 100 and panel.size.x < 440, "Collapsed panel must release the 3D viewport")
 	assert(preview.camera.transform.is_equal_approx(camera_before) and preview.elapsed_ms == time_before)
 	assert(preview.selected_drone_index == selected_before and preview.follow_drone)
 	await RenderingServer.frame_post_draw

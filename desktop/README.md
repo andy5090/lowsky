@@ -55,5 +55,11 @@ The smoke check runs outside the repository with a temporary user folder, tests 
 
 Installer builds run locally on the target operating system. This public repository has no GitHub Actions packaging workflow, tag-triggered builds, artifact uploads, automatic releases or update feed. Build on a Mac for macOS and a Windows PC for Windows; this Python/Godot/Tauri bundle does not support cross-building the Windows installer on macOS. Keep installers in the ignored `dist/` directory and distribute them explicitly when needed.
 
+To also place each finished installer in a shared folder, such as a folder synced by Google Drive for desktop, give the folder with `--publish-dir`, the `LOWSKY_INSTALLER_DIR` environment variable, or one line in the ignored `.local/installer-publish-dir.txt` (in that order of precedence). The build copies the installer under a temporary name, checks its hash and then replaces any earlier copy with the same name, so a sync client never uploads a half-written file. The folder path stays out of Git. A missing folder stops the build after `dist/` is written.
+
+## Versions and releases
+
+The installer version comes from `src-tauri/tauri.conf.json`. Record user-visible changes under `Unreleased` in the root [CHANGELOG.md](../CHANGELOG.md) together with the code, and keep planned work in [ROADMAP.md](../ROADMAP.md). To release, run `python tools/bump_version.py X.Y.Z`; it dates the `Unreleased` entries under the new version and updates the Tauri, npm, Cargo and Godot export version fields and the version shown at the top of both READMEs. `python tools/bump_version.py --check` and `tests/test_versioning.py` fail if any field disagrees with the latest changelog release. Commit, then tag the commit `vX.Y.Z`. A new version produces a new installer file name, so earlier installers in the shared folder stay available.
+
 
 Packaging follows the official [Tauri resource bundling](https://v2.tauri.app/develop/resources/), [Windows installer](https://v2.tauri.app/distribute/windows-installer/), and [Godot 4.5 export](https://docs.godotengine.org/en/4.5/tutorials/export/exporting_projects.html) documentation.
