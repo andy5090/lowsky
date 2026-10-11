@@ -377,7 +377,9 @@ button:disabled{cursor:not-allowed}
 .mobile-map-tab { display:none; }
 .workspace-split { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(420px,1fr); gap:12px; align-items:start; }
 .scene-pane,.inspector-pane,.workspace-pane { min-width:0; }
-.workspace-pane { overflow-wrap:anywhere; }
+/* Containing block for absolutely positioned descendants (hidden native selects, sr-only text); without it they
+   resolve against the page and stretch the document, so the page scrolls in addition to the pane. */
+.workspace-pane { position:relative; overflow-wrap:anywhere; }
 .workspace-pane:focus-visible { outline:2px solid var(--cyan); outline-offset:-2px; }
 .workbench .monitor-grid { display:block; }
 .workbench .observation-sidebar { display:flex; gap:10px; }
@@ -458,7 +460,8 @@ button:disabled{cursor:not-allowed}
   .workbench[data-panel="map"] .inspector-pane { display:none; }
   .workbench:not([data-panel="map"]) .scene-pane { display:none; }
   .workbench .map { height:clamp(280px,48dvh,540px); }
-  .workspace-pane { max-height:65dvh; overflow-y:auto; overscroll-behavior:contain; }
+  /* Map and panels are separate tabs here, so the page is the single scroller (no nested pane scroll). */
+  .workspace-pane { max-height:none; overflow:visible; }
   .scenario-selection-row { flex-wrap:wrap; gap:8px 12px; }
   .scenario-field { flex:1; }
   .scenario-bar .scenario-help { display:none; }
