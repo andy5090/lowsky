@@ -25,7 +25,7 @@ class TerrainTests(unittest.TestCase):
         self.assertGreater(local_to_geo(1000,0,terrain['origin'])[1],terrain['origin']['lon'])
         self.assertGreater(max(map(max,terrain['heights_m']))-min(map(min,terrain['heights_m'])),100)
 
-    def test_northern_gyeonggi_source_is_pinned_and_departure_is_schematic(self):
+    def test_northern_gyeonggi_source_is_pinned_and_departure_uses_the_mdl_reference(self):
         terrain=json.loads((PROJECT/'data/terrain/korea_site.json').read_text())
         config=json.loads((PROJECT/'monitor/map_config.json').read_text())
         placement=json.loads((PROJECT/'data/terrain/site_placement.json').read_text())
@@ -36,8 +36,9 @@ class TerrainTests(unittest.TestCase):
         self.assertIn('/N37/N37E127.hgt.gz', URL)
         self.assertEqual(len(SHA256), 64)
         self.assertEqual(placement['origin'], terrain['origin'])
-        self.assertFalse(config['distant_departure']['georeferenced'])
-        self.assertFalse(placement['distant_departure']['georeferenced'])
+        self.assertTrue(config['distant_departure']['georeferenced'])
+        self.assertTrue(placement['distant_departure']['georeferenced'])
+        self.assertEqual(config['distant_departure']['source'], 'data/geography/korean_mdl.json')
         self.assertNotIn('candidates', placement)
         self.assertEqual(config['terrain_extent_m'], 10000)
 

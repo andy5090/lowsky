@@ -167,7 +167,7 @@ static func _buildings(parent: Node3D, data: Array, height_at: Callable, extent:
 		var polygon = _polygon(building.get("polygon", []))
 		if polygon.size() < 3:
 			continue
-		# The fictional redevelopment replaces complete overlapping footprints.
+		# The virtual redevelopment replaces complete overlapping footprints.
 		if site.size() >= 3 and not Geometry2D.intersect_polygons(polygon, site).is_empty():
 			continue
 		var clipped = Geometry2D.intersect_polygons(polygon, limits)

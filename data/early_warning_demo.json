@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "synthetic": true,
-  "description": "Independent fictional area indications on the replay clock. Cases 001/002 provide deliberate early-review periods; the root feed remains the compact case 003 fixture. Area geometry describes sensor context, never the position of an unobserved object.",
+  "description": "Independent simulated area indications on the replay clock. Cases 001/002 provide deliberate early-review periods; the root feed remains the compact case 003 fixture. Area geometry describes sensor context, never the position of an unobserved object.",
   "freshness_ms": 30000,
   "zones": [
     {
@@ -885,18 +885,19 @@
         {
           "id": "remote_reference",
           "label": {
-            "en": "Fictional northern reference area",
-            "ko": "가상 북쪽 참조 구역"
+            "en": "Forward area south of the DMZ",
+            "ko": "비무장지대 남측 전방 구역"
           },
           "center": [
+            -2000,
             0,
-            0,
-            -16000
+            -41018.6
           ],
-          "radius_m": 1800,
+          "radius_m": 4000,
           "deployment_type": "community",
-          "schematic": true,
-          "georeferenced": false
+          "schematic": false,
+          "georeferenced": true,
+          "reference": "MDL + nominal 2 km DMZ half-width + 2.5 km (Natural Earth MDL); simulated reporting area, not a surveyed sensor site"
         },
         {
           "id": "community_a",
@@ -1456,18 +1457,19 @@
         {
           "id": "remote_reference",
           "label": {
-            "en": "Fictional northern reference area",
-            "ko": "가상 북쪽 참조 구역"
+            "en": "Forward area south of the DMZ",
+            "ko": "비무장지대 남측 전방 구역"
           },
           "center": [
+            -2000,
             0,
-            0,
-            -16000
+            -41018.6
           ],
-          "radius_m": 1800,
+          "radius_m": 4000,
           "deployment_type": "community",
-          "schematic": true,
-          "georeferenced": false
+          "schematic": false,
+          "georeferenced": true,
+          "reference": "MDL + nominal 2 km DMZ half-width + 2.5 km (Natural Earth MDL); simulated reporting area, not a surveyed sensor site"
         },
         {
           "id": "community_a",

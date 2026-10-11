@@ -1,7 +1,7 @@
 extends RefCounted
 
 const Geographic = preload("res://geographic_environment.gd")
-## Visual geometry for a fictional base; dimensions are scene units, not a survey.
+## Visual geometry for a virtual base; dimensions are scene units, not a survey.
 
 static func box(root: Node3D, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:
 	var node = MeshInstance3D.new()
@@ -167,7 +167,7 @@ static func make_utility_building(m: Dictionary) -> Node3D:
 static func make_terrain(material: Material, layout: Dictionary) -> Node3D:
 	var root = Node3D.new()
 	root.name = "FictionalTerrain"
-	# Low distant terrain, deliberately fictional and outside the replay area.
+	# Low distant terrain, deliberately simulated and outside the replay area.
 	var noise = FastNoiseLite.new()
 	noise.seed = 6149
 	noise.frequency = 0.0008

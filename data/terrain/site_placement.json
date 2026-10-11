@@ -5,17 +5,18 @@
     "lon": 127.2
   },
   "method": "Arbitrary user-requested visual relocation to Northern Gyeonggi. No search, ranking, route study, or suitability analysis was performed.",
-  "selected_reason": "Fictional scenario background only; coordinate supplied as a visual reference.",
+  "selected_reason": "Virtual training scenario background; coordinate supplied as a visual reference.",
   "map_review_url": "https://www.openstreetmap.org/#map=13/37.9000/127.2000",
   "terrain_extent_m": 10000,
   "distant_departure": {
-    "georeferenced": false,
-    "representation": "Abstract schematic space beyond the local DEM; not North Korean terrain or a real cross-border route."
+    "georeferenced": true,
+    "source": "data/geography/korean_mdl.json",
+    "representation": "Launch areas lie 3 km north of the Natural Earth DMZ northern limit (North Korean side); approach corridors are synthetic training assumptions and the 40-50 km transit is time-compressed. Terrain beyond the local 10 km DEM is not modelled."
   },
   "limitations": [
     "Not an existing air base, surveyed parcel, approved development, or feasible airport site.",
     "No cadastral, flood, obstacle, wind, land-use, construction, or military siting assessment.",
-    "The marked fictional redevelopment polygon replaces internal map features and is leveled for display; surrounding elevation is sampled public DEM.",
+    "The marked virtual redevelopment polygon replaces internal map features and is leveled for display; surrounding elevation is sampled public DEM.",
     "A uniform display-only altitude lift keeps moving aerial markers visible above the relief; it changes no observation, authored trajectory, speed, or agent evidence."
   ]
 }

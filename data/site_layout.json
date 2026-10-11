@@ -2,7 +2,7 @@
   "schema_version": "1.2",
   "synthetic": true,
   "unit": "meter",
-  "description": "Fictional airfield with a generic runway, parallel taxiway, apron and support campus. All dimensions and siting are demo assumptions, not a surveyed military installation or design compliance claim.",
+  "description": "Virtual airfield with a generic runway, parallel taxiway, apron and support campus. All dimensions and siting are demo assumptions, not a surveyed military installation or design compliance claim.",
   "perimeter": {
     "width_m": 1200,
     "length_m": 2900,

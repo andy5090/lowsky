@@ -14,6 +14,10 @@ VARIANTS = ("consistent", "contradictory", "missing")
 WORKLOAD_COUNTS = (48, 96, 240)
 TTL_MS = 45_000
 DISPLAY_PROFILES = Path(__file__).resolve().parents[1] / "godot/assets/display_profiles.json"
+CORRIDORS_PATH = Path(__file__).resolve().parents[1] / "data/geography/approach_corridors.json"
+# Scripted 3D vignettes (tools/exercise.py VIGNETTES): routes arrive above the facility when the finale starts.
+VIGNETTE_ARRIVALS = {"object_11": dict(asset_id="hangar_1", kind="impact_vignette", end_offset_ms=90_000),
+                     "object_12": dict(asset_id="admin_1", kind="drop_vignette", end_offset_ms=60_000)}
 PACED_OFFSET_MS = 240_000
 PACED_SCALE = 3
 PACED_DURATION_MS = PACED_OFFSET_MS + PACED_SCALE * TIMES[-1]
@@ -23,11 +27,12 @@ def authored_time(variant, at_ms):
     return at_ms if variant == "missing" else PACED_OFFSET_MS + PACED_SCALE * at_ms
 
 
-def distant_display_z(at_ms):
-    """Schematic northern approach only; never a georeferenced crossing route."""
-    if at_ms <= 270_000:
-        return -18_000 + (at_ms / 270_000) * 15_800
-    return -2200 + ((at_ms - 270_000) / (PACED_DURATION_MS - 270_000)) * 4100
+def _routes():
+    try:
+        from . import infiltration_routes
+    except ImportError:
+        import infiltration_routes
+    return infiltration_routes
 
 
 def training_timing(variant):
@@ -93,19 +98,18 @@ def build(root):
         markers = {obj: ("circle", "square", "triangle")[i % 3] for i, obj in enumerate(objects)}
         # Keep the larger generic workload inside the same preview extent. This
         # grid is a display fixture, not a formation or attack-path model.
-        columns, row_spacing = (12, 16) if variant == "missing" else (6, 80)
-        column_spacing = 1500 / 11 if variant == "missing" else 300
+        routes = _routes()
+        assigned = {obj: airframes[i % len(airframes)] for i, obj in enumerate(objects)}
+        # Compact load test: terminal segments of the same corridors, already inbound at the entry gate.
+        frames_by_object, route_meta = routes.plan_objects(case_id, objects, assigned, layout, list(TIMES), paced=False)
         world = {
             "schema_version": "1.0", "synthetic": True, "duration_ms": TIMES[-1],
+            "route_model": {"version": routes.VERSION, "mode": "terminal_segments",
+                            "corridors": "data/geography/approach_corridors.json"},
             "objects": [
                 {"object_id": obj, "visual": {"asset_id": "aerial_marker", "marker_label": markers[obj],
-                                              "airframe_id": airframes[i % len(airframes)]},
-                 "keyframes": [
-                     {"at_ms": tick, "position": [
-                         -750 + (i % columns) * column_spacing + (tick / TIMES[-1]) * (80 if i % 2 else -80),
-                         80 + (i % 5) * 12,
-                         -1900 - (i // columns) * row_spacing + (tick / TIMES[-1]) * 3800,
-                     ]} for tick in TIMES]}
+                                              "airframe_id": assigned[obj]},
+                 "route": route_meta[obj], "keyframes": frames_by_object[obj]}
                 for i, obj in enumerate(objects)
             ],
         }
@@ -170,14 +174,19 @@ def build(root):
             duration = PACED_DURATION_MS
             world["duration_ms"] = public["duration_ms"] = duration
             public["freshness_ms"] = TTL_MS * PACED_SCALE
-            # Motion uses the same authored replay clock, continuously across the
-            # indirect-only period; evidence never exposes these hidden positions.
-            for i, obj in enumerate(world["objects"]):
-                obj["keyframes"] = [{"at_ms": tick, "position": [
-                    -750 + (i % columns) * column_spacing + (tick / duration) * (80 if i % 2 else -80),
-                    80 + (i % 5) * 12,
-                    distant_display_z(tick) - (i // columns) * row_spacing,
-                ]} for tick in range(0, duration + 1, 10_000)]
+            # Launch north of the DMZ, compressed transit through the indirect-only period,
+            # then class speeds after first direct receipt; evidence never exposes hidden positions.
+            vignettes = {obj: dict(spec, arrive_ms=duration - spec["end_offset_ms"] - 20_000)
+                         for obj, spec in VIGNETTE_ARRIVALS.items() if obj in objects}
+            frames_by_object, route_meta = routes.plan_objects(case_id, objects, assigned, layout,
+                                                               list(range(0, duration + 1, 10_000)), paced=True,
+                                                               vignettes=vignettes)
+            world["route_model"] = {"version": routes.VERSION, "mode": "launch_to_target",
+                                    "corridors": "data/geography/approach_corridors.json",
+                                    "transit": "Launch-to-gate transit (about 50-60 km) is time-compressed into the 4.5-minute indirect phase."}
+            for obj in world["objects"]:
+                obj["route"] = route_meta[obj["object_id"]]
+                obj["keyframes"] = frames_by_object[obj["object_id"]]
             frames = {obj["object_id"]: {frame["at_ms"]: frame["position"] for frame in obj["keyframes"]}
                       for obj in world["objects"]}
             for row in observations:
@@ -247,11 +256,11 @@ def build(root):
                 "Some channel B reports arrive 45 seconds late; compare observation and receipt time.",
                 "일부 채널 B 보고가 45초 늦게 도착합니다. 관측·수신 시각을 비교합니다.")
             briefings[-1]["origin_context"] = localized(
-                "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
-                "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다.")
+                "Simulated reports suggest arrival from the North Korean side. In the author view, aircraft launch from areas 5 km north of the MDL (beyond the 2 km DMZ; Natural Earth reference) and follow five curved approach corridors; the 50-60 km transit is time-compressed. Received evidence does not confirm origin or a border crossing.",
+                "북측에서 유입되는 상황을 가정한 훈련 제보입니다. 제작자 보기에서 비행체는 군사분계선 5 km 북쪽(2 km 비무장지대 밖, Natural Earth 기준)에서 발진해 곡선형 접근 회랑 5개를 따라 이동하며, 50~60 km 이동 시간은 압축되어 있습니다. 수신 근거만으로 출발지나 군사분계선 통과는 확정되지 않습니다.")
             briefings[-1]["timeline"][0]["text"] = localized(
-                "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
-                "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다.")
+                "Replay begins with no received tracks. In the author view, aircraft launch in waves north of the DMZ; received evidence does not yet confirm origin or a border crossing.",
+                "수신 항적 없이 시작합니다. 제작자 보기에서는 비행체가 비무장지대 북쪽에서 차례로 발진하며, 수신 근거로는 아직 출발지나 군사분계선 통과가 확인되지 않습니다.")
             briefings[-1]["timeline"][1:1] = [
                 {"at_ms": 30_000, "text": localized("One indirect area indication arrives; no direct track or object identity is established.", "구역 단위 간접 징후가 하나 수신됩니다. 직접 항적이나 대상 정체는 확정되지 않습니다.")},
                 {"at_ms": 150_000, "text": localized("After two minutes of a stable single-source question, an independent delayed report becomes available; it may agree or conflict.", "동일한 단일 출처 징후를 2분 동안 검토한 뒤 독립 지연 보고가 수신됩니다. 일치하거나 상충할 수 있습니다.")},
@@ -267,6 +276,12 @@ def build(root):
         if retired.exists() and not any(retired.iterdir()):
             retired.rmdir()
         (root / "evaluation" / f"case_{number:03d}.json").unlink(missing_ok=True)
+    # Planning corridors are shared data; only the canonical build updates them (tests build into temp roots).
+    if Path(root).resolve() == ROOT.resolve():
+        write_json(CORRIDORS_PATH, {
+            "schema_version": "1.0", "synthetic": True, "route_version": _routes().VERSION,
+            "purpose": "Planning view of assumed avenues of approach from launch areas north of the DMZ. Scenario-design assumptions, not observed or predicted routes; per-aircraft offsets stay in world.json.",
+            "mdl_source": "data/geography/korean_mdl.json", "corridors": _routes().corridor_summary()})
     write_json(root / "briefings.json", {
         "schema_version": "1.0", "synthetic": True, "author_preview": True,
         "purpose": "Scripted scenario overview includes future events; not live evidence or agent input.", "cases": briefings,

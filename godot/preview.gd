@@ -9,6 +9,7 @@ const Plains = preload("res://plains_environment.gd")
 const DroneModels = preload("res://drone_models.gd")
 const SimulationUITheme = preload("res://simulation_ui_theme.gd")
 const ExerciseUnits = preload("res://exercise_units.gd")
+const GeographyOverlay = preload("res://geography_overlay.gd")
 
 var data_root = ProjectSettings.globalize_path("res://").path_join("../data/scenarios/v1")
 var objects: Array = []
@@ -65,6 +66,8 @@ var mission_nodes: Dictionary = {}
 var facility_nodes: Dictionary = {}
 var visual_cast_signature = ""
 var exercise_units: Node3D
+var geography: Node3D
+var environment_settings: Environment
 var drag_button = MOUSE_BUTTON_NONE
 var drag_orbit = false
 var follow_drone = false
@@ -303,6 +306,7 @@ func _ready() -> void:
 		settings.ambient_light_color = Color("b4d0d4")
 		settings.ambient_light_energy = 0.65
 	environment.environment = settings
+	environment_settings = settings
 	add_child(environment)
 	var sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-32, -35, 0)
@@ -316,12 +320,12 @@ func _ready() -> void:
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		camera.fov = 48
 		camera.position = vector(site_layout.camera.close)
-		camera.far = 60000
+		camera.far = 160000
 	else:
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera.size = 5200
 		camera.position = vector(site_layout.camera.overview)
-		camera.far = 60000
+		camera.far = 160000
 	add_child(camera)
 	camera.look_at(camera_target)
 	for placement in read_json(data_root.path_join("scene.json"))["environment"]:
@@ -342,6 +346,7 @@ func _ready() -> void:
 	exercise_units.materials = materials
 	add_child(exercise_units)
 	ground_field_installations()
+	add_geography()
 	if realistic:
 		add_realistic_details()
 	build_ui()
@@ -383,6 +388,27 @@ func _ready() -> void:
 		var error = get_viewport().get_texture().get_image().save_png(output)
 		print("Screenshot saved: %s (%s)" % [output, error])
 		get_tree().quit(error)
+
+func add_geography() -> void:
+	# Reference lines are public context; launch areas inside stay author-only.
+	var mdl_path = data_root.path_join("../../geography/korean_mdl.json")
+	var corridors_path = data_root.path_join("../../geography/approach_corridors.json")
+	if not FileAccess.file_exists(mdl_path) or not FileAccess.file_exists(corridors_path):
+		push_warning("Geography reference data missing; MDL and launch areas are not shown")
+		return
+	geography = GeographyOverlay.new()
+	geography.name = "Geography"
+	add_child(geography)
+	geography.build(read_json(mdl_path), read_json(corridors_path), reference_ground_height)
+	geography.set_author_view(show_drone_positions)
+
+func reference_ground_height(x: float, z: float) -> float:
+	# Beyond the local terrain tile there is no ground mesh: use the site datum (y = 0).
+	var half_width = float(terrain.get_meta("width_m", 0)) * 0.5 - 1.0
+	var half_length = float(terrain.get_meta("length_m", 0)) * 0.5 - 1.0
+	if absf(x) < half_width and absf(z) < half_length:
+		return terrain_surface_height(x, z)
+	return 0.0
 
 func add_realistic_details() -> void:
 	# Display-only aircraft; never observation evidence.
@@ -502,6 +528,10 @@ func build_ui() -> void:
 	selected_drone_label.modulate = Color("edb0fb")
 	column.add_child(selected_drone_label)
 	update_follow_controls()
+	var approach = Button.new()
+	approach.text = "Approach view / 접근 경로 보기  [B]"
+	approach.pressed.connect(show_approach_view)
+	column.add_child(approach)
 	var aids = CheckButton.new()
 	aids.text = "Show all drones (author view)"
 	aids.button_pressed = false
@@ -513,9 +543,9 @@ func build_ui() -> void:
 	status_label.add_theme_font_size_override("font_size", 24)
 	column.add_child(status_label)
 	var hint = Label.new()
-	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
+	hint.text = "Left / Middle drag: pan\nRight / Shift+Left drag: orbit\nWheel: zoom   C: view   H: home   B: approach\n1 / 2 / 3: branch   R: restart\n[ / ]: previous / next drone   F: follow / overview\nSynthetic observations. No LLM connected."
 	if monitor_mode:
-		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home\nReplay control: %s\nLabels: received detections / author view\n[ / ]: previous / next drone   F: follow / overview\nCamera selection: author view" % monitor_base_url
+		hint.text = "Left / Middle: pan   Right: orbit\nWheel: zoom   C: view   H: home   B: approach\nReplay control: %s\nLabels: received detections / author view\n[ / ]: previous / next drone   F: follow / overview\nCamera selection: author view" % monitor_base_url
 	hint.modulate = Color("91b6b8")
 	if realistic:
 		hint.text += "\nIllustrative altitude / 표시용 고도\nBeyond local DEM: schematic space"
@@ -603,6 +633,8 @@ func toggle_terrain() -> void:
 	terrain = asset_instance("ground_tile")
 	add_child(terrain)
 	ground_field_installations()
+	if is_instance_valid(geography):
+		geography.reground(reference_ground_height)
 	terrain_button.text = terrain_caption()
 
 func load_case(id: String) -> void:
@@ -668,6 +700,8 @@ func apply_visual_cast(cast: Dictionary) -> void:
 
 func set_drone_positions(enabled: bool) -> void:
 	show_drone_positions = enabled
+	if is_instance_valid(geography):
+		geography.set_author_view(enabled)
 	update_drone_labels()
 
 func update_drone_labels() -> void:
@@ -747,6 +781,9 @@ func standalone_detections() -> Dictionary:
 
 func _process(delta: float) -> void:
 	camera.near = clampf(camera.position.distance_to(camera_target) * 0.02, 0.1, 50.0)
+	if realistic:
+		# Site-scale haze; thinned for the long approach overview so labels stay legible.
+		environment_settings.fog_density = 0.000035 * clampf(6000.0 / maxf(camera.position.distance_to(camera_target), 1.0), 0.04, 1.0)
 	if monitor_mode:
 		var age = Time.get_ticks_msec() - monitor_received_at
 		monitor_connected = monitor_connected and age <= 1500
@@ -790,6 +827,40 @@ func show_overview() -> void:
 	camera.position = vector(site_layout.camera.overview)
 	camera.size = 5200
 	camera.look_at(camera_target)
+
+func show_approach_view() -> void:
+	# Author camera preset framing the site, the MDL and every launch area.
+	stop_follow()
+	var points: Array = [Vector3.ZERO]
+	if is_instance_valid(geography):
+		for corridor in geography.corridors:
+			points.append(vector(corridor.launch))
+	for item in world_data.get("objects", []):
+		points.append(display_position(vector(item.keyframes[0].position)))
+	var bounds = AABB(points[0], Vector3.ZERO)
+	for point in points:
+		bounds = bounds.expand(point)
+	var view = get_viewport().get_visible_rect().size
+	var free = Rect2(view * Vector2(0.04, 0.06), view * Vector2(0.92, 0.88))
+	if is_instance_valid(ui_body) and ui_body.visible:
+		# Centre the corridor in the part of the screen the control panel leaves clear.
+		var left = minf(ui_panel.get_global_rect().end.x + 16, view.x * 0.5)
+		free = Rect2(Vector2(left, free.position.y), Vector2(free.end.x - left, free.size.y))
+	var direction = Vector3(0, sin(deg_to_rad(68)), cos(deg_to_rad(68)))
+	var distance = bounds.size.length() * 0.5
+	for attempt in range(40):
+		camera.size = distance * 0.8
+		var aspect = view.x / maxf(view.y, 1)
+		var visible_width = camera.size * aspect if camera.projection == Camera3D.PROJECTION_ORTHOGONAL else 2.0 * distance * tan(deg_to_rad(camera.fov * 0.5)) * aspect
+		camera_target = bounds.get_center() - Vector3((free.get_center().x / view.x - 0.5) * visible_width, 0, 0)
+		camera.position = camera_target + direction * distance
+		camera.look_at(camera_target)
+		var inside = true
+		for point in points:
+			inside = inside and not camera.is_position_behind(point) and free.has_point(camera.unproject_position(point))
+		if inside:
+			break
+		distance *= 1.08
 
 func stop_follow() -> void:
 	follow_drone = false
@@ -851,8 +922,8 @@ func pan_camera(relative: Vector2) -> void:
 	var back = Vector3(camera.basis.z.x, 0, camera.basis.z.z).normalized()
 	var movement = (-right * relative.x + back * relative.y / maxf(offset.normalized().y, 0.15)) * scale
 	var target = camera_target + movement
-	target.x = clampf(target.x, -6000, 6000)
-	target.z = clampf(target.z, -25000, 6000)
+	target.x = clampf(target.x, -70000, 70000)
+	target.z = clampf(target.z, -70000, 10000)
 	camera.position += target - camera_target
 	camera_target = target
 
@@ -902,6 +973,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3: load_case("case_003")
 			KEY_T: toggle_terrain()
 			KEY_F: toggle_follow()
+			KEY_B: show_approach_view()
 			KEY_BRACKETLEFT: select_drone(-1)
 			KEY_BRACKETRIGHT: select_drone(1)
 			KEY_H:
@@ -939,9 +1011,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			stop_follow()
 			if realistic:
-				camera.position = camera_target + (camera.position - camera_target).normalized() * minf(10000, camera.position.distance_to(camera_target) * 1.12)
+				camera.position = camera_target + (camera.position - camera_target).normalized() * minf(120000, camera.position.distance_to(camera_target) * 1.12)
 			else:
-				camera.size = minf(12000, camera.size * 1.12)
+				camera.size = minf(120000, camera.size * 1.12)
 
 func start_monitor() -> void:
 	playing = false

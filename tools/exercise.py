@@ -127,7 +127,7 @@ def select(command, state):
     if command.get('object_id') not in exercise['eligible_objects']:
         raise ValueError('Choose a currently observed aircraft')
     if command.get('asset_id') not in {a['id'] for a in exercise['assets']}:
-        raise ValueError('Unknown fictional facility')
+        raise ValueError('Unknown facility')
     mission = next((row for row in exercise.get('missions', []) if row['object_id'] == command.get('object_id')), None)
     if mission and command.get('asset_id') != mission['asset_id']:
         raise ValueError("Choose this vignette's authored facility")

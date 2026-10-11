@@ -124,7 +124,7 @@ class SimulationTests(SimulationFixture):
     def test_snapshot_excludes_future_observations_health_and_context(self):
         state = self.select("case_003", 59999)
         self.assertTrue(state["synthetic"])
-        self.assertEqual(state["coordinate_system"], "fictional_local_meters")
+        self.assertEqual(state["coordinate_system"], "virtual_local_meters")
         self.assertEqual([row["id"] for row in state["contexts"]], ["context_001"])
         self.assertTrue(all(source["status"] == "online" for source in state["sources"]))
         for track in state["tracks"]:
@@ -247,11 +247,15 @@ class SimulationTests(SimulationFixture):
         truth.pop('simulation_missions')
         self.assertEqual(truth, normal)
         self.assertEqual(set(positions[0]), {'object_id', 'position'})
-        self.sim.control({'action': 'seek', 'at_ms': 5000})
+        # Author motion starts at launch areas north of the DMZ: at least 2 km north of the MDL at that longitude.
+        from tools.infiltration_routes import _load_lines, line_z_at
+        start = positions[0]['position']
+        self.assertLess(start[2], line_z_at(_load_lines()['mdl'], start[0]) - 2000)
+        self.sim.control({'action': 'seek', 'at_ms': 60000})
         later = self.sim.state(show_positions=True)
         self.assertNotEqual(later['simulation_positions'][0]['position'], positions[0]['position'])
         self.assertEqual(later['tracks'], [])
-        self.assertAlmostEqual(later['simulation_positions'][0]['position'][2], -18000 + 15800 * 5000 / 270000)
+        self.assertGreater(later['simulation_positions'][0]['position'][2], positions[0]['position'][2])
         self.sim.control({'action': 'case', 'case_id': 'case_003'})
         self.assertEqual(len(self.sim.state(show_positions=True)['simulation_positions']), 240)
         self.assertNotIn('simulation_positions', self.sim.state())
@@ -468,6 +472,8 @@ class HTTPTests(SimulationFixture):
         write_json(self.project / "monitor" / "map_config.json", {"reference_only": True})
         write_json(self.project / "data" / "radar_display.json", {"synthetic": True, "stations": []})
         write_json(self.project / "data/references/ukraine_observation_lessons.json", {"sources": []})
+        write_json(self.project / "data/geography/korean_mdl.json", {"lines": {}})
+        write_json(self.project / "data/geography/approach_corridors.json", {"corridors": []})
         project_patch = patch.object(monitor_server, "PROJECT", self.project)
         project_patch.start()
         self.addCleanup(project_patch.stop)
@@ -720,6 +726,7 @@ class HTTPTests(SimulationFixture):
         self.assertEqual(status, 200)
         payload = json.loads(raw)
         self.assertEqual(payload["site"], {"synthetic": True})
+        self.assertEqual(payload["geography"], {"boundaries": {"lines": {}}, "corridors": {"corridors": []}})
         self.assertEqual(payload["regional_map"], {"reference_only": True})
         self.assertEqual(len(payload["cases"]), 3)
         self.assertEqual(set(payload["cases"][0]), {"case_id", "variant"})

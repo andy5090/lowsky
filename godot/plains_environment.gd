@@ -1,7 +1,7 @@
 extends RefCounted
 
 const Geographic = preload("res://geographic_environment.gd")
-## Art-direction test: fictional plains, fields and shelterbelts. No map data.
+## Art-direction test: simulated plains, fields and shelterbelts. No map data.
 
 static func elevation(x: float, z: float, noise: FastNoiseLite, layout: Dictionary) -> float:
 	# Share the fence dimensions and grading margin with the map and DEM.

@@ -5,6 +5,21 @@ from pathlib import Path
 
 
 PATH = Path(__file__).resolve().parents[1] / 'data/early_warning_demo.json'
+MDL_PATH = Path(__file__).resolve().parents[1] / 'data/geography/korean_mdl.json'
+FORWARD_AREA_X = -2000
+# 2.5 km beyond the nominal 2 km DMZ southern half-width, measured from the MDL.
+FORWARD_AREA_SOUTH_OF_MDL_M = 2000 + 2500
+
+
+def forward_area_center():
+    """Georeferenced forward reporting area south of the DMZ (MDL + nominal 2 km + 2.5 km), on the central corridors."""
+    try:
+        from .infiltration_routes import line_z_at
+    except ImportError:
+        from infiltration_routes import line_z_at
+    lines = json.loads(MDL_PATH.read_text(encoding='utf-8'))['lines']
+    z = line_z_at([part['local'] for part in lines['mdl']['parts']], FORWARD_AREA_X)
+    return [FORWARD_AREA_X, 0, round(z + FORWARD_AREA_SOUTH_OF_MDL_M, 1)]
 
 
 def paced_profile(case_id):
@@ -53,16 +68,18 @@ def paced_profile(case_id):
 
 def build(feed):
     result = copy.deepcopy(feed)
-    result['description'] = ('Independent fictional area indications on the replay clock. '
+    result['description'] = ('Independent simulated area indications on the replay clock. '
                              'Cases 001/002 provide deliberate early-review periods; the root feed remains the compact case 003 fixture. '
                              'Area geometry describes sensor context, never the position of an unobserved object.')
     result['case_overrides'] = {}
     for case_id in ('case_001', 'case_002'):
         profile = paced_profile(case_id)
         profile['zones'] = [dict(id='remote_reference',
-            label={'en': 'Fictional northern reference area', 'ko': '가상 북쪽 참조 구역'},
-            center=[0, 0, -16000], radius_m=1800, deployment_type='community',
-            schematic=True, georeferenced=False), *copy.deepcopy(feed['zones'])]
+            label={'en': 'Forward area south of the DMZ', 'ko': '비무장지대 남측 전방 구역'},
+            center=forward_area_center(), radius_m=4000, deployment_type='community',
+            schematic=False, georeferenced=True,
+            reference='MDL + nominal 2 km DMZ half-width + 2.5 km (Natural Earth MDL); simulated reporting area, not a surveyed sensor site'),
+            *copy.deepcopy(feed['zones'])]
         result['case_overrides'][case_id] = profile
     return result
 

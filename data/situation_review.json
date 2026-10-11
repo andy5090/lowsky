@@ -7,7 +7,7 @@
     "distribution": "local_only"
   },
   "time_compression_note": {
-    "en": "Cases 001/002 use a 13-minute authored training timeline with a 4½-minute indirect-only review period. Case 003 remains a compact 3-minute load test. Times are fictional training assumptions, not operational or historical timings.",
+    "en": "Cases 001/002 use a 13-minute authored training timeline with a 4½-minute indirect-only review period. Case 003 remains a compact 3-minute load test. Times are simulated training assumptions, not operational or historical timings.",
     "ko": "시나리오 001/002는 첫 4분 30초를 간접 징후 검토에 배정한 13분 학습 시간축입니다. 시나리오 003은 3분 부하 시험을 유지합니다. 시각은 가상 학습 가정이며 실제 작전·역사 시각이 아닙니다."
   },
   "events": [
@@ -376,7 +376,7 @@
         "ko": "공역 이용 공지"
       },
       "summary": {
-        "en": "A fictional civil flight activity notice is available for coordination review only.",
+        "en": "A simulated civil flight activity notice is available for coordination review only.",
         "ko": "가상 민간 비행 활동 공지가 협의 검토용으로 제공됩니다."
       },
       "uncertainty": {
@@ -408,7 +408,7 @@
         "ko": "공역 이용 공지"
       },
       "summary": {
-        "en": "A fictional civil flight activity notice is available for coordination review only.",
+        "en": "A simulated civil flight activity notice is available for coordination review only.",
         "ko": "가상 민간 비행 활동 공지가 협의 검토용으로 제공됩니다."
       },
       "uncertainty": {

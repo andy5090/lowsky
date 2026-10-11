@@ -25,7 +25,8 @@ ASSETS = ('index.html', 'app.js', 'styles.css', 'logo.svg', 'logo-metal.png', 'g
 DATA_FILES = ('site_layout.json', 'early_warning_demo.json', 'sensor_fleet_demo.json',
               'situation_review.json', 'radar_display.json', 'terrain/korea_site.json', 'terrain/korea_context.json',
               'references/ukraine_observation_lessons.json', 'scenarios/v1/manifest.json',
-              'scenarios/v1/scene.json', 'scenarios/v1/briefings.json')
+              'scenarios/v1/scene.json', 'scenarios/v1/briefings.json', 'geography/korean_mdl.json',
+              'geography/approach_corridors.json', 'tactics/catalog.json', 'tactics/identification_demo.json')
 
 
 def ensure(condition, message):

@@ -6,7 +6,7 @@
 
 ## 범위 변경 기록 (2026-10-11)
 
-사용자 요청으로 무기 추천·전술 편성·병력 및 군사용 레이더·탐지폰 배치 최적화·표적 식별을 **규칙 기반 훈련 권고 계층**(`tools/tactics.py`)으로 추가했다. 아래 원문의 "제외" 항목 중 표적 판별·무기 배정·교전 권고는 이 범위 안에서 수신 근거만 사용하는 권고와 사람의 기록으로 구현했고, 실제 요격·피해·탐지 성능 모델과 자동 교전 제어는 여전히 범위 밖이다. 설계와 가정은 `docs/superpowers/specs/2026-10-11-tactics-layer-design.md`에 있다.
+사용자 요청으로 무기 추천·전술 편성·병력 및 군사용 레이더·드론 청음 초소(요청 당시 '탐지폰') 배치 최적화·표적 식별을 **규칙 기반 훈련 권고 계층**(`tools/tactics.py`)으로 추가했다. 아래 원문의 "제외" 항목 중 표적 판별·무기 배정·교전 권고는 이 범위 안에서 수신 근거만 사용하는 권고와 사람의 기록으로 구현했고, 실제 요격·피해·탐지 성능 모델과 자동 교전 제어는 여전히 범위 밖이다. 설계와 가정은 `docs/superpowers/specs/2026-10-11-tactics-layer-design.md`에 있다.
 
 ## 확정한 배경과 아트 방향
 
@@ -140,7 +140,7 @@ Deep Agents는 LangChain 기반이며 LangGraph 런타임을 사용하므로, �
 
 ## 참고
 
-- 원문: `../LOW_SKY_team_brief.docx`
+- 원문: `sources/planning/LOW_SKY_team_brief.docx` (로컬 전용, [원본 문서 색인](sources/README.md))
 - [Godot WebSocket 공식 문서](https://docs.godotengine.org/en/stable/tutorials/networking/websocket.html)
 - [Deep Agents 공식 개요](https://docs.langchain.com/oss/python/deepagents/overview)
 

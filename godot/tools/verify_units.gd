@@ -72,12 +72,12 @@ func verify_kinds(preview: Node3D) -> void:
 	var kinds = [
 		{"id":"infantry", "label":{"en":"Infantry", "ko":"보병"}, "budget":12, "display_range_m":0},
 		{"id":"radar", "label":{"en":"Military radar", "ko":"군사용 레이더"}, "budget":2, "display_range_m":5000},
-		{"id":"detection_phone", "label":{"en":"Detection phone post", "ko":"탐지폰 초소"}, "budget":10, "display_range_m":1500},
+		{"id":"detection_phone", "label":{"en":"Drone acoustic listening post", "ko":"드론 청음 초소"}, "budget":10, "display_range_m":1500},
 		{"id":"effector_team", "label":{"en":"Effector team", "ko":"대응 팀"}, "budget":4, "display_range_m":2500}]
 	var rows = [
 		{"id":"infantry_1", "kind":"infantry", "role":"observation_post", "label":{"en":"Infantry 1", "ko":"보병 1"}, "position":[40,0,-200], "status":"positioned", "source":"manual"},
 		{"id":"radar_1", "kind":"radar", "role":"surveillance", "label":{"en":"Military radar 1", "ko":"군사용 레이더 1"}, "position":[60,0,-200], "status":"positioned", "source":"proposal"},
-		{"id":"detection_phone_1", "kind":"detection_phone", "role":"picket", "label":{"en":"Detection phone post 1", "ko":"탐지폰 초소 1"}, "position":[50,0,-212], "status":"positioned", "source":"proposal"},
+		{"id":"detection_phone_1", "kind":"detection_phone", "role":"picket", "label":{"en":"P1 acoustic post", "ko":"P1 드론 청음 초소"}, "position":[50,0,-212], "status":"positioned", "source":"proposal"},
 		{"id":"effector_team_1", "kind":"effector_team", "role":"response", "label":{"en":"Effector team 1", "ko":"대응 팀 1"}, "position":[30,0,-215], "status":"positioned", "source":"proposal"},
 		{"id":"tank_1", "kind":"tank", "label":{"en":"Tank 1", "ko":"전차 1"}, "position":[0,0,0], "status":"positioned"}]
 	var state = {"case_id":"case_002", "at_ms":0, "playing":false, "speed":1, "tracks":[], "exercise":{"units":rows, "unit_kinds":kinds}}
@@ -98,7 +98,8 @@ func verify_kinds(preview: Node3D) -> void:
 			assert(ring == null, "Infantry has no range ring")
 		verify_ground(preview, node, row.position[0], row.position[2])
 	var pole_materials = nodes.detection_phone_1.get_children().filter(func(child): return child is MeshInstance3D).map(func(child): return child.material_override)
-	assert(preview.materials.dark_metal in pole_materials, "Phone posts reuse the site pole model and scene materials")
+	assert(preview.materials.dark_metal in pole_materials, "Acoustic posts reuse the site pole model and scene materials")
+	assert(nodes.detection_phone_1.has_node("MicrophoneWindscreen"), "Acoustic posts carry a microphone detail")
 	if "--capture-units" in OS.get_cmdline_user_args():
 		var center = Vector3(45, preview.terrain_surface_height(45, -207), -207)
 		preview.camera_target = center + Vector3(0, 1.5, 0)

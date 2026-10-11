@@ -73,7 +73,7 @@
       "id": "pole_phone_reference",
       "input_type": "fixed_phone_acoustic",
       "hardware_model": null,
-      "interaction": "Dedicated fixed smartphone on a fictional pilot pole; separate from voluntary citizen reports. Synthetic acoustic candidate and device-health metadata only.",
+      "interaction": "Dedicated fixed smartphone on a virtual pilot pole; separate from voluntary citizen reports. Synthetic acoustic candidate and device-health metadata only.",
       "deployment_assumptions": {
         "mount_height_m": 3,
         "power": "External supply with illustrative battery fallback",
@@ -94,7 +94,7 @@
     "freshness_ms": 30000,
     "freshness_basis": "Demo assumption, not hardware update-rate or real detection performance.",
     "classifier_score": "Synthetic optional value in [0,1], not attack probability, calibrated confidence or datasheet performance.",
-    "reporting_zone_radius": "Fictional map annotation; not sensor range or measured positional accuracy.",
+    "reporting_zone_radius": "Virtual map annotation; not sensor range or measured positional accuracy.",
     "clock": "observed_at_ms and available_at_ms are offsets from shared replay start, preserving observation vs receipt time.",
     "radar_association": "unknown; community reports are not automatically linked to existing tracks.",
     "raw_audio_collected": false,

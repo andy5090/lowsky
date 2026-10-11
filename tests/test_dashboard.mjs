@@ -77,24 +77,28 @@ test('early-stage option wording stays distinct while using the existing decisio
  }
 });
 
-test('indication overview fits the site and a remote received-positive area without future or hidden positions',async()=>{
+test('indication overview fits the site and a georeferenced forward area, flagging areas beyond the local extent',async()=>{
  const {indicationOverview}=await import('../monitor/dashboard.mjs');
  const perimeter={width_m:3000,length_m:4000,polygon:[[-1500,-2000],[1500,-2000],[1500,2000],[-1500,2000]]};
  const viewport={width:600,height:450};
  const report={id:'r',available_at_ms:1000,assessment:'current',object_present:true};
  const snapshot={at_ms:2000,tracks:[],simulation_positions:[{position:[999999,0,999999]}],early_warning:{zones:[
-  {id:'remote_reference',center:[0,0,-16000],radius_m:1800,evidence:[report]},
+  {id:'remote_reference',center:[-2000,0,-37106],radius_m:4000,georeferenced:true,schematic:false,evidence:[report]},
   {id:'future-area',center:[100000,0,-900000],radius_m:9000,evidence:[{...report,available_at_ms:3000}]},
   {id:'old-area',center:[-900000,0,0],radius_m:8000,evidence:[{...report,assessment:'stale'}]},
  ]}};
- const fit=indicationOverview(snapshot,perimeter,viewport);
- assert.ok(fit.zoom<.5);assert.ok(fit.z<0);assert.equal(fit.x,0);
+ const fit=indicationOverview(snapshot,perimeter,viewport,10000);
+ assert.ok(fit.zoom<.2);assert.ok(fit.z<-15000);assert.equal(fit.x,-2000);
+ assert.equal(fit.width_m,8000);assert.equal(fit.height_m,41106+2000);assert.equal(fit.beyond_local,true);
  const scale=Math.min(viewport.width/(perimeter.width_m*1.35),viewport.height/(perimeter.length_m*1.6))*fit.zoom;
- for(const [x,z] of [...perimeter.polygon,[-1800,-17800],[1800,-14200]]){
+ for(const [x,z] of [...perimeter.polygon,[-6000,-41106],[2000,-33106]]){
   assert.ok(Math.abs((x-fit.x)*scale)<=viewport.width*.4+1e-9);
   assert.ok(Math.abs((z-fit.z)*scale)<=viewport.height*.4+1e-9);
  }
- assert.deepEqual(indicationOverview({...snapshot,simulation_positions:[]},perimeter,viewport),fit);
+ assert.deepEqual(indicationOverview({...snapshot,simulation_positions:[]},perimeter,viewport,10000),fit);
+ assert.equal(indicationOverview(snapshot,perimeter,viewport).beyond_local,false);
+ const near={...snapshot,early_warning:{zones:[{id:'community_a',center:[-2200,0,-1600],radius_m:400,evidence:[report]}]}};
+ assert.equal(indicationOverview(near,perimeter,viewport,10000).beyond_local,false);
  assert.equal(indicationOverview({...snapshot,at_ms:0},perimeter,viewport),null);
  assert.equal(indicationOverview(snapshot,perimeter,{width:0,height:0}),null);
 });

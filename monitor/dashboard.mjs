@@ -50,7 +50,8 @@ export function decisionCopyKey(event,part,option) {
   return `decision.${event?.stage==='early_indication'?'early.':''}${part}.${option}`;
 }
 
-export function indicationOverview(state, perimeter, viewport) {
+// The fit also reports its span and whether it leaves the local terrain extent (then use the regional map).
+export function indicationOverview(state, perimeter, viewport, localExtentM = Infinity) {
   const received=new Set(earlyIndicationSummary(state).zones.filter(zone=>zone.positive>0).map(zone=>zone.id));
   const areas=(state?.early_warning?.zones || []).filter(zone=>received.has(zone.id)
     && Number.isFinite(zone.center?.[0]) && Number.isFinite(zone.center?.[2])
@@ -63,5 +64,6 @@ export function indicationOverview(state, perimeter, viewport) {
   const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...zs),bottom=Math.max(...zs);
   const baseScale=Math.min(viewport.width/(perimeter.width_m*1.35),viewport.height/(perimeter.length_m*1.6));
   const fitScale=.8*Math.min(viewport.width/Math.max(1,right-left),viewport.height/Math.max(1,bottom-top));
-  return {x:(left+right)/2,z:(top+bottom)/2,zoom:Math.min(30,fitScale/baseScale)};
+  return {x:(left+right)/2,z:(top+bottom)/2,zoom:Math.min(30,fitScale/baseScale),width_m:right-left,height_m:bottom-top,
+    beyond_local:[left,right,top,bottom].some(value=>Math.abs(value)>localExtentM/2)};
 }

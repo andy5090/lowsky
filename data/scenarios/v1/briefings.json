@@ -141,8 +141,8 @@
         {
           "at_ms": 0,
           "text": {
-            "en": "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
-            "ko": "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다."
+            "en": "Replay begins with no received tracks. In the author view, aircraft launch in waves north of the DMZ; received evidence does not yet confirm origin or a border crossing.",
+            "ko": "수신 항적 없이 시작합니다. 제작자 보기에서는 비행체가 비무장지대 북쪽에서 차례로 발진하며, 수신 근거로는 아직 출발지나 군사분계선 통과가 확인되지 않습니다."
           }
         },
         {
@@ -217,8 +217,8 @@
         }
       ],
       "origin_context": {
-        "en": "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
-        "ko": "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다."
+        "en": "Simulated reports suggest arrival from the North Korean side. In the author view, aircraft launch from areas 5 km north of the MDL (beyond the 2 km DMZ; Natural Earth reference) and follow five curved approach corridors; the 50-60 km transit is time-compressed. Received evidence does not confirm origin or a border crossing.",
+        "ko": "북측에서 유입되는 상황을 가정한 훈련 제보입니다. 제작자 보기에서 비행체는 군사분계선 5 km 북쪽(2 km 비무장지대 밖, Natural Earth 기준)에서 발진해 곡선형 접근 회랑 5개를 따라 이동하며, 50~60 km 이동 시간은 압축되어 있습니다. 수신 근거만으로 출발지나 군사분계선 통과는 확정되지 않습니다."
       }
     },
     {
@@ -406,8 +406,8 @@
         {
           "at_ms": 0,
           "text": {
-            "en": "Replay begins with no received tracks. Author motion starts in a fictional distant northern departure area, with no verified origin or border crossing.",
-            "ko": "수신 항적 없이 시작합니다. 제작용 움직임은 원거리 가상 북쪽 출발 구역에서 시작하며 실제 출발지나 국경 통과는 확인되지 않습니다."
+            "en": "Replay begins with no received tracks. In the author view, aircraft launch in waves north of the DMZ; received evidence does not yet confirm origin or a border crossing.",
+            "ko": "수신 항적 없이 시작합니다. 제작자 보기에서는 비행체가 비무장지대 북쪽에서 차례로 발진하며, 수신 근거로는 아직 출발지나 군사분계선 통과가 확인되지 않습니다."
           }
         },
         {
@@ -482,8 +482,8 @@
         }
       ],
       "origin_context": {
-        "en": "Fictional reports suggest possible arrival from the North Korean side. Origin and any border crossing are unconfirmed; the distant northern departure area and paths are schematic, not real georeferenced routes.",
-        "ko": "북측에서 유입될 가능성을 시사하는 가상 제보입니다. 출발지와 국경 통과는 미확인이며 원거리 북쪽 출발 구역과 경로는 실제 지리 좌표가 아닌 개념도입니다."
+        "en": "Simulated reports suggest arrival from the North Korean side. In the author view, aircraft launch from areas 5 km north of the MDL (beyond the 2 km DMZ; Natural Earth reference) and follow five curved approach corridors; the 50-60 km transit is time-compressed. Received evidence does not confirm origin or a border crossing.",
+        "ko": "북측에서 유입되는 상황을 가정한 훈련 제보입니다. 제작자 보기에서 비행체는 군사분계선 5 km 북쪽(2 km 비무장지대 밖, Natural Earth 기준)에서 발진해 곡선형 접근 회랑 5개를 따라 이동하며, 50~60 km 이동 시간은 압축되어 있습니다. 수신 근거만으로 출발지나 군사분계선 통과는 확정되지 않습니다."
       }
     },
     {

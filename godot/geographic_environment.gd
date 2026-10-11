@@ -1,6 +1,6 @@
 extends RefCounted
 ## DEM-backed terrain: local X points east, Z south, and Y is relative elevation.
-## Only the fictional site's level surface and its blend are modified.
+## Only the virtual site's level surface and its blend are modified.
 
 static func grading_distance(x: float, z: float, layout: Dictionary) -> float:
 	var point = Vector2(x, z)

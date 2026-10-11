@@ -7,9 +7,9 @@ const FALLBACK_RANGES = {"infantry": 0, "radar": 5000, "detection_phone": 1500, 
 const RING_COLORS = {"radar": Color(0.35, 0.9, 1.0, 0.55), "detection_phone": Color(1.0, 0.75, 0.25, 0.55), "effector_team": Color(1.0, 0.5, 0.2, 0.55)}
 const LABEL_HEIGHTS = {"infantry": 2.6, "radar": 4.4, "detection_phone": 3.8, "effector_team": 4.0}
 const PIN_COLORS = {"infantry": "62c7b3", "radar": "6fd8ec", "detection_phone": "e8b65a", "effector_team": "e8875a"}
-const FALLBACK_KO = {"infantry": "보병", "radar": "레이더", "detection_phone": "탐지폰", "effector_team": "대응 팀"}
+const FALLBACK_KO = {"infantry": "보병", "radar": "레이더", "detection_phone": "드론 청음 초소", "effector_team": "대응 팀"}
 var units: Dictionary = {}
-## Set by the preview so phone poles share the scene's site materials.
+## Set by the preview so acoustic listening posts share the scene's site materials.
 var materials: Dictionary = {}
 
 static func material(color: String) -> StandardMaterial3D:
@@ -141,11 +141,27 @@ func make_unit(kind: String) -> Node3D:
 		"radar":
 			root = make_radar()
 		"detection_phone":
-			root = Detailed.make_phone_sensor_pole(fallback_materials() if materials.is_empty() else materials)
+			# Drone acoustic listening post: the site's phone pole plus a small microphone.
+			var pole_materials = fallback_materials() if materials.is_empty() else materials
+			root = Detailed.make_phone_sensor_pole(pole_materials)
+			add_microphone(root, pole_materials)
 		"effector_team":
 			root = make_effector_team()
 	add_marker(root, 1.6 if kind == "effector_team" else 1.1, PIN_COLORS[kind], LABEL_HEIGHTS[kind])
 	return root
+
+static func add_microphone(root: Node3D, m: Dictionary) -> void:
+	# Short boom with a foam windscreen, kept below the 3 m pole top.
+	Detailed.rod(root, Vector3(0, 2.45, 0.04), Vector3(0.22, 2.55, 0.18), 0.012, m.dark_metal)
+	var windscreen = MeshInstance3D.new()
+	windscreen.name = "MicrophoneWindscreen"
+	var sphere = SphereMesh.new()
+	sphere.radius = 0.055
+	sphere.height = 0.14
+	windscreen.mesh = sphere
+	windscreen.material_override = material("2b2f2e")
+	windscreen.position = Vector3(0.24, 2.56, 0.2)
+	root.add_child(windscreen)
 
 func sync(rows: Array, ground_height: Callable, kinds: Array = []) -> void:
 	var ranges: Dictionary = FALLBACK_RANGES.duplicate()

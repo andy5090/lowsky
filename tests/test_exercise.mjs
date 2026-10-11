@@ -141,3 +141,61 @@ test('re-optimization needs only the current run and explicit confirmation, in a
     assert.equal(exerciseUnitCommand({...current,exercise:{...current.exercise,scope:'other'}},draft,true),null);
   }
 });
+test('radar re-adjustment requests need only the current run and explicit confirmation, in any proposal status',async()=>{
+  const {radarAdjustmentCommand}=await import('../monitor/exercise.mjs');
+  const draft={action:'exercise_adjust_radars',run_id:'r'};
+  for(const status of ['pending','accepted','manual']) {
+    const current={run_id:'r',exercise:{scope:'scripted_training',unit_proposal:{id:'p',status},units:[],radar_adjustment:null}};
+    assert.equal(radarAdjustmentCommand(current,draft),null);
+    assert.equal(radarAdjustmentCommand(current,draft,'yes'),null);
+    assert.deepEqual(radarAdjustmentCommand(current,draft,true),{action:'exercise_adjust_radars',run_id:'r',confirm:true});
+    assert.equal(radarAdjustmentCommand(current,{...draft,run_id:'stale'},true),null);
+    assert.equal(radarAdjustmentCommand({...current,exercise:{...current.exercise,scope:'other'}},draft,true),null);
+    assert.equal(radarAdjustmentCommand(current,{...draft,action:'exercise_place_unit'},true),null);
+  }
+});
+test('radar re-adjustment applies or dismisses only the current pending proposal by id',async()=>{
+  const {radarAdjustmentCommand,pendingRadarAdjustment,radarAdjustmentApplicable}=await import('../monitor/exercise.mjs');
+  const units=[{id:'radar_1',kind:'radar',position:[0,0,0]},{id:'infantry_1',kind:'infantry',position:[5,0,5]}];
+  const radar_adjustment={id:'adj1',status:'pending',budget:4,coverage_before:.2,coverage_after:.6,
+    moves:[{unit_id:'radar_1',label:{en:'Radar 1',ko:'레이더 1'},from_position:[0,0,0],to_position:[900,0,-1200],distance_m:1500}],
+    additions:[{position:[-800,0,-1500],label:{en:'Radar 2',ko:'레이더 2'}},{position:[NaN,0,0],label:{en:'bad'}}]};
+  const current={run_id:'r',exercise:{scope:'scripted_training',unit_proposal:{id:'p',status:'manual'},units,radar_adjustment,unit_kinds:[{id:'radar',budget:4}]}};
+  const apply={action:'exercise_apply_radar_adjustment',run_id:'r',adjustment_id:'adj1'};
+  const dismiss={...apply,action:'exercise_dismiss_radar_adjustment'};
+  assert.equal(pendingRadarAdjustment(current).additions.length,1);
+  assert.equal(radarAdjustmentApplicable(current),true);
+  assert.equal(radarAdjustmentCommand(current,apply),null);
+  assert.deepEqual(radarAdjustmentCommand(current,apply,true),{...apply,confirm:true});
+  assert.deepEqual(radarAdjustmentCommand(current,dismiss,true),{...dismiss,confirm:true});
+  for(const changes of [{adjustment_id:'old'},{adjustment_id:undefined},{run_id:'stale'}]) {
+    assert.equal(radarAdjustmentCommand(current,{...apply,...changes},true),null);
+    assert.equal(radarAdjustmentCommand(current,{...dismiss,...changes},true),null);
+  }
+  for(const status of ['applied','dismissed']) {
+    const closed={...current,exercise:{...current.exercise,radar_adjustment:{...radar_adjustment,status}}};
+    assert.equal(pendingRadarAdjustment(closed),null);
+    assert.equal(radarAdjustmentCommand(closed,apply,true),null);
+    assert.equal(radarAdjustmentCommand(closed,dismiss,true),null);
+  }
+  assert.equal(radarAdjustmentCommand({...current,exercise:{...current.exercise,radar_adjustment:null}},apply,true),null);
+  // A radar moved or removed since the proposal, or a full budget, blocks apply locally but still allows dismissal.
+  const moved={...current,exercise:{...current.exercise,units:[{...units[0],position:[2,0,0]},units[1]]}};
+  const removed={...current,exercise:{...current.exercise,units:[units[1]]}};
+  const full={...current,exercise:{...current.exercise,radar_adjustment:{...radar_adjustment,budget:1}}};
+  for(const blocked of [moved,removed,full]) {
+    assert.equal(radarAdjustmentApplicable(blocked),false);
+    assert.equal(radarAdjustmentCommand(blocked,apply,true),null);
+    assert.ok(radarAdjustmentCommand(blocked,dismiss,true));
+  }
+  assert.ok(radarAdjustmentCommand({...current,exercise:{...current.exercise,units:[{...units[0],position:[.5,0,.5]},units[1]]}},apply,true));
+});
+test('radar re-adjustment and acoustic post copy is bilingual and drops the phone wording',()=>{
+  for(const key of ['units.radarAdjust','units.radarAdjustCoverage','units.radarMove','units.radarAdd','units.radarApply','units.radarApplyConfirm','units.radarApplyArmed','units.radarDismiss','units.radarLos','geo.corridorsToggle','geo.legendCorridors','geo.launch'])
+    for(const lang of ['en','ko'])assert.notEqual(translate(lang,key),key);
+  assert.equal(translate('ko','units.radarAdjust'),'레이더 재배치 제안');
+  assert.equal(translate('en','units.kind.detection_phone'),'Drone acoustic listening post');
+  assert.equal(translate('ko','units.kind.detection_phone'),'드론 청음 초소');
+  assert.match(translate('en','geo.legendCorridors'),/planning assumptions, not observed routes/);
+  assert.match(translate('en','units.radarAdjustCoverage',{before:20,after:60}),/20% → 60%/);
+});

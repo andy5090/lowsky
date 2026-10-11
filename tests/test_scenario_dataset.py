@@ -1,7 +1,10 @@
+import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
 
+from tools.infiltration_routes import line_z_at
 from tools.scenario_dataset import DISPLAY_PROFILES, authored_time, build, information_state, read_json, snapshot, validate, write_json
 
 
@@ -47,12 +50,14 @@ class DatasetTests(unittest.TestCase):
         public = self.public("case_003")
         world = read_json(self.root / "cases/case_003/world.json")
         self.assertEqual(len(world["objects"]), 240)
+        corridors = {obj["route"]["corridor_id"] for obj in world["objects"]}
+        self.assertEqual(len(corridors), 5)
         for obj in world["objects"]:
             for row in obj["keyframes"]:
                 x, y, z = row["position"]
-                self.assertLessEqual(abs(x), 830)
-                self.assertTrue(80 <= y <= 128)
-                self.assertTrue(-2300 <= z <= 1900)
+                # Compact load test: terminal segments inside the 8 km entry gate, already airborne.
+                self.assertLessEqual(math.hypot(x, z), 10500)
+                self.assertTrue(5 <= y <= 400)
         self.assertEqual(snapshot(public, 9999)["object_ids"], [])
         self.assertEqual(len(snapshot(public, 60000)["object_ids"]), 240)
         self.assertEqual(len(snapshot(public, 180000)["object_ids"]), 240)
@@ -101,10 +106,27 @@ class DatasetTests(unittest.TestCase):
             frames = {obj["object_id"]: {row["at_ms"]: row["position"] for row in obj["keyframes"]}
                       for obj in world["objects"]}
             self.assertNotEqual(frames["object_11"][0], frames["object_11"][240000])
-            self.assertEqual(frames["object_11"][0][2], -18000)
-            self.assertEqual(frames["object_11"][270000][2], -2200)
-            self.assertEqual(frames["object_11"][780000][2], 1900)
-            self.assertGreaterEqual(min(frame["position"][2] for obj in world["objects"] for frame in obj["keyframes"]), -19200)
+            boundaries = read_json(Path(__file__).resolve().parents[1] / "data/geography/korean_mdl.json")["lines"]
+            for obj in world["objects"]:
+                launch = obj["keyframes"][0]["position"]
+                # Each aircraft starts on the ground within 1.5 km of its launch area, north of the nominal 2 km DMZ.
+                area = obj["route"]["launch_area"]
+                self.assertLessEqual(math.hypot(launch[0] - area[0], launch[2] - area[2]), 1500)
+                self.assertLess(launch[2], line_z_at([part["local"] for part in boundaries["mdl"]["parts"]], launch[0]) - 2000)
+                self.assertEqual(launch[1], 0)
+                # Within the 7.5 km entry gate when direct observations begin.
+                at_receipt = frames[obj["object_id"]][270000]
+                self.assertLessEqual(math.hypot(at_receipt[0], at_receipt[2]), 7800)
+                # Curved routes: the transit departs from the launch-to-gate chord by more than 1 km.
+                gate = at_receipt
+                chord = [frames[obj["object_id"]][t] for t in range(0, 270001, 10000)]
+                deviation = max(abs((gate[0] - launch[0]) * (launch[2] - p[2]) - (launch[0] - p[0]) * (gate[2] - launch[2]))
+                                / max(1, math.hypot(gate[0] - launch[0], gate[2] - launch[2])) for p in chord)
+                self.assertGreater(deviation, 1000, obj["object_id"])
+            # Scripted vignette aircraft are above their facility when the 3D finale begins.
+            # Godot starts the finale at facility + 35 m + 100 m.
+            self.assertEqual(frames["object_11"][670000], [20, 135, -260])
+            self.assertEqual(frames["object_12"][700000], [455, 135, -450])
             for row in public["observations"]:
                 self.assertEqual(row["position"], frames[row["object_id"]][row["observed_at_ms"]])
             self.assertEqual(len(snapshot(public, 780000)["object_ids"]), len(public["object_ids"]))

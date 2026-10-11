@@ -5,7 +5,7 @@ import {localToGeo, mercator, unproject, pixelsPerMeter, mapToLocal} from './geo
 import {radarFrame, replayTime} from './radar.mjs';
 import {reviewQueue, commentSuggestions, reviewComment} from './review.mjs';
 import {indicationOverview, earlyIndicationSummary, decisionCopyKey, DASHBOARD_ACTIONS, dashboardCard, dashboardDraft, dashboardDraftValid, dashboardConfirmation} from './dashboard.mjs';
-import {exerciseConfirmation, exerciseMissionRows, exerciseMapAssets, exerciseUnitCommand, unitBudget} from './exercise.mjs';
+import {exerciseConfirmation, exerciseMissionRows, exerciseMapAssets, exerciseUnitCommand, unitBudget, RADAR_ADJUSTMENT_ACTIONS, pendingRadarAdjustment, radarAdjustmentApplicable, radarAdjustmentCommand} from './exercise.mjs';
 import {TACTICS_SCOPE, UNIT_KINDS, tacticsTarget, allocationDraft, allocationDraftValid, allocationCommand, placementSummary, proposalPositions, formationRows} from './tactics.mjs';
 import {activeDecision, decisionReport, decisionOpen, selectDecision, decisionDraftStatus, decisionConfirmation, decisionStatusKey} from './decisions.mjs';
 import {testRunRequest, playbackRequest, repeatTestRequest} from './test_runs.mjs';
@@ -52,7 +52,7 @@ let testOperator = null, operatorBusy = false, operatorError = '';
 let queuePage = 0, queueFilter = 'all', queueRun = null;
 const selectedComments = {track:'',situation:''};
 let trackReviewBusy = false, reviewTargetKey = '', reviewTargetVersion = '';
-let showPositions = false;
+let showPositions = false, showCorridors = false, geographyCache = null;
 let radarVisible = true, clockReceivedAt = performance.now();
 const plan = {x:0,z:0,zoom:1};
 const region = {lat:49,lon:32,zoom:6};
@@ -147,7 +147,7 @@ function render(data) {
   renderAssessment();
   renderDecisions();
   notifier?.observe(data);
-  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions,exerciseMapAssets(data),data.exercise?.units,data.exercise?.unit_proposal,data.tactics]);
+  const signature = JSON.stringify([data.run_id,data.tracks,data.sources,data.alerts,data.contexts,data.early_warning,data.reviews,data.track_reviews,data.review_summary,data.simulation_positions,exerciseMapAssets(data),data.exercise?.units,data.exercise?.unit_proposal,data.exercise?.radar_adjustment,data.tactics]);
   if (signature !== dataSignature) {
     dataSignature = signature;
     if(!data.tracks.some(t => t.object_id === selected)) selected = data.tracks[0]?.object_id;
@@ -391,8 +391,16 @@ $('indication-signals').onclick=()=>showPanel('signals');
 function showIndicationOverview() {
   if(!config || !state)return;
   revealMap();
-  const view=indicationOverview(state,config.site.perimeter,{width:map.clientWidth,height:map.clientHeight});
-  if(view){Object.assign(plan,view);setMode('site');map.focus({preventScroll:true});}
+  // Georeferenced areas beyond the local terrain extent are shown on the regional map; schematic areas stay on the site plan.
+  const schematic=(state.early_warning?.zones || []).some(schematicZone);
+  const view=indicationOverview(state,config.site.perimeter,{width:map.clientWidth,height:map.clientHeight},schematic?Infinity:config.regional_map.terrain_extent_m ?? Infinity);
+  if(!view)return;
+  if(view.beyond_local){
+    const [lat,lon]=localToGeo(view.x,view.z,config.regional_map.site_origin);
+    const fit=Math.floor(Math.log2(.8*Math.min(map.clientWidth/Math.max(1,view.width_m),map.clientHeight/Math.max(1,view.height_m))/pixelsPerMeter(lat,0)));
+    Object.assign(region,{lat,lon,zoom:Math.max(3,Math.min(18,Number.isFinite(fit)?fit:10))});setMode('region');
+  } else {Object.assign(plan,{x:view.x,z:view.z,zoom:view.zoom});setMode('site');}
+  map.focus({preventScroll:true});
 }
 $('indication-overview').onclick=showIndicationOverview;
 $('map-indication-overview').onclick=showIndicationOverview;
@@ -802,7 +810,7 @@ function renderTactics() {
     $('tactics-teams').dataset.signature=formationSignature;
     $('tactics-formation-posture').textContent=formation?t('tactics.formationPosture',{posture:tacticsLabel('formation',formation.posture),count:formation.unit_count ?? 0}):'';
     const countLabel=key=>{for(const group of ['posture','lean']){const label=`tactics.${group}.${key}`;if(t(label)!==label)return t(label);}return key;};
-    $('tactics-teams').innerHTML=rows.map(row=>`<li><strong>${escape(unitSymbol(row.kind))} ${escape(t('tactics.team',{kind:unitKindLabel(row.kind),role:t(`units.role.${row.role}`),sector:row.sector==='site'?t('tactics.sector.site'):row.sector,count:row.unit_count}))}</strong><small>${escape(row.tasking_count?`${t('tactics.tasking',{count:row.tasking_count,objects:`${row.tasking.join(', ')}${row.tasking_count>row.tasking.length?', …':''}`})} · ${Object.entries(row.counts).map(([key,count])=>`${countLabel(key)} ${count}`).join(' · ')}`:t('tactics.taskingNone'))}</small></li>`).join('') || `<li class="muted">${escape(t('tactics.formationEmpty'))}</li>`;
+    $('tactics-teams').innerHTML=rows.map(row=>`<li><strong>${unitIcon(row.kind)} ${escape(t('tactics.team',{kind:unitKindLabel(row.kind),role:t(`units.role.${row.role}`),sector:row.sector==='site'?t('tactics.sector.site'):row.sector,count:row.unit_count}))}</strong><small>${escape(row.tasking_count?`${t('tactics.tasking',{count:row.tasking_count,objects:`${row.tasking.join(', ')}${row.tasking_count>row.tasking.length?', …':''}`})} · ${Object.entries(row.counts).map(([key,count])=>`${countLabel(key)} ${count}`).join(' · ')}`:t('tactics.taskingNone'))}</small></li>`).join('') || `<li class="muted">${escape(t('tactics.formationEmpty'))}</li>`;
   }
   // Kinematic numbers change every tick; only material changes (versions, allocation, choice) rebuild the card.
   const cardSignature=JSON.stringify([language,connected,tacticsBusy,tacticsChoice?.effector_id,selected,Boolean(tactics),targets.length,
@@ -865,7 +873,9 @@ const unitKindLabel = kind => {
   const key=`units.kind.${kind}`;
   return t(key)!==key ? t(key) : localized(state?.exercise?.unit_kinds?.find(item=>item.id===kind)?.label) || String(kind);
 };
-const unitSymbol = kind => ({radar:'◎',detection_phone:'☏',effector_team:'▲'})[kind] || '♟';
+// Acoustic listening posts use an inline microphone: text glyphs for it render inconsistently across engines.
+const ACOUSTIC_ICON = '<svg class="unit-glyph" viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" fill="currentColor"/><path d="M3.3 7.6a4.7 4.7 0 0 0 9.4 0M8 12.4v2.3M5.4 14.7h5.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+const unitIcon = kind => kind==='detection_phone' ? ACOUSTIC_ICON : escape(({radar:'◎',effector_team:'▲'})[kind] || '♟');
 function renderUnits() {
   syncSelects();
   const exercise=state?.exercise, proposal=exercise?.unit_proposal, units=exercise?.units || [];
@@ -879,15 +889,20 @@ function renderUnits() {
   $('unit-proposal-label').textContent=proposal?.status==='pending'?t('units.proposal',{count:proposalPositions(proposal).length}):t('units.current');
   $('unit-threat-basis').textContent=['scenario_prior','received_picture'].includes(summary?.threat_basis)?t(`units.basis.${summary.threat_basis}`):'';
   $('unit-proposal-basis').textContent=localized(proposal?.basis) || t('units.scope');
-  const coverageSignature=JSON.stringify([language,kinds,summary?.coverage]);
+  const radarCoverage=Number.isFinite(exercise?.radar_coverage)?exercise.radar_coverage:null;
+  const coverageSignature=JSON.stringify([language,kinds,summary?.coverage,radarCoverage]);
   if($('unit-coverage').dataset.signature!==coverageSignature){
     $('unit-coverage').dataset.signature=coverageSignature;
     $('unit-coverage').innerHTML=kinds.map(kind=>{
       const coverage=summary.coverage?.[kind.kind];
-      return `<li><strong>${escape(unitSymbol(kind.kind))} ${escape(unitKindLabel(kind.kind))}</strong><small>${escape(t('units.coverageRow',{proposed:kind.proposed,placed:kind.placed,budget:kind.budget ?? '–',coverage:Number.isFinite(coverage)?Math.round(coverage*100):'–'}))} · ${escape(kind.range_m>0?t('units.range',{range:(kind.range_m/1000).toLocaleString(language)}):t('units.noRange'))}</small></li>`;
+      return `<li><strong>${unitIcon(kind.kind)} ${escape(unitKindLabel(kind.kind))}</strong><small>${escape(t('units.coverageRow',{proposed:kind.proposed,placed:kind.placed,budget:kind.budget ?? '–',coverage:Number.isFinite(coverage)?Math.round(coverage*100):'–'}))} · ${escape(kind.range_m>0?t('units.range',{range:(kind.range_m/1000).toLocaleString(language)}):t('units.noRange'))}</small>${kind.kind==='radar' && radarCoverage!==null?`<small class="unit-los">${escape(t('units.radarLos',{coverage:Math.round(radarCoverage*100)}))}</small>`:''}</li>`;
     }).join('');
   }
-  if(unitPendingAction && (unitPendingAction.run_id!==state?.run_id || (unitPendingAction.unit_id && !units.some(unit=>unit.id===unitPendingAction.unit_id))))unitPendingAction=null;
+  const adjustment=pendingRadarAdjustment(state);
+  if(unitPendingAction && (unitPendingAction.run_id!==state?.run_id || (unitPendingAction.unit_id && !units.some(unit=>unit.id===unitPendingAction.unit_id))
+      || (unitPendingAction.action==='radar_apply' && unitPendingAction.adjustment_id!==adjustment?.id)))unitPendingAction=null;
+  $('radar-adjust').disabled=!available || unitBusy;
+  renderRadarAdjustment(adjustment,available);
   $('unit-accept').hidden=proposal?.status!=='pending';$('unit-accept').disabled=!available || unitBusy;
   $('unit-accept').textContent=t(unitPendingAction?.action==='replace'?'units.replaceConfirm':units.length?'units.replace':'units.accept');
   $('unit-accept').setAttribute('aria-pressed',String(unitPendingAction?.action==='replace'));
@@ -920,7 +935,7 @@ function renderUnits() {
     const disabled=manual && available && !unitBusy?'':'disabled';
     const groups=(kinds.length?kinds.map(kind=>kind.kind):UNIT_KINDS).map(kind=>({kind,rows:units.filter(unit=>unit.kind===kind),budget:kinds.find(item=>item.kind===kind)?.budget}))
       .filter(group=>group.rows.length);
-    $('unit-list').innerHTML=groups.map(group=>`<section><h3><span>${escape(unitSymbol(group.kind))} ${escape(unitKindLabel(group.kind))}</span><span>${escape(t('units.groupCount',{placed:group.rows.length,budget:group.budget ?? '–'}))}</span></h3><ul>${group.rows.map(unit=>`<li><span><strong>${escape(localized(unit.label) || unit.id)}</strong><small>${unit.role?`${escape(t(`units.role.${unit.role}`))} · `:''}${escape(t('units.position',{x:Math.round(unit.position[0]),z:Math.round(unit.position[2])}))}</small></span><button type="button" class="button button-secondary" data-unit-focus="${escape(unit.id)}">${escape(t('exercise.focus'))}</button><button type="button" class="button button-secondary" data-unit-move="${escape(unit.id)}" ${disabled}>${escape(t('units.move'))}</button><button type="button" class="button button-secondary" data-unit-remove="${escape(unit.id)}" aria-pressed="${unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id}" ${disabled}>${escape(t(unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id?'units.removeConfirm':'units.remove'))}</button></li>`).join('')}</ul></section>`).join('') || `<p class="muted">${escape(t('units.listEmpty'))}</p>`;
+    $('unit-list').innerHTML=groups.map(group=>`<section><h3><span>${unitIcon(group.kind)} ${escape(unitKindLabel(group.kind))}</span><span>${escape(t('units.groupCount',{placed:group.rows.length,budget:group.budget ?? '–'}))}</span></h3><ul>${group.rows.map(unit=>`<li><span><strong>${escape(localized(unit.label) || unit.id)}</strong><small>${unit.role?`${escape(t(`units.role.${unit.role}`))} · `:''}${escape(t('units.position',{x:Math.round(unit.position[0]),z:Math.round(unit.position[2])}))}</small></span><button type="button" class="button button-secondary" data-unit-focus="${escape(unit.id)}">${escape(t('exercise.focus'))}</button><button type="button" class="button button-secondary" data-unit-move="${escape(unit.id)}" ${disabled}>${escape(t('units.move'))}</button><button type="button" class="button button-secondary" data-unit-remove="${escape(unit.id)}" aria-pressed="${unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id}" ${disabled}>${escape(t(unitPendingAction?.action==='remove' && unitPendingAction.unit_id===unit.id?'units.removeConfirm':'units.remove'))}</button></li>`).join('')}</ul></section>`).join('') || `<p class="muted">${escape(t('units.listEmpty'))}</p>`;
     $('unit-list').querySelectorAll('[data-unit-focus]').forEach(button=>button.onclick=()=>{
       const unit=state.exercise.units.find(item=>item.id===button.dataset.unitFocus);if(!unit)return;
       plan.x=unit.position[0];plan.z=unit.position[2];plan.zoom=4;revealMap();setMode('site');
@@ -934,6 +949,40 @@ function renderUnits() {
     });
   }
 }
+function renderRadarAdjustment(adjustment,available) {
+  const card=$('radar-adjustment');
+  card.hidden=!adjustment;
+  const applicable=adjustment?radarAdjustmentApplicable(state,adjustment):false;
+  const armed=unitPendingAction?.action==='radar_apply';
+  const signature=JSON.stringify([language,adjustment,applicable,armed,available,unitBusy]);
+  if(card.dataset.signature===signature)return;
+  card.dataset.signature=signature;
+  if(!adjustment){card.innerHTML='';return;}
+  const percent=value=>Number.isFinite(value)?Math.round(value*100):'–';
+  const changes=[...adjustment.moves.map(move=>`<li>→ ${escape(t('units.radarMove',{label:localized(move.label) || move.unit_id,distance:Number.isFinite(move.distance_m)?Math.round(move.distance_m).toLocaleString(language):'–'}))}</li>`),
+    ...adjustment.additions.map(addition=>`<li>+ ${escape(t('units.radarAdd',{label:localized(addition.label) || t('units.kind.radar')}))}</li>`)];
+  const disabled=!available || unitBusy;
+  card.innerHTML=`<h3>${escape(t('units.radarAdjustTitle'))}</h3>
+    <p><strong>${escape(t('units.radarAdjustCoverage',{before:percent(adjustment.coverage_before),after:percent(adjustment.coverage_after)}))}</strong>${Number.isFinite(adjustment.computed_at_ms)?` <small>${escape(t('units.radarComputed',{time:fmt(adjustment.computed_at_ms)}))}</small>`:''}</p>
+    ${changes.length?`<ul>${changes.join('')}</ul>`:`<p class="muted">${escape(t('units.radarNoChange'))}</p>`}
+    ${['scenario_prior','received_picture'].includes(adjustment.threat_basis)?`<p class="muted">${escape(t(`units.basis.${adjustment.threat_basis}`))}</p>`:''}
+    <p class="muted">${escape(localized(adjustment.basis))}</p>
+    ${applicable?'':`<p class="radar-adjustment-stale">${escape(t('units.radarStale'))}</p>`}
+    <div class="unit-actions"><button type="button" id="radar-apply" class="button button-primary" aria-pressed="${armed}" ${disabled || !applicable || !changes.length?'disabled':''}>${escape(t(armed?'units.radarApplyConfirm':'units.radarApply'))}</button><button type="button" id="radar-dismiss" class="button button-secondary" ${disabled?'disabled':''}>${escape(t('units.radarDismiss'))}</button></div>`;
+  $('radar-apply').onclick=()=>{
+    // Applying moves placed radars: the first click arms the button, the second sends the command.
+    const current=pendingRadarAdjustment(state);if(!current)return;
+    if(unitPendingAction?.action==='radar_apply' && unitPendingAction.adjustment_id===current.id){
+      unitPendingAction=null;sendUnitCommand({action:'exercise_apply_radar_adjustment',run_id:state.run_id,adjustment_id:current.id});return;
+    }
+    unitPendingAction={action:'radar_apply',adjustment_id:current.id,run_id:state.run_id};unitNotice='units.radarApplyArmed';renderUnits();
+    $('radar-apply')?.focus();
+  };
+  $('radar-dismiss').onclick=()=>{
+    const current=pendingRadarAdjustment(state);if(!current)return;
+    unitPendingAction=null;sendUnitCommand({action:'exercise_dismiss_radar_adjustment',run_id:state.run_id,adjustment_id:current.id});
+  };
+}
 function startUnitPlacement(unitId) {
   if(!connected || unitBusy || state?.exercise?.unit_proposal?.status!=='manual')return;
   unitPlacement={run_id:state.run_id,...(unitId?{unit_id:unitId}:{kind:$('unit-kind').value || 'infantry'})};unitNotice='';renderUnits();revealMap();map.focus({preventScroll:true});
@@ -941,17 +990,21 @@ function startUnitPlacement(unitId) {
 function cancelUnitPlacement() {unitPlacement=null;unitNotice='';renderUnits();}
 function sendUnitCommand(draft) {
   if(!connected || unitBusy)return;
-  if(!exerciseUnitCommand(state,draft,true)){unitNotice='units.invalid';renderUnits();return;}
+  const radar=RADAR_ADJUSTMENT_ACTIONS.includes(draft.action);
+  const command=()=>radar?radarAdjustmentCommand(state,draft,true):exerciseUnitCommand(state,draft,true);
+  const invalid=radar?'units.radarStale':'units.invalid';
+  if(!command()){unitNotice=invalid;renderUnits();return;}
   unitBusy=true;unitNotice='';renderUnits();
   controlChain=controlChain.then(async()=>{
-    const body=connected?exerciseUnitCommand(state,draft,true):null;
-    if(!body){unitBusy=false;unitPlacement=null;unitNotice='units.invalid';renderUnits();return;}
+    const body=connected?command():null;
+    if(!body){unitBusy=false;unitPlacement=null;unitNotice=invalid;renderUnits();return;}
     const version=++requestVersion;
     try {
       const data=await api('/api/control',body);
       if(version===requestVersion)render(data);
-      if(state?.run_id===draft.run_id){unitPlacement=null;unitNotice=draft.action==='exercise_reoptimize_units'?'units.reoptimized':'units.saved';}
-    } catch {if(state?.run_id===draft.run_id)unitNotice='units.failed';}
+      if(state?.run_id===draft.run_id){unitPlacement=null;unitNotice=({exercise_reoptimize_units:'units.reoptimized',exercise_adjust_radars:'units.radarProposed',
+        exercise_apply_radar_adjustment:'units.radarApplied',exercise_dismiss_radar_adjustment:'units.radarDismissed'})[draft.action] || 'units.saved';}
+    } catch {if(state?.run_id===draft.run_id)unitNotice=radar?'units.radarFailed':'units.failed';}
     finally {unitBusy=false;renderUnits();drawMap();}
   });
 }
@@ -966,6 +1019,7 @@ $('unit-accept').onclick=()=>{
   unitPendingAction=null;sendUnitCommand({action:'exercise_accept_units',run_id:state.run_id,proposal_id:state.exercise.unit_proposal.id});
 };
 $('unit-reoptimize').onclick=()=>sendUnitCommand({action:'exercise_reoptimize_units',run_id:state.run_id});
+$('radar-adjust').onclick=()=>{unitPendingAction=null;sendUnitCommand({action:'exercise_adjust_radars',run_id:state.run_id});};
 document.addEventListener('keydown',event=>{
   if(event.key!=='Escape' || unitBusy || $('tactics-dialog').open)return;
   if(unitPlacement){event.preventDefault();cancelUnitPlacement();}
@@ -1244,10 +1298,12 @@ $('situation-review-form').onsubmit = event => {
 };
 
 function zoneLabel(zone) { return zone?.label?.[language] || zone?.label?.en || zone?.id || t('early.unknown'); }
+// The forward reference area is site-plan-only unless the server marks it georeferenced.
+function schematicZone(zone) { return zone?.id==='remote_reference' && zone.georeferenced!==true; }
 function focusZone(id) {
   const zone = state?.early_warning?.zones.find(z=>z.id===id);
   if(!zone || !config)return;
-  if(zone.id==='remote_reference') {
+  if(schematicZone(zone)) {
     revealMap();
     const received=earlyIndicationSummary(state).zones.some(item=>item.id===zone.id && item.positive>0);
     if(!received)return;
@@ -1255,8 +1311,11 @@ function focusZone(id) {
     Object.assign(plan,{x:zone.center[0],z:zone.center[2],zoom:Math.min(30,Math.min(map.clientWidth,map.clientHeight)*.7/(zone.radius_m*2*base))});
     setMode('site');map.focus({preventScroll:true});return;
   }
+  revealMap();
   const [lat,lon]=localToGeo(zone.center[0],zone.center[2],config.regional_map.site_origin);
-  Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:14});revealMap();setMode('region');
+  // Fit about three area diameters (≈ zoom 11 for a 4 km forward area), never closer than the community view.
+  const fit=Math.floor(Math.log2((Math.min(map.clientWidth,map.clientHeight) || 480)*.8/(zone.radius_m*6*pixelsPerMeter(lat,0))));
+  Object.assign(region,{lat,lon,zoom:zone.deployment_type==='fixed_phone'?17:Math.max(3,Math.min(14,Number.isFinite(fit)?fit:14))});setMode('region');
 }
 function deviceHealthHTML(evidence) {
   if (!evidence.device_health) return '';
@@ -1299,13 +1358,58 @@ function point(x,z) {
 }
 function visibleSignalZones() {
   const positive=new Set(earlyIndicationSummary(state).zones.filter(zone=>zone.positive>0).map(zone=>zone.id));
-  return (state?.early_warning?.zones || []).filter(zone=>zone.id!=='remote_reference' || positive.has(zone.id));
+  return (state?.early_warning?.zones || []).filter(zone=>!schematicZone(zone) || positive.has(zone.id));
+}
+// Boundary and corridor paths are projected once per config to zoom-0 Web Mercator; redraws only scale and offset them.
+function geography() {
+  if(geographyCache?.config===config)return geographyCache;
+  const origin=config.regional_map.site_origin;
+  const node=(x,z,latLon)=>{const [lat,lon]=Array.isArray(latLon) && latLon.length===2 && latLon.every(Number.isFinite)?latLon:localToGeo(x,z,origin);return [x,z,...mercator(lat,lon,0)];};
+  const path=(local,latLon=[])=>(local || []).map((row,index)=>{const z=row?.[row.length-1];return Number.isFinite(row?.[0]) && Number.isFinite(z)?node(row[0],z,latLon[index]):null;}).filter(Boolean);
+  const site=row=>Array.isArray(row) && row.length===3 && row.every(Number.isFinite)?node(row[0],row[2]):null;
+  const lines=Object.entries(config.geography?.boundaries?.lines || {}).map(([id,line])=>({id,label:line.label,
+    parts:(line.parts || []).map(part=>path(part.local,part.lat_lon)).filter(part=>part.length>1)})).filter(line=>line.parts.length);
+  const corridors=(config.geography?.corridors?.corridors || []).map(row=>({id:row.id,label:row.label,centreline:path(row.centreline),launch:site(row.launch),gate:site(row.gate)}))
+    .filter(row=>row.centreline.length>1);
+  geographyCache={config,lines,corridors};
+  return geographyCache;
+}
+function geographySVG(w,h) {
+  const geo=geography();
+  let project;
+  if(mode==='region'){const k=2**region.zoom,[cx,cy]=mercator(region.lat,region.lon,region.zoom);project=n=>[w/2+n[2]*k-cx,h/2+n[3]*k-cy];}
+  else {const s=planScale();project=n=>[w/2+(n[0]-plan.x)*s,h/2+(n[1]-plan.z)*s];}
+  const inside=([x,y],margin=0)=>x>=margin && x<=w-margin && y>=margin && y<=h-margin;
+  const polyline=points=>points.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const text=(x,y,color,value,size=10)=>`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${color}" stroke="#0a151b" stroke-width="3" paint-order="stroke" font-size="${size}" font-weight="600">${escape(value)}</text>`;
+  let svg='',visible=false;
+  for(const line of geo.lines){
+    const mdl=line.id==='mdl',color=mdl?'#e5675a':'#dfb86a';
+    const parts=line.parts.map(part=>part.map(project)),points=parts.flat();
+    const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+    if(Math.max(...xs)<0 || Math.min(...xs)>w || Math.max(...ys)<0 || Math.min(...ys)>h)continue;
+    visible=true;
+    for(const part of parts)svg+=`<polyline class="geo-${escape(line.id)}" points="${polyline(part)}" fill="none" stroke="${color}" stroke-width="${mdl?2.2:1.5}" ${mdl?'':'stroke-dasharray="7 5"'} stroke-linejoin="round" opacity=".9"/>`;
+    const anchor=points.filter(p=>inside(p,28)).sort((a,b)=>Math.abs(a[0]-w/2)-Math.abs(b[0]-w/2))[0];
+    const key=`geo.${line.id}`;
+    if(anchor)svg+=text(anchor[0]+6,anchor[1]+(line.id==='dmz_south'?14:-6),color,localized(line.label) || (t(key)!==key?t(key):line.id));
+  }
+  if(showCorridors)for(const corridor of geo.corridors){
+    const color='#b9a2e8';
+    svg+=`<polyline class="geo-corridor" points="${polyline(corridor.centreline.map(project))}" fill="none" stroke="${color}" stroke-width="1.6" stroke-dasharray="2 5" stroke-linecap="round" opacity=".85"/>`;
+    if(corridor.launch){const [x,y]=project(corridor.launch);svg+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="${color}22" stroke="${color}" stroke-dasharray="3 3"/>${text(x+10,y+4,color,`${localized(corridor.label) || corridor.id} · ${t('geo.launch')}`,9)}`;}
+    if(corridor.gate){const [x,y]=project(corridor.gate);svg+=`<path d="M${x.toFixed(1)} ${(y-6).toFixed(1)}l6 6l-6 6l-6-6z" fill="#0a151b" stroke="${color}" stroke-width="1.5"/>${text(x+9,y+3,color,t('geo.gate'),9)}`;}
+  }
+  $('geo-legend').hidden=!visible;
+  $('corridor-legend').hidden=!showCorridors || !geo.corridors.length;
+  return svg;
 }
 function drawSite() {
   const {site} = config, w=map.clientWidth,h=map.clientHeight,s=planScale();
   overlay.setAttribute('viewBox',`0 0 ${w} ${h}`);
   let svg = '<defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="#48717a26" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="#0a151b"/><rect width="100%" height="100%" fill="url(#grid)"/>';
   if(mode==='region') svg='';
+  svg+=geographySVG(w,h);
   const rect=(cx,cz,width,length,fill,stroke,extra='')=>{const [x,y]=point(cx-width/2,cz-length/2),[right,bottom]=point(cx+width/2,cz+length/2);return `<rect x="${x}" y="${y}" width="${right-x}" height="${bottom-y}" fill="${fill}" stroke="${stroke}" ${extra}/>`;};
   for(const z of visibleSignalZones()){
     const [cx,cy]=point(z.center[0],z.center[2]);
@@ -1364,6 +1468,16 @@ function drawSite() {
     svg+=`<circle class="unit-range" cx="${cx}" cy="${cy}" r="${ringKinds.get(unit.kind)*s}" fill="${color}0d" stroke="${color}" stroke-opacity=".55" stroke-width="1" stroke-dasharray="5 6"/>`;
   }
   $('unit-range-legend').hidden=!ringUnits.length;
+  // A pending radar re-adjustment previews each move as a dashed arrow; nothing moves until it is applied.
+  const adjustment=connected?pendingRadarAdjustment(state):null;
+  if(adjustment?.moves.length){
+    svg+='<defs><marker id="radar-adjust-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8bc9cf"/></marker></defs>';
+    for(const move of adjustment.moves){
+      const [x1,y1]=point(move.from_position[0],move.from_position[2]),[x2,y2]=point(move.to_position[0],move.to_position[2]);
+      const length=Math.hypot(x2-x1,y2-y1),trim=length>24?10/length:0;
+      svg+=`<line class="radar-adjust-arrow" x1="${x1}" y1="${y1}" x2="${x2-(x2-x1)*trim}" y2="${y2-(y2-y1)*trim}" stroke="#8bc9cf" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#radar-adjust-head)"/><circle cx="${x2}" cy="${y2}" r="9" fill="none" stroke="#8bc9cf" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+    }
+  }
   for(const t of (state?.tracks || []).filter(track => connected && track.last_known === false)){
     if (state.tracks.length > 48 && t.object_id !== selected) continue;
     const coords=t.history.map(r=>point(r.position[0],r.position[2]).join(',')).join(' ');
@@ -1377,7 +1491,9 @@ function drawSite() {
     const proposal=state?.exercise?.unit_proposal;
     const units=state?.exercise?.units || [];
     const proposed=proposal?.status==='pending'?proposalPositions(proposal).map((row,index)=>({...row,id:`proposal-${index}`,label:localized(row.label) || t('units.preview',{number:index+1}),preview:true})):[];
-    for(const unit of [...proposed,...units]){
+    const added=(pendingRadarAdjustment(state)?.additions || []).map((row,index)=>({kind:'radar',position:row.position,id:`radar-addition-${index}`,
+      label:localized(row.label) || t('units.preview',{number:index+1}),preview:true,note:t('units.radarAdjustTitle')}));
+    for(const unit of [...proposed,...added,...units]){
       if(!Array.isArray(unit.position) || !unit.position.every(Number.isFinite))continue;
       const [x,y]=point(unit.position[0],unit.position[2]);if(x<0||x>w||y<0||y>h)continue;
       const marker=document.createElement(unit.preview?'div':'button');
@@ -1385,8 +1501,8 @@ function drawSite() {
       marker.style.left=`${x}px`;marker.style.top=`${y}px`;
       const label=unit.preview?unit.label:localized(unit.label) || unit.id;
       const kind=unitKindLabel(unit.kind || 'infantry');
-      marker.innerHTML=`<i aria-hidden="true">${unitSymbol(unit.kind)}</i><span>${escape(label)}</span>`;
-      marker.title=`${kind} · ${unit.preview?`${t('units.proposed')} · ${localized(unit.basis) || t('units.pending')}`:t('units.positioned')}${ringKinds.has(unit.kind)?` · ${t('units.range',{range:(ringKinds.get(unit.kind)/1000).toLocaleString(language)})} · ${t('units.rangeLegend')}`:''}`;
+      marker.innerHTML=`<i aria-hidden="true">${unitIcon(unit.kind)}</i><span>${escape(label)}</span>`;
+      marker.title=`${kind} · ${unit.preview?`${t('units.proposed')} · ${unit.note || localized(unit.basis) || t('units.pending')}`:t('units.positioned')}${ringKinds.has(unit.kind)?` · ${t('units.range',{range:(ringKinds.get(unit.kind)/1000).toLocaleString(language)})} · ${t('units.rangeLegend')}`:''}`;
       if(!unit.preview){marker.type='button';marker.setAttribute('aria-label',`${label} · ${kind} · ${t('units.positioned')}`);marker.onclick=()=>{showPanel('decision');$('unit-panel').scrollIntoView({block:'nearest'});};}
       markers.append(marker);
     }
@@ -1497,6 +1613,7 @@ $('positions-toggle').onclick=async()=>{
     if(version===requestVersion) render(data);
   } catch { if(version===requestVersion) connection(false); }
 };
+$('corridors-toggle').onclick=()=>{showCorridors=!showCorridors;$('corridors-toggle').classList.toggle('is-active',showCorridors);$('corridors-toggle').setAttribute('aria-pressed',String(showCorridors));drawMap();};
 $('radar-toggle').onclick=()=>{radarVisible=!radarVisible;$('radar-toggle').classList.toggle('is-active',radarVisible);$('radar-toggle').setAttribute('aria-pressed',radarVisible);drawRadar(state?.at_ms || 0);};
 function animateRadar(now) {
   if(state?.playing && radarVisible && connected && !$('monitor-view').hidden && map.clientWidth > 0)
@@ -1751,6 +1868,7 @@ try{
   config=await api('/api/config');
   renderCases();
   Object.assign(region,{lat:config.regional_map.center_lat,lon:config.regional_map.center_lon,zoom:config.regional_map.zoom});
+  $('corridors-toggle').hidden=!config.geography?.corridors?.corridors?.length;
   setMode('site');poll();pollAssessment();pollDecisions();
   api('/api/briefings').then(data=>{briefings=data.cases;renderCases();renderBriefing();}).catch(()=>{$('brief-purpose').textContent=t('brief.unavailable');});
 }catch(error){connection(false,'startServer');$('map-status').textContent=t('requestFailed');}

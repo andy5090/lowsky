@@ -77,3 +77,35 @@ export function exerciseUnitCommand(state, draft, confirmed = false) {
   return {action: draft.action, run_id: state.run_id, confirm: true, position: [...draft.position],
     ...(existing ? {unit_id: draft.unit_id} : draft.kind != null ? {kind: draft.kind} : {})};
 }
+
+// Radar re-adjustment: the server computes moves and additions; the client only requests, applies or dismisses by id.
+export const RADAR_ADJUSTMENT_ACTIONS = ['exercise_adjust_radars', 'exercise_apply_radar_adjustment', 'exercise_dismiss_radar_adjustment'];
+const finitePosition = position => Array.isArray(position) && position.length === 3 && position.every(Number.isFinite);
+export function pendingRadarAdjustment(state) {
+  const adjustment = state?.exercise?.radar_adjustment;
+  if (state?.exercise?.scope !== 'scripted_training' || adjustment?.status !== 'pending' || typeof adjustment.id !== 'string') return null;
+  return {...adjustment,
+    moves: (adjustment.moves || []).filter(move => finitePosition(move?.from_position) && finitePosition(move?.to_position)),
+    additions: (adjustment.additions || []).filter(addition => finitePosition(addition?.position))};
+}
+// Apply is refused locally when a listed radar is gone or moved (>1 m) or the radar budget would be exceeded.
+export function radarAdjustmentApplicable(state, adjustment = pendingRadarAdjustment(state)) {
+  if (!adjustment) return false;
+  const radars = (state.exercise.units || []).filter(unit => unit.kind === 'radar');
+  const budget = Number.isFinite(adjustment.budget) ? adjustment.budget : unitBudget(state, 'radar')?.budget;
+  if (Number.isFinite(budget) && radars.length + adjustment.additions.length > budget) return false;
+  return adjustment.moves.every(move => {
+    const unit = radars.find(item => item.id === move.unit_id);
+    return finitePosition(unit?.position)
+      && Math.hypot(unit.position[0] - move.from_position[0], unit.position[2] - move.from_position[2]) <= 1;
+  });
+}
+export function radarAdjustmentCommand(state, draft, confirmed = false) {
+  if (confirmed !== true || !draft || typeof state?.run_id !== 'string' || draft.run_id !== state.run_id
+      || state.exercise?.scope !== 'scripted_training' || !RADAR_ADJUSTMENT_ACTIONS.includes(draft.action)) return null;
+  if (draft.action === 'exercise_adjust_radars') return {action: draft.action, run_id: state.run_id, confirm: true};
+  const adjustment = pendingRadarAdjustment(state);
+  if (!adjustment || draft.adjustment_id !== adjustment.id) return null;
+  if (draft.action === 'exercise_apply_radar_adjustment' && !radarAdjustmentApplicable(state, adjustment)) return null;
+  return {action: draft.action, run_id: state.run_id, adjustment_id: adjustment.id, confirm: true};
+}

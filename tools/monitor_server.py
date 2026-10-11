@@ -83,6 +83,7 @@ class Simulation:
         self.context_roads = read_json(tactics.CONTEXT_PATH) if tactics.CONTEXT_PATH.exists() else {}
         self.tactics_audit = AuditLog(tactics_audit_path)
         self.units, self.unit_proposal, self._prior_proposal = [], None, None
+        self.radar_adjustment = None
         self.world_frames = {}
         self.case_id = self.cases[0]['case_id']
         self.anchor_ms, self.anchor_wall = 0, clock()
@@ -207,13 +208,15 @@ class Simulation:
                             by_decision={decision: sum(r['decision'] == decision for r in track_reviews)
                                          for decision in ('noted', 'needs_review', 'dismissed')}),
                         reviews=[r for r in self.reviews if r['run_id'] == self.run_id],
-                        coordinate_system='fictional_local_meters')
+                        coordinate_system='virtual_local_meters')
             result['exercise'] = exercise.view(self.site_layout, tracks, self.exercise_selection, clock['at_ms'],
                                                clock['duration_ms'], bool(clock.get('training_timing', {}).get('paced')))
             if self.unit_proposal is None:
                 self.unit_proposal = self._initial_proposal()
             result['exercise'].update(units=copy.deepcopy(self.units), unit_proposal=copy.deepcopy(self.unit_proposal),
-                                      unit_kinds=copy.deepcopy(self.tactics_catalog['unit_kinds']))
+                                      unit_kinds=copy.deepcopy(self.tactics_catalog['unit_kinds']),
+                                      radar_adjustment=copy.deepcopy(self.radar_adjustment),
+                                      radar_coverage=self._radar_coverage(tracks, early_warning))
             feed = self.test_identification if self.test_identification is not None else self.identification_feed
             reports = tactics.arrived_reports(feed, self.case_id, clock['at_ms'])
             result['tactics'] = tactics.view(tracks, reports, self.tactics_audit.current(self.run_id), self.units,
@@ -243,10 +246,36 @@ class Simulation:
         proposal['id'] = uuid.uuid4().hex
         return proposal
 
+    def _radar_coverage(self, tracks, early_warning):
+        # Line-of-sight share of weighted approach samples seen by the radars placed now (0 when none).
+        model = tactics.radar_model(self.site_layout, self.terrain, self.tactics_catalog)
+        radars = [unit for unit in self.units if unit['kind'] == 'radar']
+        if model is None:
+            return None
+        weights = model.weights(tactics.threat_weights(tracks, early_warning, self.tactics_catalog)[0])
+        return round(model.coverage_at([unit['position'] for unit in radars], weights), 2)
+
     def _unit_command(self, command, state):
         action = command.get('action')
         if command.get('confirm') is not True or command.get('run_id') != self.run_id:
             raise ValueError('Confirm a placement change for the current run')
+        if action == 'exercise_adjust_radars':
+            self.radar_adjustment = tactics.propose_radar_adjustment(
+                self.units, self.site_layout, self.terrain, state['tracks'], state['early_warning'],
+                self.tactics_catalog, state['at_ms'])
+            return
+        if action in ('exercise_apply_radar_adjustment', 'exercise_dismiss_radar_adjustment'):
+            adjustment = self.radar_adjustment
+            if adjustment is None or command.get('adjustment_id') != adjustment['id'] or adjustment['status'] != 'pending':
+                raise ValueError('Stale radar adjustment')
+            if action == 'exercise_apply_radar_adjustment':
+                units = copy.deepcopy(self.units)
+                tactics.apply_radar_adjustment(units, adjustment, self.tactics_catalog)
+                self.units = units
+                adjustment['status'] = 'applied'
+            else:
+                adjustment['status'] = 'dismissed'
+            return
         proposal = state['exercise']['unit_proposal']
         if action == 'exercise_reoptimize_units':
             self.unit_proposal = tactics.propose_placement(self.site_layout, self.terrain, self.context_roads, state['tracks'],
@@ -260,6 +289,8 @@ class Simulation:
                     raise ValueError('Proposal already applied or replaced')
                 self.units = tactics.units_from_proposal(proposal)
                 self.unit_proposal['status'] = 'accepted'
+                if self.radar_adjustment and self.radar_adjustment['status'] == 'pending':
+                    self.radar_adjustment['status'] = 'superseded'
             else:
                 if proposal['status'] not in ('pending', 'accepted'):
                     raise ValueError('Manual placement already active')
@@ -267,6 +298,9 @@ class Simulation:
             return
         if proposal['status'] != 'manual':
             raise ValueError('Choose manual placement before placing or removing units')
+        # Any manual change invalidates a pending radar adjustment computed for the previous layout.
+        if self.radar_adjustment and self.radar_adjustment['status'] == 'pending':
+            self.radar_adjustment['status'] = 'superseded'
         if action == 'exercise_place_unit':
             tactics.place_unit(command, self.units, self.tactics_catalog)
         elif action == 'exercise_remove_unit':
@@ -399,7 +433,8 @@ class Simulation:
             elif action == 'exercise_branch':
                 self.exercise_selection = exercise.select(command, self.state())
             elif action in ('exercise_accept_units', 'exercise_manual_units', 'exercise_place_unit',
-                            'exercise_remove_unit', 'exercise_reoptimize_units'):
+                            'exercise_remove_unit', 'exercise_reoptimize_units', 'exercise_adjust_radars',
+                            'exercise_apply_radar_adjustment', 'exercise_dismiss_radar_adjustment'):
                 self._unit_command(command, self.state())
             elif action == 'tactics_allocate':
                 record = tactics.select_allocation(command, self.state(), self.tactics_catalog)
@@ -437,7 +472,7 @@ class Simulation:
                 raise ValueError('Unknown action')
             if self.run_id != previous_run:
                 self.exercise_selection = None
-                self.units, self.unit_proposal = [], None
+                self.units, self.unit_proposal, self.radar_adjustment = [], None, None
             self.anchor_ms, self.anchor_wall = now_ms, self.clock()
             self.revision += 1
             if not self.test_operator.applying and action in ('start_test', 'case', 'reset', 'seek', 'pause', 'play'):
@@ -517,6 +552,9 @@ class Handler(BaseHTTPRequestHandler):
                                    cases=[{'case_id': c['case_id'], 'variant': c['variant']} for c in self.server.simulation.cases],
                                    regional_map=read_json(PROJECT / 'monitor' / 'map_config.json'),
                                    radar_display=read_json(PROJECT / 'data' / 'radar_display.json'),
+                                   geography={key: read_json(PROJECT / 'data/geography' / name)
+                                              for key, name in (('boundaries', 'korean_mdl.json'), ('corridors', 'approach_corridors.json'))
+                                              if (PROJECT / 'data/geography' / name).exists()},
                                    research_sources=read_json(PROJECT / 'data/references/ukraine_observation_lessons.json')['sources']))
         elif path == '/health':
             self.respond(200, {'ok': True})

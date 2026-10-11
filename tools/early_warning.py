@@ -1,4 +1,4 @@
-"""Observation-only early signals from fictional community and fixed-phone feeds.
+"""Observation-only early signals from simulated community and fixed-phone feeds.
 
 Rules describe review priority, never identity, hostile intent or sensor performance.
 No world truth, microphone access, triangulation or trajectory prediction is used.
@@ -82,6 +82,9 @@ def snapshot(feed, at_ms):
                     radius_m=zone['radius_m'], status=status, evidence=evidence,
                     positive_sources=len(positive), radar_association='unknown', synthetic=True)
         item['deployment_type'] = zone.get('deployment_type', 'community')
+        # Map placement flags: georeferenced areas use the regional map; schematic ones stay on the site plan.
+        item['georeferenced'] = bool(zone.get('georeferenced', False))
+        item['schematic'] = bool(zone.get('schematic', False))
         item['installations'] = [
             {key: installation[key] for key in ('sensor_id', 'position', 'mount_height_m')}
             for installation in zone.get('installations', [])

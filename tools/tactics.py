@@ -1,6 +1,6 @@
 """Rule-based training recommendation layer: identification, response options, formation, placement.
 
-Everything here is advice over received evidence and the fictional site layout. Nothing changes
+Everything here is advice over received evidence and the virtual site layout. Nothing changes
 aircraft motion, facility status or observations, and no interception, damage or propagation model
 is implemented. Scores are uncalibrated rubric points from the local scenario documents.
 """
@@ -21,6 +21,7 @@ CATALOG_PATH = PROJECT / 'data/tactics/catalog.json'
 FEED_PATH = PROJECT / 'data/tactics/identification_demo.json'
 TERRAIN_PATH = PROJECT / 'data/terrain/korea_site.json'
 CONTEXT_PATH = PROJECT / 'data/terrain/korea_context.json'
+CORRIDORS_PATH = PROJECT / 'data/geography/approach_corridors.json'
 
 SCOPE = 'rule_based_training_advice'
 SECTORS = ('N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW')
@@ -79,6 +80,31 @@ def in_runway_corridor(position, layout, margin_m):
     cx, _, cz = runway['center']
     return (abs(position[0] - cx) <= runway['width_m'] / 2 + margin_m
             and abs(position[2] - cz) <= runway['length_m'] / 2 + margin_m)
+
+
+def _grading_distance(x, z, layout):
+    """Mirror of godot/geographic_environment.gd grading_distance: negative inside the graded site."""
+    polygon = layout['perimeter']['polygon']
+    margin = layout['terrain_grading']['margin_m']
+    if point_in_polygon(x, z, polygon):
+        return -margin
+    best = float('inf')
+    for index in range(len(polygon)):
+        (x1, z1), (x2, z2) = polygon[index - 1], polygon[index]
+        dx, dz = x2 - x1, z2 - z1
+        t = max(0.0, min(1.0, ((x - x1) * dx + (z - z1) * dz) / ((dx * dx + dz * dz) or 1.0)))
+        best = min(best, math.hypot(x - (x1 + dx * t), z - (z1 + dz * t)))
+    return best - margin
+
+
+def graded_elevation(terrain, layout, x, z):
+    """Elevation as rendered: flattened airfield blended into the DEM (smoothstep over blend_m)."""
+    outside = _grading_distance(x, z, layout)
+    if outside <= 0:
+        return -0.02
+    raw = elevation(terrain, x, z)
+    t = max(0.0, min(1.0, outside / layout['terrain_grading']['blend_m']))
+    return -0.02 + (raw + 0.02) * t * t * (3 - 2 * t)
 
 
 def elevation(terrain, x, z):
@@ -466,6 +492,234 @@ def road_candidates(context, layout, settings):
     return sorted(result)
 
 
+class RadarModel:
+    """Terrain line-of-sight visibility from candidate radar sites to assumed approach samples.
+
+    Samples lie on the axis from each corridor's entry gate toward the airfield (and +-700 m to each side),
+    inside the local DEM, at two assumed heights above local terrain (low 50 m, higher 120 m); radars sit on
+    a 6 m mast. Visibility is geometric only: no clutter, propagation, Doppler or detection probability.
+    """
+
+    def __init__(self, layout, terrain, catalog, corridors):
+        settings = catalog['placement']
+        kinds = {kind['id']: kind for kind in catalog['unit_kinds']}
+        self.range_m = kinds['radar']['display_range_m']
+        self.mast_m = settings.get('radar_mast_m', 6)
+        self.target_agl_m = settings.get('assumed_target_agl_m', [50, 120])
+        self.separation_m = settings.get('radar_separation_m', 1200)
+        self.terrain = terrain
+        self.layout = layout
+        # Line-of-sight steps at the DEM spacing so ridges between grid posts are not skipped.
+        self.step_m = (terrain or {}).get('spacing_m', 50)
+        self._position_cache = {}
+        self._graded = self._graded_grid()
+        extent = (terrain or {}).get('extent_m', 10000) / 2 - 100
+        step = settings.get('radar_grid_m', 600)
+        self.candidates = [[x, 0, z] for x in range(-int(extent // step) * step, int(extent) + 1, step)
+                           for z in range(-int(extent // step) * step, int(extent) + 1, step)
+                           if not _blocked([x, 0, z], layout, 150) and math.hypot(x, z) <= extent]
+        self.samples, self.sample_corridor, self.sample_agl = [], [], []
+        for corridor in corridors:
+            gx, _, gz = corridor['gate']
+            length = math.hypot(gx, gz)
+            ux, uz = -gx / length, -gz / length
+            for distance in range(int(length) - 200, 400, -settings.get('approach_sample_m', 400)):
+                for lateral in (-700, 0, 700):
+                    x = ux * -distance - uz * lateral
+                    z = uz * -distance + ux * lateral
+                    if abs(x) <= extent and abs(z) <= extent:
+                        for agl in self.target_agl_m:
+                            self.samples.append([round(x, 1), 0, round(z, 1)])
+                            self.sample_corridor.append(corridor['id'])
+                            self.sample_agl.append(agl)
+        self.heights = [self.ground(p[0], p[2]) for p in self.samples]
+        self.visible = [self._visible_from(c) for c in self.candidates]
+
+    def ground(self, x, z):
+        """Bilinear sample of the graded (as-rendered) height grid built once in _graded_grid."""
+        grid = self._graded
+        if grid is None:
+            return elevation(self.terrain, x, z)
+        size, spacing, half = self.terrain['grid_size'], self.terrain['spacing_m'], self.terrain['extent_m'] / 2
+        column = min(max((x + half) / spacing, 0.0), size - 1.0)
+        row = min(max((z + half) / spacing, 0.0), size - 1.0)
+        x0, z0 = int(column), int(row)
+        x1, z1 = min(x0 + 1, size - 1), min(z0 + 1, size - 1)
+        north = grid[z0][x0] + (grid[z0][x1] - grid[z0][x0]) * (column - x0)
+        south = grid[z1][x0] + (grid[z1][x1] - grid[z1][x0]) * (column - x0)
+        return north + (south - north) * (row - z0)
+
+    def _graded_grid(self):
+        if not self.terrain or not (self.layout.get('terrain_grading') and self.layout.get('perimeter')):
+            return None
+        size, spacing, half = self.terrain['grid_size'], self.terrain['spacing_m'], self.terrain['extent_m'] / 2
+        return [[graded_elevation(self.terrain, self.layout, -half + col * spacing, -half + row * spacing)
+                 for col in range(size)] for row in range(size)]
+
+    def visible_at(self, position):
+        """Visibility from an arbitrary placed position (memoized to the metre)."""
+        key = (round(position[0]), round(position[2]))
+        if key not in self._position_cache:
+            self._position_cache[key] = self._visible_from([key[0], 0, key[1]])
+        return self._position_cache[key]
+
+    def coverage_at(self, positions, weights):
+        seen = set().union(*(self.visible_at(p) for p in positions)) if positions else set()
+        return sum(weights[i] for i in seen) / (sum(weights) or 1.0)
+
+    def _visible_from(self, candidate):
+        rx, rz = candidate[0], candidate[2]
+        ry = self.ground(rx, rz) + self.mast_m
+        result = set()
+        for index, sample in enumerate(self.samples):
+            distance = math.hypot(sample[0] - rx, sample[2] - rz)
+            if distance > self.range_m:
+                continue
+            ty = self.heights[index] + self.sample_agl[index]
+            steps = max(1, int(distance // self.step_m))
+            clear = True
+            for step in range(1, steps):
+                t = step / steps
+                ground = self.ground(rx + (sample[0] - rx) * t, rz + (sample[2] - rz) * t)
+                if ground > ry + (ty - ry) * t - 5:
+                    clear = False
+                    break
+            if clear:
+                result.add(index)
+        return result
+
+    def weights(self, sector_weights):
+        # Farther samples matter more (earlier warning); sector weights follow the received picture or prior.
+        # Low-level samples weigh more: terrain masking matters most for low-flying aircraft.
+        return [(0.5 + math.hypot(p[0], p[2]) / 5000) * (0.2 + sector_weights.get(sector_of(p[0], p[2]), 0))
+                * (1.5 if agl < 100 else 1.0) for p, agl in zip(self.samples, self.sample_agl)]
+
+    def coverage(self, indices, weights):
+        seen = set().union(*(self.visible[i] for i in indices)) if indices else set()
+        total = sum(weights) or 1.0
+        return sum(weights[i] for i in seen) / total
+
+    def nearest(self, position):
+        return min(range(len(self.candidates)), key=lambda i: horizontal_distance(self.candidates[i], position))
+
+    def greedy(self, fixed, count, weights):
+        """Add `count` sites to `fixed` candidate indices, maximizing newly visible weighted samples."""
+        chosen = list(fixed)
+        seen = set().union(*(self.visible[i] for i in chosen)) if chosen else set()
+        added = []
+        for _ in range(count):
+            best = None
+            for index, candidate in enumerate(self.candidates):
+                if index in chosen or any(horizontal_distance(candidate, self.candidates[j]) < self.separation_m for j in chosen):
+                    continue
+                gain = sum(weights[i] for i in self.visible[index] - seen)
+                if gain <= 0:
+                    continue
+                score = gain + 0.001 * self.ground(candidate[0], candidate[2])
+                if best is None or score > best[0]:
+                    best = (score, index)
+            if best is None:
+                break
+            chosen.append(best[1])
+            added.append(best[1])
+            seen |= self.visible[best[1]]
+        return added
+
+
+_RADAR_MODELS = {}
+
+
+def LAYOUT_KEY(layout):
+    return dict(runway=layout.get('runway'), facilities=[f.get('position') for f in layout.get('facilities', [])])
+
+
+def radar_model(layout, terrain, catalog, corridors_path=CORRIDORS_PATH):
+    """Cached per terrain/catalog/corridor set: the visibility matrix is static for a run."""
+    if not terrain or not Path(corridors_path).exists():
+        return None
+    corridors = read_json(corridors_path)['corridors']
+    # Terrain content identity (pinned source hash + grid), not object identity, so every simulation shares it.
+    terrain_key = (terrain.get('source_sha256'), terrain.get('grid_size'), terrain.get('spacing_m'), terrain.get('reference_elevation_m'))
+    key = (terrain_key, digest(LAYOUT_KEY(layout)), digest(catalog['placement']), digest([c['gate'] for c in corridors]),
+           next(k['display_range_m'] for k in catalog['unit_kinds'] if k['id'] == 'radar'))
+    if key not in _RADAR_MODELS:
+        _RADAR_MODELS[key] = RadarModel(layout, terrain, catalog, corridors)
+    return _RADAR_MODELS[key]
+
+
+def propose_radar_adjustment(units, layout, terrain, tracks, early_warning, catalog, at_ms=0):
+    """Move existing radars and add new ones up to budget to maximize line-of-sight approach coverage."""
+    model = radar_model(layout, terrain, catalog)
+    if model is None:
+        raise ValueError('Radar coverage model needs terrain and approach corridor data')
+    budget = next(kind['budget'] for kind in catalog['unit_kinds'] if kind['id'] == 'radar')
+    weights_by_sector, basis = threat_weights(tracks, early_warning, catalog)
+    weights = model.weights(weights_by_sector)
+    radars = [unit for unit in units if unit['kind'] == 'radar']
+    # Coverage of the current placement, evaluated at the radars' exact positions.
+    before = model.coverage_at([unit['position'] for unit in radars], weights)
+    target = model.greedy([], budget, weights)
+    # Pair radars with target sites shortest-distance first, so radars already in place stay put.
+    pairs = sorted((horizontal_distance(model.candidates[i], unit['position']), unit['id'], i) for unit in radars for i in target)
+    assigned, used = {}, set()
+    for distance, unit_id, index in pairs:
+        if unit_id in assigned or index in used:
+            continue
+        assigned[unit_id], used = index, used | {index}
+    remaining = [i for i in target if i not in used]
+    moves = []
+    for unit in sorted(radars, key=lambda u: u['id']):
+        if unit['id'] not in assigned:
+            continue
+        destination = model.candidates[assigned[unit['id']]]
+        distance = horizontal_distance(destination, unit['position'])
+        if distance >= 300:
+            moves.append(dict(unit_id=unit['id'], label=copy.deepcopy(unit['label']), from_position=list(unit['position']),
+                              to_position=list(destination), distance_m=round(distance)))
+    added = remaining[:max(0, budget - len(radars))]
+    # Label additions exactly as place_unit will name them (catalog label + first free number).
+    kind = next(kind for kind in catalog['unit_kinds'] if kind['id'] == 'radar')
+    used = {int(unit['id'].rsplit('_', 1)[1]) for unit in radars if unit['id'].rsplit('_', 1)[1].isdigit()}
+    free = [n for n in range(1, budget + 1) if n not in used]
+    additions = [dict(position=list(model.candidates[i]),
+                      label=dict(en=f"{kind['label']['en']} {free[n]}", ko=f"{kind['label']['ko']} {free[n]}"))
+                 for n, i in enumerate(added)]
+    moved = {move['unit_id']: move['to_position'] for move in moves}
+    final = [moved.get(unit['id'], unit['position']) for unit in radars] + [model.candidates[i] for i in added]
+    after = model.coverage_at(final, weights)
+    proposal = dict(id=uuid.uuid4().hex, status='pending', moves=moves, additions=additions,
+                    coverage_before=round(before, 2), coverage_after=round(after, 2), threat_basis=basis,
+                    computed_at_ms=at_ms, budget=budget, scope=SCOPE,
+                    basis=dict(en=('Terrain line-of-sight from a 6 m mast to aircraft assumed 50 m and 120 m above local terrain, along the approach axes '
+                                   'inside the local DEM, weighted toward ' + ('the scenario prior.' if basis == 'scenario_prior' else 'currently received tracks and area signals.')
+                                   + ' Geometry only: no clutter, propagation or detection probability.'),
+                               ko=('6 m 마스트에서 지형 위 50 m·120 m로 가정한 비행체까지의 가시선을 접근 축(로컬 DEM 범위)에서 계산했으며, '
+                                   + ('시나리오 사전 가정' if basis == 'scenario_prior' else '현재 수신 항적과 지역 신호') + '에 가중치를 두었습니다. '
+                                   '기하 계산일 뿐 클러터·전파·탐지 확률은 반영하지 않습니다.')))
+    proposal['signature'] = digest(dict(moves=moves, additions=additions))
+    return proposal
+
+
+def apply_radar_adjustment(units, adjustment, catalog):
+    budget = next(kind['budget'] for kind in catalog['unit_kinds'] if kind['id'] == 'radar')
+    by_id = {unit['id']: unit for unit in units}
+    for move in adjustment['moves']:
+        unit = by_id.get(move['unit_id'])
+        if unit is None or unit['kind'] != 'radar':
+            raise ValueError('A radar in this adjustment is no longer placed')
+        if horizontal_distance(unit['position'], move['from_position']) > 1:
+            raise ValueError('A radar moved since this adjustment was proposed')
+    if sum(unit['kind'] == 'radar' for unit in units) + len(adjustment['additions']) > budget:
+        raise ValueError('Radar budget would be exceeded')
+    for move in adjustment['moves']:
+        by_id[move['unit_id']]['position'] = list(move['to_position'])
+        by_id[move['unit_id']]['source'] = 'adjusted'
+    for addition in adjustment['additions']:
+        unit = place_unit(dict(position=addition['position'], kind='radar', role='surveillance'), units, catalog)
+        unit['source'] = 'adjusted'
+    return units
+
+
 def propose_placement(layout, terrain, context, tracks, early_warning, catalog, at_ms=0):
     """Deterministic greedy coverage over sectors; display assumptions, not propagation modeling."""
     settings = catalog['placement']
@@ -474,28 +728,36 @@ def propose_placement(layout, terrain, context, tracks, early_warning, catalog, 
     sub_weights = _sub_weights(weights)
     positions = []
 
-    # Radar: elevated sites near the fence that see the heaviest sectors.
-    covered = set()
-    radar_candidates = [p for radius in settings['radar_ring_m'] for p in ring_points(radius)
-                        if not _blocked(p, layout, 150)]
-    for number in range(kinds['radar']['budget']):
-        best = None
-        for candidate in radar_candidates:
-            gain = _coverage_gain(candidate, kinds['radar']['display_range_m'], covered, sub_weights, 4500)
-            height = elevation(terrain, candidate[0], candidate[2])
-            score = gain + min(0.3, max(0.0, height) * 0.02) - (0.4 if any(horizontal_distance(candidate, p['position']) < 900 for p in positions) else 0)
-            if best is None or score > best[0]:
-                best = (score, candidate, height)
-        if best is None:
-            break
-        score, candidate, height = best
-        covered |= _covered(candidate, kinds['radar']['display_range_m'], 4500)
+    # Radar: terrain line-of-sight coverage along the assumed approach axes (see RadarModel).
+    model = radar_model(layout, terrain, catalog)
+    sample_weights = model.weights(weights) if model else []
+    chosen = model.greedy([], kinds['radar']['budget'], sample_weights) if model else []
+    if model is None:
+        # Without terrain or corridor data, fall back to sector coverage from a fence-side ring.
+        covered = set()
+        for number in range(kinds['radar']['budget']):
+            options = [c for c in ring_points(1200, 16) if not _blocked(c, layout, 150)
+                       and all(horizontal_distance(c, row['position']) >= 900 for row in positions)]
+            if not options:
+                break
+            candidate = max(options, key=lambda c: _coverage_gain(c, kinds['radar']['display_range_m'], covered, sub_weights, 4500))
+            covered |= _covered(candidate, kinds['radar']['display_range_m'], 4500)
+            positions.append(dict(kind='radar', role='surveillance', position=list(candidate),
+                                  label=dict(en=f'Radar {number + 1}', ko=f'레이더 {number + 1}'),
+                                  basis=dict(en=f'Sector coverage toward {sector_of(candidate[0], candidate[2])} (no terrain data).',
+                                             ko=f'{sector_of(candidate[0], candidate[2])} 방향 구역 커버리지 (지형 자료 없음).')))
+        radar_fallback = round(sum(sub_weights[i] for i in covered) / (sum(sub_weights) or 1), 2)
+    for number, index in enumerate(chosen):
+        candidate = model.candidates[index]
+        height = model.ground(candidate[0], candidate[2])
+        seen = model.coverage([index], sample_weights)
+        forward = math.hypot(candidate[0], candidate[2]) > 2000
         positions.append(dict(kind='radar', role='surveillance', position=list(candidate),
                               label=dict(en=f'Radar {number + 1}', ko=f'레이더 {number + 1}'),
-                              basis=dict(en=f'Covers {sector_of(candidate[0], candidate[2])} approaches; terrain {height:+.0f} m relative to the site.',
-                                         ko=f'{sector_of(candidate[0], candidate[2])} 접근 방향 담당, 기지 대비 지형 {height:+.0f} m.')))
+                              basis=dict(en=f"{'Forward' if forward else 'Base'} radar on terrain {height:+.0f} m; line of sight to {round(seen * 100)}% of weighted approach samples ({sector_of(candidate[0], candidate[2])}).",
+                                         ko=f"{'전방' if forward else '기지'} 레이더, 지형 {height:+.0f} m · 가중 접근 표본의 {round(seen * 100)}%를 가시선으로 관측 ({sector_of(candidate[0], candidate[2])}).")))
 
-    # Detection phones: road-side posts outside the fence (existing power and access as a proxy).
+    # Acoustic listening posts: road-side posts outside the fence (existing power and access as a proxy).
     phone_covered = set()
     candidates = road_candidates(context, layout, settings) or [p for p in ring_points(2500, 24)]
     phone_positions = []
@@ -514,9 +776,9 @@ def propose_placement(layout, terrain, context, tracks, early_warning, catalog, 
         phone_positions.append(candidate)
         phone_covered |= _covered(candidate, kinds['detection_phone']['display_range_m'], 2500)
         positions.append(dict(kind='detection_phone', role='picket', position=list(candidate),
-                              label=dict(en=f'P{number + 1} phone post', ko=f'P{number + 1} 탐지폰 초소'),
-                              basis=dict(en=f'Road-side picket covering the {sector_of(candidate[0], candidate[2])} sector.',
-                                         ko=f'{sector_of(candidate[0], candidate[2])} 방향을 담당하는 도로변 초소.')))
+                              label=dict(en=f'P{number + 1} acoustic post', ko=f'P{number + 1} 드론 청음 초소'),
+                              basis=dict(en=f'Road-side drone acoustic listening post covering the {sector_of(candidate[0], candidate[2])} sector.',
+                                         ko=f'{sector_of(candidate[0], candidate[2])} 방향을 담당하는 도로변 드론 청음 초소.')))
 
     # Effector teams: fence ring facing the heaviest sectors, away from the runway corridor.
     team_covered = set()
@@ -590,7 +852,7 @@ def propose_placement(layout, terrain, context, tracks, early_warning, catalog, 
             capped.append(row)
     positions = capped
     total = sum(sub_weights) or 1
-    coverage = dict(radar=round(sum(sub_weights[i] for i in covered) / total, 2),
+    coverage = dict(radar=round(model.coverage(chosen, sample_weights), 2) if model else radar_fallback,
                     detection_phone=round(sum(sub_weights[i] for i in phone_covered) / total, 2),
                     effector_team=round(sum(sub_weights[i] for i in team_covered) / total, 2),
                     infantry=round(sum(sub_weights[i] for i in op_covered) / total, 2))

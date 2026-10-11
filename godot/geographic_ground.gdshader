@@ -37,7 +37,7 @@ void fragment() {
 	vec3 detail_b = texture(grass_detail, rotated * 0.113 + vec2(0.37, 0.61)).rgb;
 	float grain = dot(mix(detail_a, detail_b, noise2(p / 29.0)), vec3(0.3333));
 	float near_detail = 1.0 - smoothstep(100.0, 700.0, length(VERTEX));
-	// COLOR.r only marks the fictional redeveloped site. Satellite is unique outside it.
+	// COLOR.r only marks the virtual redeveloped site. Satellite is unique outside it.
 	ALBEDO = mix(mapped, maintained, COLOR.r) * mix(1.0, 0.87 + grain * 0.35, near_detail);
 	ROUGHNESS = 0.98;
 	SPECULAR = 0.0;

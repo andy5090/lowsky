@@ -1,5 +1,5 @@
 extends RefCounted
-## Meter-scale, fictional display geometry. Not a surveyed or operational site.
+## Meter-scale, virtual display geometry. Not a surveyed or operational site.
 
 const Detailed = preload("res://detailed_environment.gd")
 

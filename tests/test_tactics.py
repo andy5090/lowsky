@@ -222,7 +222,8 @@ class PlacementTests(unittest.TestCase):
 
     def test_manual_placement_enforces_kind_budget_bounds_and_identity(self):
         units = []
-        for number in range(2):
+        radar_budget = next(kind['budget'] for kind in CATALOG['unit_kinds'] if kind['id'] == 'radar')
+        for number in range(radar_budget):
             tactics.place_unit(dict(position=[100 + number, 0, -2000], kind='radar'), units, CATALOG)
         with self.assertRaises(ValueError):
             tactics.place_unit(dict(position=[300, 0, -2000], kind='radar'), units, CATALOG)
@@ -235,7 +236,7 @@ class PlacementTests(unittest.TestCase):
             tactics.place_unit(dict(position=[0, 0, 0], unit_id='missing'), units, CATALOG)
         moved = tactics.place_unit(dict(position=[-1000, 0, 500], unit_id='radar_1'), units, CATALOG)
         self.assertEqual(moved['position'], [-1000.0, 0, 500.0])
-        self.assertEqual([unit['id'] for unit in units], ['radar_1', 'radar_2'])
+        self.assertEqual([unit['id'] for unit in units], [f'radar_{n}' for n in range(1, radar_budget + 1)])
         placed = tactics.place_unit(dict(position=[10, 0, 10]), units, CATALOG)
         self.assertEqual((placed['kind'], placed['id'], placed['label']['ko']), ('infantry', 'infantry_1', '보병 1'))
 
@@ -262,7 +263,7 @@ class ServerIntegrationTests(unittest.TestCase):
         exercise = state['exercise']
         self.assertEqual(exercise['units'], [])
         self.assertEqual(exercise['unit_proposal']['status'], 'pending')
-        self.assertEqual(len(exercise['unit_proposal']['positions']), 28)
+        self.assertEqual(len(exercise['unit_proposal']['positions']), sum(kind['budget'] for kind in CATALOG['unit_kinds']))
         self.assertEqual([kind['id'] for kind in exercise['unit_kinds']], ['infantry', 'radar', 'detection_phone', 'effector_team'])
         tactics_state = state['tactics']
         self.assertEqual(tactics_state['scope'], 'rule_based_training_advice')
@@ -285,9 +286,9 @@ class ServerIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.sim.control(dict(action='exercise_accept_units', run_id='old', proposal_id=proposal['id'], confirm=True))
         state = self.unit_command('exercise_accept_units', proposal_id=proposal['id'])
-        self.assertEqual(len(state['exercise']['units']), 28)
+        self.assertEqual(len(state['exercise']['units']), sum(kind['budget'] for kind in CATALOG['unit_kinds']))
         self.assertEqual(state['exercise']['unit_proposal']['status'], 'accepted')
-        self.assertEqual(state['tactics']['formation']['by_kind'], {'infantry': 12, 'radar': 2, 'detection_phone': 10, 'effector_team': 4})
+        self.assertEqual(state['tactics']['formation']['by_kind'], {kind['id']: kind['budget'] for kind in CATALOG['unit_kinds']})
         self.assertTrue(state['tactics']['formation']['teams'])
         self.assertTrue(all(not any('no_effector_team_placed' in option['reasons'] for option in target['response']['options'])
                             for target in state['tactics']['targets']))
@@ -296,9 +297,9 @@ class ServerIntegrationTests(unittest.TestCase):
         state = self.unit_command('exercise_manual_units', proposal_id=proposal['id'])
         self.assertEqual(state['exercise']['unit_proposal']['status'], 'manual')
         with self.assertRaises(ValueError):
-            self.unit_command('exercise_place_unit', position=[0, 0, 0], kind='radar')  # budget of 2 already used
+            self.unit_command('exercise_place_unit', position=[0, 0, 0], kind='radar')  # radar budget already used
         state = self.unit_command('exercise_remove_unit', unit_id='radar_2')
-        self.assertEqual(sum(unit['kind'] == 'radar' for unit in state['exercise']['units']), 1)
+        self.assertEqual(sum(unit['kind'] == 'radar' for unit in state['exercise']['units']), 3)
         state = self.unit_command('exercise_place_unit', position=[1200, 0, -1800], kind='radar')
         radar = next(unit for unit in state['exercise']['units'] if unit['id'] == 'radar_2')
         self.assertEqual((radar['position'], radar['source']), ([1200.0, 0, -1800.0], 'manual'))
@@ -323,7 +324,7 @@ class ServerIntegrationTests(unittest.TestCase):
         self.assertNotEqual(new['id'], proposal['id'])
         self.assertEqual(new['threat_basis'], 'received_picture')
         self.assertEqual(new['computed_at_ms'], 100000)
-        self.assertEqual(len(state['exercise']['units']), 28)
+        self.assertEqual(len(state['exercise']['units']), sum(kind['budget'] for kind in CATALOG['unit_kinds']))
         with self.assertRaises(ValueError):
             self.sim.control(dict(action='exercise_reoptimize_units', run_id=self.sim.run_id))
 

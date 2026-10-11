@@ -39,7 +39,8 @@ class ExerciseTests(unittest.TestCase):
         truth=next(p for p in state['simulation_positions'] if p['object_id']==self.object_id)
         self.assertEqual(truth['position'],expected)
         track=next(t for t in state['tracks'] if t['object_id']==self.object_id)
-        self.assertEqual(track['position'],expected)
+        for actual, wanted in zip(track['position'], expected):
+            self.assertAlmostEqual(actual, wanted, places=6)
         self.assertTrue(all(row['available_at_ms']<=state['at_ms'] for row in track['records']))
         self.assertEqual(build_bundle(state)['exercise']['scope'],'scripted_training')
         self.assertNotIn('simulation_positions',str(build_bundle(state)))

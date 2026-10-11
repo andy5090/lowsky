@@ -65,7 +65,7 @@ func verify() -> void:
 	# The camera's close view must not change the physical model scale.
 	preview.objects[1].node.get_node("Visual").rotation = Vector3.ZERO
 	preview.pose_drone(preview.objects[1].node, Vector3.FORWARD, 0)
-	# Measure at the origin: 18 km schematic coordinates lose sub-millimeter precision.
+	# Measure at the origin: launch areas ~55 km north of the site lose sub-millimeter precision.
 	var saved_position: Vector3 = preview.objects[1].node.position
 	preview.objects[1].node.position = Vector3.ZERO
 	var bounds: Array = preview.collect_bounds(preview.objects[1].node, Transform3D.IDENTITY)

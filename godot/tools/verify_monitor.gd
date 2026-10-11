@@ -33,6 +33,8 @@ func verify() -> void:
 		assert(item.node.visible, "Physical drone models remain visible without detection labels")
 	await control({"action": "seek", "at_ms": 270000})
 	await create_timer(0.4).timeout
+	# Tracks now span ~55 km from launch areas north of the DMZ, beyond the site overview.
+	preview.show_approach_view()
 	var received_count: int = preview.detected_ids.size()
 	assert(received_count > 0 and received_count < preview.objects.size())
 	assert(preview.drone_overlay.markers().size() == received_count)
@@ -42,6 +44,7 @@ func verify() -> void:
 		assert(marker.sim)
 	preview.set_drone_positions(false)
 	assert(preview.drone_overlay.markers().size() == received_count)
+	preview.show_overview()
 	await control({"action": "seek", "at_ms": 0})
 	await create_timer(0.4).timeout
 	assert(preview.drone_overlay.markers().is_empty(), "Rewind clears all detection labels")
@@ -49,6 +52,7 @@ func verify() -> void:
 	await create_timer(0.4).timeout
 	assert(preview.camera.position == preview.vector(preview.site_layout.camera.overview))
 	assert(preview.drone_overlay.mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	preview.show_approach_view()
 	assert(preview.drone_overlay.markers().size() == preview.detected_ids.size(), "Overview labels follow received detections")
 	var before_position: Vector3 = preview.objects[0].node.position
 	preview.toggle_follow()
@@ -69,6 +73,7 @@ func verify() -> void:
 	assert(preview.objects[0].node.position == paused_position)
 	preview.toggle_follow()
 	assert(not preview.follow_drone)
+	preview.show_approach_view()
 	assert(preview.drone_overlay.markers().size() == preview.detected_ids.size())
 	preview.toggle_follow()
 	preview.pan_camera(Vector2(5, 0))

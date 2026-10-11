@@ -668,3 +668,19 @@ select.custom-select-source { position:absolute!important; width:1px!important; 
 .settings-providers label span { flex:1; text-align:left; }
 #agent-settings-key-status { margin:8px 0 0; line-height:1.5; }
 .settings-warning { color:#efc36a; font-size:12px; line-height:1.5; }
+
+/* Radar re-adjustment, acoustic glyph and geographic overlays */
+.unit-glyph { width:1em; height:1em; vertical-align:-0.15em; }
+.infantry-marker i .unit-glyph { display:block; margin:auto; width:14px; height:14px; }
+.unit-coverage small.unit-los { display:block; color:var(--cyan); }
+.radar-adjustment { border:1px dashed #8bc9cf; background:#13252c; padding:8px 10px; margin:0 0 10px; display:grid; gap:6px; }
+.radar-adjustment h3 { margin:0; font-size:12px; color:var(--cyan); }
+.radar-adjustment p { margin:0; }
+.radar-adjustment ul { margin:0; padding-left:4px; list-style:none; display:grid; gap:2px; }
+.radar-adjustment .unit-actions { margin:4px 0 0; }
+.radar-adjustment-stale { color:var(--amber); }
+.map-legend { flex-wrap:wrap; max-width:calc(100% - 80px); row-gap:4px; }
+.legend-mdl,.legend-dmz,.legend-corridor { display:block; width:16px; }
+.legend-mdl { border-top:2px solid #e5675a; }
+.legend-dmz { border-top:2px dashed #dfb86a; }
+.legend-corridor { border-top:2px dotted #b9a2e8; }

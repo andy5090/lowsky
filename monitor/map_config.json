@@ -5,14 +5,15 @@
   "tile_url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   "attribution": "© OpenStreetMap contributors",
   "attribution_url": "https://www.openstreetmap.org/copyright",
-  "purpose": "Arbitrary Northern Gyeonggi visual reference for a fictional redeveloped airfield, not an existing base or a site suitability assessment. Only the local 10 km DEM is geographic; distant departure context is schematic.",
+  "purpose": "Northern Gyeonggi visual reference for a virtual redeveloped airfield used in training, not an existing base or a site suitability assessment. The local 10 km DEM and the MDL/DMZ reference lines (Natural Earth) are geographic; approach corridors are training assumptions.",
   "site_origin": {
     "lat": 37.9,
     "lon": 127.2
   },
   "terrain_extent_m": 10000,
   "distant_departure": {
-    "mode": "schematic",
-    "georeferenced": false
+    "mode": "mdl_reference",
+    "georeferenced": true,
+    "source": "data/geography/korean_mdl.json"
   }
 }
