@@ -8,6 +8,12 @@ Updated demos (2026-10-11): [Korean 3-minute annotated edition](dist/demo-videos
 
 LOW SKY combines a Godot 3D authoring view with a separate web **Decision making workspace**, synchronized to one simulation clock. The setting is a virtual airfield on a Korean map background, with a separate site plan and a photorealistic art direction. The workspace now includes overall situation assessment, received-evidence explanations and human review. Deep Agents uses OpenAI by default; the interface reports missing server credentials explicitly. An offline rule-based overview remains an explicit option.
 
+![Decision making workspace: site plan with radar overlay, applied force and sensor placement, and the shared simulation clock](artifacts/readme/workspace-en.jpg)
+
+| Godot 3D view — Gyeonggi DEM terrain | Godot 3D view — detected drone and facility damage |
+| --- | --- |
+| ![Godot 3D author view over the Gyeonggi DEM terrain with the virtual airfield](artifacts/readme/3d-terrain-en.jpg) | ![Godot 3D close-up of a detected drone above a burning hangar](artifacts/readme/3d-facility-damage.jpg) |
+
 Original planning documents are kept locally in `docs/sources/` and excluded from the public repository; the [source index](docs/sources/README.md) lists each one and where it was adopted. See [MVP direction](docs/mvp-direction.md) for scope and the folders under `godot/third_party/` for asset licenses and provenance.
 
 ## Included

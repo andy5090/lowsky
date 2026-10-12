@@ -8,6 +8,12 @@
 
 배경은 **실존 장소를 재현하지 않는 가상의 공군 기지**, 아트 방향은 **실사 지향**으로 확정했다. 현재는 Godot 3D 제작자 보기와 별도의 웹 관측 모니터를 같은 시뮬레이션 시계로 연결했다. 실제 지도 위 가상 기지 배치와 별도 평면도를 제공한다. 전체 상황 평가, 수신 근거 설명, 사람의 검토 기록을 제공한다. Deep Agents는 OpenAI를 기본 사용하며 서버 인증 정보가 없으면 설정 안내를 표시한다. 오프라인 규칙 기반 요약은 명시적으로 선택할 수 있다.
 
+![의사결정 워크스페이스: 레이더 표시를 켠 기지 평면도, 적용된 병력·센서 배치, 공유 시뮬레이션 시계](artifacts/readme/workspace-ko.jpg)
+
+| Godot 3D 보기 — 경기 DEM 지형 | Godot 3D 보기 — 탐지된 드론과 시설 피해 |
+| --- | --- |
+| ![경기 DEM 지형 위 가상 비행장을 보여 주는 Godot 3D 제작자 보기](artifacts/readme/3d-terrain-ko.jpg) | ![불타는 격납고 위 탐지된 드론을 근접 촬영한 Godot 3D 화면](artifacts/readme/3d-facility-damage.jpg) |
+
 원본 기획 문서는 로컬의 `docs/sources/`에 보관하며 공개 저장소에는 포함하지 않는다. 문서별 내용과 반영 위치는 [원본 문서 색인](docs/sources/README.md)에 정리했다. 구현 범위는 `docs/mvp-direction.md`에서 확인할 수 있다. 외부 에셋의 출처와 라이선스는 각 `godot/third_party` 하위 폴더에 보관한다.
 
 ## 준비된 내용
